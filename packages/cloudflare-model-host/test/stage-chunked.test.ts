@@ -3,14 +3,22 @@
 // manifest fails the manager's contract (fm-19eb: found by the host docs test staging converted AFHQ cat).
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { test } from 'node:test';
+import { after, test } from 'node:test';
 import { CHUNK_BYTES, stage } from '../src/index.ts';
 
 const BASE = 'https://models.example.test/runtime';
-const tmp = (p: string) => mkdtempSync(join(tmpdir(), `model-host-${p}-`));
+const scratch = new Set<string>();
+const tmp = (p: string) => {
+  const root = mkdtempSync(join(tmpdir(), `model-host-${p}-`));
+  scratch.add(root);
+  return root;
+};
+after(() => {
+  for (const root of scratch) rmSync(root, { recursive: true, force: true });
+});
 const sha = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
 function bytes(n: number, seed: string): Buffer {
   const out = Buffer.allocUnsafe(n);

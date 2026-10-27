@@ -6,6 +6,11 @@ name: cloudflare-model-host
 # (JSON report kept as an artifact).
 on:
   workflow_call:
+    inputs:
+      shared_build:
+        type: boolean
+        default: false
+        description: Reuse the exact compiled workspace from this main run
   workflow_dispatch:
 jobs:
   check:
@@ -18,11 +23,14 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - uses: ./.github/actions/setup-playwright
         with:
           browsers: chromium
       - uses: ./.github/actions/setup-runtime
-      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host
       - name: Host tests, with the qualified runtime as the real staged set
         working-directory: packages/cloudflare-model-host
         env:

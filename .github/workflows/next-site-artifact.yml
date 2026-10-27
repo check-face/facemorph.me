@@ -21,19 +21,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm # keyed by the lockfile hash
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - name: Every test file is actually run
         run: node scripts/build/check-tests-listed.mjs
       # src/Next modules import stylegan-js and browser-model-manager through their dist/ exports.
-      - name: Workspace packages the regressions import
-        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - name: Build the canonical monorepo destination artifact
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build:next && npm run build:next -- --check
+      - name: Pack the compiled workspace for downstream correctness lanes
+        run: node scripts/ci/workspace-build.mjs pack --out .cache/workspace-build-artifact --commit "$GITHUB_SHA"
       - name: Shipping runtime, media, privacy and input regressions
         run: |
           set -euo pipefail
           # classic's 37 named files at their destination paths; hosting/next-mirror/worker.test.mjs moves with the
           # mirror Worker to packages/cloudflare-model-host (model-hosting extraction) and runs there.
-          (cd apps/web && node --test src/Next/image-encoder.test.mjs src/Next/crop-queue.test.mjs src/Next/scheduler.test.mjs src/Next/recovery-metadata.test.mjs src/Next/infill.test.mjs src/Next/last-result.test.mjs src/Next/analytics.test.mjs src/Next/usage-stats.test.mjs src/Next/video-worker.test.mjs src/Next/browser/route-priors.test.mjs src/Next/Assets/model-cache.test.mjs src/Next/browser/runtime.test.mjs src/Next/browser/runtime-manifest.test.mjs src/Next/browser/mobile-runtime.test.mjs src/Next/browser/originals.test.mjs src/Next/browser/acquisition-budget.test.mjs src/Next/browser/fused-resample.test.mjs src/Next/media.test.mjs src/Next/morph-frames.test.mjs src/Next/fresh-review.test.mjs src/Next/browser/encoder-preflight.test.mjs src/Next/photo/crop-view.test.mjs src/Next/photo/confirmed-crop.test.mjs src/Next/estimate.test.mjs src/Next/testing-link.test.mjs src/Next/route-choice.test.mjs src/Next/route-report.test.mjs src/Next/reporting.test.mjs src/Next/stage-labels.test.mjs src/Next/storage-request.test.mjs src/Next/model-inventory.test.mjs src/Next/logging.test.mjs src/Next/public-previews.test.mjs)
+          (cd apps/web && node --test src/Next/image-encoder.test.mjs src/Next/crop-queue.test.mjs src/Next/scheduler.test.mjs src/Next/recovery-metadata.test.mjs src/Next/infill.test.mjs src/Next/last-result.test.mjs src/Next/analytics.test.mjs src/Next/usage-stats.test.mjs src/Next/video-worker.test.mjs src/Next/browser/route-priors.test.mjs src/Next/Assets/model-cache.test.mjs src/Next/browser/runtime.test.mjs src/Next/browser/execution-gate.test.mjs src/Next/browser/runtime-manifest.test.mjs src/Next/browser/mobile-runtime.test.mjs src/Next/browser/originals.test.mjs src/Next/browser/acquisition-budget.test.mjs src/Next/browser/fused-resample.test.mjs src/Next/media.test.mjs src/Next/morph-frames.test.mjs src/Next/fresh-review.test.mjs src/Next/browser/encoder-preflight.test.mjs src/Next/photo/crop-view.test.mjs src/Next/photo/confirmed-crop.test.mjs src/Next/estimate.test.mjs src/Next/testing-link.test.mjs src/Next/route-choice.test.mjs src/Next/route-report.test.mjs src/Next/reporting.test.mjs src/Next/stage-labels.test.mjs src/Next/storage-request.test.mjs src/Next/model-inventory.test.mjs src/Next/logging.test.mjs src/Next/public-previews.test.mjs)
           (cd apps/web && node --test src/Next/photo-selection.test.mjs)
           node --test hosting/next-static/analytics.test.mjs hosting/next-cloudflare/worker.test.mjs hosting/gallery/materialize.test.mjs
           if [ -f packages/cloudflare-model-host/test/next-mirror-worker.test.mjs ]; then node --test packages/cloudflare-model-host/test/next-mirror-worker.test.mjs
@@ -46,10 +49,6 @@ jobs:
       - name: Independent reviewed morph geometry
         working-directory: apps/web
         run: node src/Next/geometry/verify.mjs
-      - name: Build the canonical monorepo destination artifact
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: npm run build:next && npm run build:next -- --check
       - name: Historic hello preview is included byte for byte
         run: cmp apps/web/src/public/preview/hello-1024.webp deploy-next/preview/hello-1024.webp
       - name: Model-free checker compressed budget (entry, shared dependencies and worker)
@@ -84,5 +83,11 @@ jobs:
             next-site-source.txt
             next-site-provenance.json
             next-site-identity.json
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: workspace-build-${{ github.sha }}
+          path: .cache/workspace-build-artifact/
           if-no-files-found: error
           retention-days: 14

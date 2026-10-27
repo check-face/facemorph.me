@@ -6,6 +6,11 @@ name: crop-repro
 # The browser cases require the complete pinned runtime, verified by the shared portable acquisition step.
 on:
   workflow_call:
+    inputs:
+      shared_build:
+        type: boolean
+        default: false
+        description: Reuse the exact compiled workspace from this main run
   workflow_dispatch:
 jobs:
   crop:
@@ -20,6 +25,8 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - uses: ./.github/actions/setup-playwright
         with:
           browsers: chromium
@@ -51,8 +58,14 @@ jobs:
       - name: Fetch retained control independently
         run: node scripts/import/fetch-control.mjs --dest .cache/control
       # build:next's Vite build reads the workspace packages through their dist/ exports.
-      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - uses: ./.github/actions/restore-site
+        if: inputs.shared_build
+      - if: inputs.shared_build
+        run: npm run build:next -- --check
       - name: Build the ported app (the cases' subject)
+        if: ${{ !inputs.shared_build }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run build:next && npm run build:next -- --check

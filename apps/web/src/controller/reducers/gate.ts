@@ -3,6 +3,12 @@ import { unchanged, type Transition } from '../effects.ts';
 import type { State } from '../state.ts';
 import type { Msg } from '../msg.ts';
 
+function queuedPreparation(state: State): State {
+  return state.Downloads.photoApprovalRequired
+    ? { ...state, Gate: ['photo', { type: 'DownloadNow', args: [true] }] }
+    : state;
+}
+
 export function gate(message: Msg, state: State): Transition | null {
   if (!state.Busy && ['RunFace', 'Run', 'Import'].includes(message.type)) {
     const scope = gateScope(state, message);
@@ -18,27 +24,64 @@ export function gate(message: Msg, state: State): Transition | null {
     case 'GateAccept': {
       if (state.Gate === null) return unchanged(state);
       const [scope, pending] = state.Gate;
+      const preparation = pending.type === 'DownloadNow';
       return {
-        state: {
+        state: queuedPreparation({
           ...state,
           Gate: null,
+          Downloads: preparation
+            ? { ...state.Downloads, photoApprovalRequired: false }
+            : state.Downloads,
           DownloadConsent: new Set([
             ...state.DownloadConsent,
             scope,
             ...(scope === 'photo' ? ['route'] : []),
           ]),
           ModelToastHidden: true,
-        },
-        effects: [
-          { type: 'consentToDownload', scope },
-          { type: 'dispatch', message: pending },
-        ],
+        }),
+        effects: preparation
+          ? [{ type: 'dispatch', message: pending }]
+          : [
+              { type: 'consentToDownload', scope },
+              { type: 'dispatch', message: pending },
+            ],
       };
     }
-    case 'GateCancel':
-      return { state: { ...state, Gate: null }, effects: [] };
+    case 'GateCancel': {
+      const preparation = state.Gate?.[1].type === 'DownloadNow';
+      return {
+        state: queuedPreparation({
+          ...state,
+          Gate: null,
+          ...(preparation
+            ? {
+                Downloads: { ...state.Downloads, photoApprovalRequired: false },
+                DownloadConsent: new Set(
+                  [...state.DownloadConsent].filter((scope) => scope !== 'photo'),
+                ),
+              }
+            : {}),
+        }),
+        effects: preparation ? [{ type: 'cancelDownloadSetup' }] : [],
+      };
+    }
     case 'DownloadsChanged': {
-      const next = { ...state, Downloads: message.args[0] };
+      const next = {
+        ...state,
+        Downloads: message.args[0],
+        ...(message.args[0].photoApprovalRequired
+          ? {
+              DownloadConsent: new Set(
+                [...state.DownloadConsent].filter((scope) => scope !== 'photo'),
+              ),
+            }
+          : {}),
+      };
+      if (next.Downloads.photoApprovalRequired && !state.Gate)
+        return {
+          state: queuedPreparation(next),
+          effects: [],
+        };
       // A question asked while the inventory was still unknown resolves itself once the device finds it already
       // holds what the action needs: nothing to download, so nothing to approve (fm-qrfz).
       if (
@@ -48,8 +91,8 @@ export function gate(message: Msg, state: State): Transition | null {
         scopeReady(next.Downloads, state.Gate[0])
       )
         return {
-          state: { ...next, Gate: null },
-          effects: [{ type: 'dispatch', message: state.Gate[1] }],
+          state: queuedPreparation({ ...next, Gate: null }),
+          effects: [{ type: 'dispatch', message: state.Gate[1], continuation: true }],
         };
       return { state: next, effects: [] };
     }

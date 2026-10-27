@@ -28,6 +28,8 @@ import { saveFile, shareFile } from '../Next/media.mjs';
 import type { ClassifiedStill } from './msg.ts';
 import { subscribeProgress, subscribeDownloads } from './subscriptions.ts';
 import { storedSize } from '../../shell/session/app-storage.ts';
+import { createPhotoTasks } from './photo-tasks.ts';
+import { retirePhotoRunInputs } from './admission.ts';
 
 export interface RuntimeIdentity {
   readonly runtimeSha256: string;
@@ -63,6 +65,24 @@ export function orderedEffects(effects: readonly Effect[]): readonly Effect[] {
     ...effects.filter((effect) => !commands.has(effect.type)),
     ...effects.filter((effect) => commands.has(effect.type)),
   ];
+}
+
+/** A failed classifier settles only its own token, never a newer pick's preparation. */
+export function classificationFailure(
+  state: State,
+  effect: Extract<Effect, { type: 'classifyStills' }>,
+  error: unknown,
+): Transition {
+  if (state.StillChecks?.get(effect.key) !== effect.token) return unchanged(state);
+  const checks = new Map(state.StillChecks);
+  checks.delete(effect.key);
+  return {
+    state: { ...state, StillChecks: checks },
+    effects:
+      effect.target !== null && !state.Inputs.some((input) => input.id === effect.target)
+        ? []
+        : [{ type: 'dispatch', message: rejection(effect, error) }],
+  };
 }
 
 /** Adapts the action's spoken line and bar; route events retain their provider metadata. */
@@ -173,6 +193,7 @@ export function createController(
   let photoSelectionSequence = 0;
   const handles = new Map<OperationHandle, number>();
   const pending = new Set<Promise<unknown>>();
+  const photoTasks = createPhotoTasks();
   const subscriptions = new Map<'subscribe' | 'subscribeDownloads', () => void>();
   const identity = Object.freeze({ ...options.identity });
   let arrivalRevision = 0;
@@ -189,7 +210,7 @@ export function createController(
   const store = createStore(initial.state, {
     facts: (message, state) => ({
       ...(['AddAt', 'Photos', 'PickPhoto', 'Classified'].includes(message.type)
-        ? { storedSessionBytes }
+        ? { storedSessionBytes, pendingPhotoFiles: photoTasks.files() }
         : {}),
       ...(message.type === 'AddAt'
         ? { newFaceId: `face-${crypto.randomUUID().replaceAll('-', '')}` }
@@ -264,7 +285,34 @@ export function createController(
     );
   }
   function update(transition: (state: State) => Transition): void {
-    if (!disposed) store.update(transition);
+    if (!disposed)
+      store.update((current) => {
+        const next = transition(current);
+        return { ...next, state: retirePhotoRunInputs(next.state) };
+      });
+  }
+  function photoTask<T>(
+    files: readonly Blob[],
+    start: () => Promise<T>,
+    fulfilled: (value: T) => void,
+    rejected: (error: unknown) => void,
+  ): void {
+    task(
+      photoTasks.run(
+        files,
+        start,
+        (value) => {
+          if (!disposed) fulfilled(value);
+        },
+        (error) => {
+          if (!disposed) rejected(error);
+        },
+      ),
+      () => {},
+      (error) => {
+        throw error;
+      },
+    );
   }
   function source(input: Input): SourceSnapshot {
     return { slot: input.id, revision: (revisions.get(input.id) ?? 1) as InputRevision, input };
@@ -440,8 +488,9 @@ export function createController(
         const { Accepting: _, ...rest } = current;
         return { state: rest, effects: [] };
       });
-    task(
-      checks(request).finally(() => (accepting = false)),
+    photoTask(
+      request.sources.flatMap(({ input }) => (input.file ? [input.file] : [])),
+      () => checks(request).finally(() => (accepting = false)),
       (result) => {
         if (result.failure) refuseMorph(result.failure, null);
         else store.dispatch(message);
@@ -465,8 +514,9 @@ export function createController(
   function recheckNeighbours(state: State): void {
     const shown = morphRefusal;
     const request = morphRequest(state);
-    task(
-      neighbourFailure(request),
+    photoTask(
+      request.sources.flatMap(({ input }) => (input.file ? [input.file] : [])),
+      () => neighbourFailure(request),
       (failure) => {
         if (morphRefusal !== shown) return;
         morphRefusal = failure?.message ?? null;
@@ -584,8 +634,9 @@ export function createController(
         case 'selectPhoto': {
           const selection = ++photoSelectionSequence;
           photoSelections.set(effect.id, selection);
-          task(
-            facade.selectPhoto({ id: effect.id, files: effect.files }),
+          photoTask(
+            effect.files,
+            () => facade.selectPhoto({ id: effect.id, files: effect.files }),
             (result) => {
               if (photoSelections.get(effect.id) !== selection) return;
               photoSelections.delete(effect.id);
@@ -600,8 +651,9 @@ export function createController(
           break;
         }
         case 'classifyStills':
-          task(
-            classify(effect.files),
+          photoTask(
+            effect.files,
+            () => classify(effect.files),
             (entries) => {
               const current = store.getState().StillChecks?.get(effect.key) === effect.token;
               for (const entry of entries)
@@ -615,14 +667,15 @@ export function createController(
                 msg('Classified', effect.key, effect.token, effect.pick, effect.target, entries),
               );
             },
-            (error) => store.dispatch(rejection(effect, error)),
+            (error) => update((current) => classificationFailure(current, effect, error)),
           );
           break;
         case 'previewPhoto': {
           const selection = ++photoSelectionSequence;
           photoSelections.set(effect.id, selection);
-          task(
-            facade.previewPhoto(effect.file),
+          photoTask(
+            [effect.file],
+            () => facade.previewPhoto(effect.file),
             (offer) => {
               if (photoSelections.get(effect.id) !== selection) {
                 helpers.revokeUrl(offer.url);
@@ -640,15 +693,17 @@ export function createController(
           break;
         }
         case 'cropPhoto':
-          task(
-            facade.cropPhoto(effect.file, effect.area, effect.options),
+          photoTask(
+            [effect.file],
+            () => facade.cropPhoto(effect.file, effect.area, effect.options),
             (file) => store.dispatch(msg('Cropped', effect.id, effect.revision, file)),
             (error) => store.dispatch(rejection(effect, error)),
           );
           break;
         case 'chooseDetectedFace':
-          task(
-            facade.chooseDetectedFace(effect.choice, effect.index),
+          photoTask(
+            [effect.choice.file],
+            () => facade.chooseDetectedFace(effect.choice, effect.index),
             (file) => store.dispatch(msg('Cropped', effect.id, effect.revision, file)),
             (error) => store.dispatch(rejection(effect, error)),
           );
@@ -689,11 +744,12 @@ export function createController(
           facade.rememberView(effect.view);
           break;
         case 'dispatch':
-          store.dispatch(effect.message);
+          store.dispatch(effect.message, 'continuation' in effect ? effect : undefined);
           break;
         case 'checkCachedFace':
-          task(
-            facade.checkCachedFace(effect.input),
+          photoTask(
+            effect.input.file ? [effect.input.file] : [],
+            () => facade.checkCachedFace(effect.input),
             (hit) => store.dispatch(msg('CachedFaceChecked', effect.input, hit)),
             (error) => store.dispatch(rejection(effect, error)),
           );
@@ -703,6 +759,9 @@ export function createController(
           break;
         case 'downloadModels':
           facade.downloadModels(effect.includePhoto);
+          break;
+        case 'cancelDownloadSetup':
+          facade.cancelDownloadSetup();
           break;
         case 'queueFace':
           facade.queueFace(effect.id, effect.depth);
@@ -744,8 +803,9 @@ export function createController(
           const held = state.Held?.get(effect.id);
           if (held?.url) {
             // A held still is handed over as the exact bytes that were opened: no re-encode, envelope kept.
-            task(
-              handOver(held.file, effect.type === 'shareMedia'),
+            photoTask(
+              [held.file],
+              () => handOver(held.file, effect.type === 'shareMedia'),
               (notice) => store.dispatch(msg('Notice', notice)),
               (error) => store.dispatch(rejection(effect, error)),
             );
@@ -761,15 +821,17 @@ export function createController(
           break;
         }
         case 'exportProject':
-          task(
-            facade.exportProject(effect.view),
+          photoTask(
+            effect.view.inputs.flatMap((input) => (input.file ? [input.file] : [])),
+            () => facade.exportProject(effect.view),
             (notice) => store.dispatch(msg('Notice', notice)),
             (error) => store.dispatch(rejection(effect, error)),
           );
           break;
         case 'execute':
-          task(
-            execute(effect.request),
+          photoTask(
+            effect.request.inputs.flatMap((input) => (input.file ? [input.file] : [])),
+            () => execute(effect.request),
             () => {},
             (error) => store.dispatch(rejection(effect, error)),
           );
@@ -782,8 +844,9 @@ export function createController(
             settings: effect.view,
             route: { ...identity, requested: effect.provider, fallbackScope: 'cpu-once' },
           };
-          task(
-            watch(service.requestImport(request), effect.jobId, true),
+          photoTask(
+            effect.view.inputs.flatMap((input) => (input.file ? [input.file] : [])),
+            () => watch(service.requestImport(request), effect.jobId, true),
             () => {},
             (error) => store.dispatch(rejection(effect, error)),
           );

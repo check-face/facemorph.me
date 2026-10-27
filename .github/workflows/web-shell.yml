@@ -8,6 +8,14 @@ permissions:
 on:
   workflow_call:
     inputs:
+      shared_build:
+        type: boolean
+        default: false
+        description: Reuse the exact compiled workspace from this main run
+      full:
+        type: boolean
+        default: true
+        description: Full runtime/browser qualification; main pushes run shell correctness only
       artifact_run:
         type: string
         required: true
@@ -26,6 +34,10 @@ on:
         description: Canonical site artifact name
   workflow_dispatch:
     inputs:
+      full:
+        type: boolean
+        default: true
+        description: Full runtime/browser qualification; main pushes run shell correctness only
       artifact_run:
         type: string
         required: true
@@ -44,7 +56,8 @@ on:
         description: Canonical site artifact name
 jobs:
   check:
-    runs-on: [self-hosted, linux-x64]
+    # Only this browser-free job is qualified on Triton (fm-jx26).
+    runs-on: [self-hosted, triton]
     timeout-minutes: 30
     defaults:
       run:
@@ -55,22 +68,27 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       # apps/web imports the workspace packages through their built dist/ exports. Its format, lint, typecheck and unit
       # tests run once per main.yml run in scaffold's gates (fm-98po).
-      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
         working-directory: .
-      - run: npm run build
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build
       - run: npm run check:inventory
       - name: Every name the UI and the typed facade take from a bridge module is exported there (fm-pia9)
         run: node scripts/check-bridge-imports.mjs
   facade:
+    if: inputs.full
     # Both portable hosts have verified browsers/runtime caches; unsupported Triton is outside linux-x64 (fm-kfs5).
-    # Separate warm-state groups; retain the two-job facade cap while other CPU journeys use either host.
+    # Separate warm-state groups can fill available slots; multi-file CPU suites stay on the larger tempcpu host.
     runs-on: [self-hosted, linux-x64]
     timeout-minutes: 25
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 4
       matrix:
         shard: ['1', '2', '3', '4']
     steps:
@@ -79,11 +97,14 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - uses: ./.github/actions/setup-playwright
         with:
           browsers: chromium
       - uses: ./.github/actions/setup-runtime
-      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - name: Every facade declaration belongs to exactly one shard
         run: node --test apps/web/test/e2e/facade-shards.test.mjs
       - name: Typed facade through the real CPU bridge and the pinned runtime
@@ -91,6 +112,7 @@ jobs:
         env:
           FACEMORPH_REQUIRE_RUNTIME: '1'
           FACEMORPH_FACADE_SHARD: ${{ matrix.shard }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           node --test --test-timeout=1200000 test/e2e/facade.e2e.ts
       - uses: actions/upload-artifact@v4
@@ -99,9 +121,63 @@ jobs:
           name: facade-failure-${{ github.run_id }}-${{ matrix.shard }}
           path: apps/web/test-results/facade/
           if-no-files-found: ignore
+  # Consent overlap timings use the real hardware route; CPU coverage remains in runtime-e2e.
+  consent-webgpu:
+    if: inputs.full
+    runs-on: [self-hosted, device-lab]
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
+      - uses: ./.github/actions/setup-runtime
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - name: Verify the canonical site artifact
+        uses: ./.github/actions/fetch-artifact
+        with:
+          source_repo_id: ${{ github.repository_id }}
+          workflow: ${{ inputs.artifact_workflow }}
+          run_id: ${{ inputs.artifact_run }}
+          commit: ${{ inputs.artifact_commit }}
+          artifact_name: ${{ inputs.artifact_name }}
+          out: .cache/canonical-site
+      - name: Use those exact bytes as the identified artifact
+        run: cp -R .cache/canonical-site/. .
+      - name: Measure operated cold and warm consent journeys on hardware WebGPU
+        env:
+          FACEMORPH_REQUIRE_RUNTIME: '1'
+          FACEMORPH_CONSENT_ROUTE: webgpu
+          DISPLAY: ':0'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess, sys
+          sys.path.insert(0, str(Path('tools/device-lab').resolve()))
+          from lab import lab_lock
+          with lab_lock(['eris-webgpu']):
+              subprocess.run([
+                  'node', '--test', '--test-timeout=1200000',
+                  '--test-name-pattern=approved photo transfer overlaps',
+                  'test/e2e/consent-requests.e2e.ts',
+              ], cwd='apps/web', check=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: consent-webgpu-${{ github.run_id }}
+          path: apps/web/test-results/consent-requests/desktop-webgpu-overlap*
+          if-no-files-found: error
+          retention-days: 30
   # Full confirmed-crop/recovery acceptance on the same identified artifact (fm-d4mw).
   crop-acceptance:
-    runs-on: [self-hosted, linux-x64]
+    if: inputs.full
+    # Keep encoder work off eris while its facade shards run (fm-jx26 measured CPU contention).
+    runs-on: [self-hosted, tempcpu]
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
@@ -109,11 +185,14 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - uses: ./.github/actions/setup-playwright
         with:
           browsers: chromium
       - uses: ./.github/actions/setup-runtime
-      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - name: Verify the canonical site artifact
         uses: ./.github/actions/fetch-artifact
         with:
@@ -143,7 +222,9 @@ jobs:
   # same canonical artifact bytes: Encode (fm-fy2.17.1), composed tile controls and legacy links with real CPU
   # synthesis (fm-25um).
   runtime-e2e:
-    runs-on: [self-hosted, linux-x64]
+    if: inputs.full
+    # Concurrent browser files need the 26-core portable host; four eris jobs saturated its 12 threads.
+    runs-on: [self-hosted, tempcpu]
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -151,12 +232,15 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - uses: ./.github/actions/setup-playwright
         with:
           browsers: chromium
       - uses: ./.github/actions/setup-runtime
       # The e2e tests import app modules that read the engine package through its built dist/ exports (fm-7f2o).
-      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - name: Verify the canonical site artifact
         uses: ./.github/actions/fetch-artifact
         with:
@@ -176,7 +260,7 @@ jobs:
         env:
           FACEMORPH_REQUIRE_RUNTIME: '1'
         run: |
-          node --test --test-timeout=1200000 test/e2e/encode.e2e.ts test/e2e/face-controls.e2e.ts test/e2e/legacy-links.e2e.ts test/e2e/manifest-admission.e2e.ts test/e2e/export-files.e2e.ts test/e2e/result-actions.e2e.ts test/e2e/morph-output.e2e.ts test/e2e/opctl-trace.e2e.ts test/e2e/offline.e2e.ts test/e2e/still-entry.e2e.ts
+          node --test --test-timeout=1200000 test/e2e/encode.e2e.ts test/e2e/face-controls.e2e.ts test/e2e/react-subscription.e2e.ts test/e2e/tooltip-hits.e2e.ts test/e2e/consent-requests.e2e.ts test/e2e/legacy-links.e2e.ts test/e2e/manifest-admission.e2e.ts test/e2e/export-files.e2e.ts test/e2e/result-actions.e2e.ts test/e2e/morph-output.e2e.ts test/e2e/opctl-trace.e2e.ts test/e2e/offline.e2e.ts test/e2e/still-entry.e2e.ts
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -202,6 +286,7 @@ jobs:
           path: |
             apps/web/test-results/encode/
             apps/web/test-results/face-controls/
+            apps/web/test-results/consent-requests/
             apps/web/test-results/legacy-links/
             apps/web/test-results/manifest-admission/
             apps/web/test-results/export-files/
@@ -215,6 +300,7 @@ jobs:
   # Firefox and WebKit): control goldens at the shell rows, operated links at desktop and phone width (mouse
   # and touch), and every emitted worker loading. Screenshots are kept as an artifact.
   e2e:
+    if: inputs.full
     # All three Playwright engines and genuine Google Chrome are installed on this Ubuntu pool.
     # Hosted dependency installation repeatedly exhausted the job before any tests ran (fm-jx26).
     runs-on: [self-hosted, tempcpu]
@@ -229,12 +315,15 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - uses: ./.github/actions/setup-playwright # browsers cached per Playwright version (fm-98po)
         with:
           browsers: chromium firefox webkit
       # facade and face-controls import app modules that read the engine package through its built dist/
       # exports; without it they fail to load (run 40290030872).
-      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
         working-directory: .
       - name: Verify the canonical site artifact
         uses: ./.github/actions/fetch-artifact

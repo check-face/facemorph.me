@@ -41,7 +41,7 @@ export type EverydayEffect =
 export type Effect =
   | EverydayEffect
   | PhotoEffect
-  | { readonly type: 'dispatch'; readonly message: Msg }
+  | { readonly type: 'dispatch'; readonly message: Msg; readonly continuation?: boolean }
   | { readonly type: 'rememberView' | 'exportProject'; readonly view: ViewSnapshot }
   | { readonly type: 'execute'; readonly request: Request }
   | {
@@ -54,6 +54,7 @@ export type Effect =
   | { readonly type: 'checkCachedFace'; readonly input: Input }
   | { readonly type: 'consentToDownload'; readonly scope: string }
   | { readonly type: 'downloadModels'; readonly includePhoto: boolean }
+  | { readonly type: 'cancelDownloadSetup' }
   | { readonly type: 'cancelWork' | 'requestNext' }
   | { readonly type: 'queueFace'; readonly id: string; readonly depth: number }
   | {

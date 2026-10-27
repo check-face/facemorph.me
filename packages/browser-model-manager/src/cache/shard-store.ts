@@ -14,6 +14,8 @@
  *
  * Moved from the candidate's src/Next/Assets/shard-store.mjs (classic a42829b) without behaviour change (fm-eulc).
  */
+import { acquisitionPhase } from '../acquisition/phases.ts';
+
 export const SHARD_DIRECTORY = 'checkface-model-shards-v1'; // Never app-versioned or age-purged.
 const MAGIC = [0x43, 0x46, 0x53, 0x48, 0x41, 0x52, 0x44, 0x31]; // "CFSHARD1"
 export const TRAILER_BYTES = 48;
@@ -196,7 +198,7 @@ export async function openShardStore({
     const name = Array.from(crypto.getRandomValues(new Uint8Array(32)), (x) =>
       x.toString(16).padStart(2, '0'),
     ).join('');
-    await store.write(name, probe);
+    await acquisitionPhase('write', () => store.write(name, probe));
     const back = await store.read(name, probe.byteLength);
     await store.remove(name);
     return back && back.every((value, i) => value === probe[i]) ? store : null;

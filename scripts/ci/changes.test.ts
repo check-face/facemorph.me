@@ -249,7 +249,14 @@ test('CLI diffs from previous failed run, keeps superseded stacked changes and a
   assert.ok(result.lanes.includes('web-shell') && result.lanes.includes('contracts-m1'));
   assert.ok(!result.lanes.includes('stats-worker'));
   assert.ok(selectLanes(changedFiles(f.root, f.green, f.head), FILTERS).includes('stats-worker'));
-  assert.ok(output.endsWith(`base=${f.failed}\n`));
+  assert.ok(output.includes(`base=${f.failed}\n`));
+  const files = JSON.parse(
+    output
+      .split('\n')
+      .find((line) => line.startsWith('files='))!
+      .slice(6),
+  );
+  assert.deepEqual(files, ['apps/web/stacked.ts', 'packages/stylegan-js/current.ts']);
 });
 
 test('CLI uses all lanes on first run, equal head, rewritten history, missing identity or API failure', (t) => {
@@ -270,6 +277,7 @@ test('CLI uses all lanes on first run, equal head, rewritten history, missing id
     assert.equal(result.base, null);
     assert.equal(result.files, 'all');
     assert.deepEqual(result.lanes, ALL);
-    assert.ok(output.endsWith('base=\n'));
+    assert.ok(output.includes('base=\n'));
+    assert.ok(output.endsWith('files=null\n'));
   }
 });

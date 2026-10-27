@@ -1,9 +1,10 @@
 // face.many (fm-id4c): the many-face layout, Remove, Undo and Start over in the identified, composed application
 // (build:next destination, real bridge and runtime bytes, Chromium on the CPU route). Faces are set up by controller
 // fixture (support/face-fixture.ts); every graded control is pressed by real pointer or touch tap at its visible
-// position after elementFromPoint shows it there (support/operate.ts). Screenshots in test-results/face-many/.
+// position after elementFromPoint shows it there and trusted input lands inside (verify/operated.ts).
+// Screenshots and identified per-session step/network receipts are in test-results/face-many/.
 //
-// Cases (FACE_MANY_CASES=matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate selects some):
+// Cases (FACE_MANY_CASES=matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate,start-over-generated,one-face-encode,one-face-generate selects some):
 //   matrix    counts GRID_COUNTS x every sweep width and built breakpoint +/-1 px (touch at or below 599 px):
 //             no page-level sideways scroll, no hidden scrolling surface but the strip, a cue while a face is
 //             outside the strip; every face reached by real wheel (desktop) or swipe (touch) with its image,
@@ -20,15 +21,22 @@
 //   virtual   150 faces: DOM tile count, first and last face reached, Tab, Remove and Undo across the
 //             virtualisation edge, frame time while scrolling.
 //   height    390 px with 30 faces: page height in 844 px screens.
-//   admission 64 and 150 faces: insertion +, Add face, multi-file drop, drop on the page and paste onto a face
-//             add a 65th/151st face (or replace, for paste); with the stored session or retained photo bytes
-//             forced one over, each path shows the one message naming the limit, adds nothing, and is traced.
+//   admission 64 and 150 faces: available entry paths admit a 65th/151st face; native paste fills an empty
+//             target created by an operated Add face setup (not a paste insertion). Both byte budgets are
+//             forced exactly one over for each path. Batch OK remains explicitly untested under fm-3peb.
 //   generate  real CPU inference: removing a generating face cancels it, a sibling finishes; the Undo window
 //             makes no invalidateFace call and Undo shows the same result digest with no inference; expiry or a
 //             replacing action makes exactly one; one face left: Generate and Save work, Create morph says why.
+//   one-face-encode removes down to one face, then operates Encode image, crop, explicit model decisions,
+//             real CPU inference and Save at desktop/touch widths; validates the actual recoverable photo file.
+//   one-face-encode 1280 mouse / 390 touch: operated Remove leaves one face; Encode image opens its chooser,
+//             a real JPEG is crop-confirmed and encoded on CPU; Save exports a valid photo recovery image.
+//   one-face-generate 1280 mouse / 390 touch: operated Remove, Numeric seed and native typing, then
+//             explicit Generate, real CPU inference and Save; validates the actual recoverable seed file.
 //   FACEMORPH_DEPLOY_OUT=<dir with deploy-next/> node --test test/e2e/face-many.e2e.ts
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
 import {
@@ -41,15 +49,12 @@ import {
 } from 'playwright';
 import { startControl, chromiumArgs, ORIGIN, REPO } from '../parity/control-server.ts';
 import { readIdentity } from '../../../../scripts/import/build-next.mjs';
-import { press } from '../support/operate.ts';
+import { operatedClick, operatedTap, StepLog } from '../verify/operated.ts';
+import { artifactDigest, bindOrigins, DEFAULT_HOST_MAP } from '../verify/artifact.ts';
 import { corners } from '../support/rendered-frame.ts';
-import {
-  STORE_HOOK,
-  faceList,
-  faceTrace,
-  restoreFaces,
-  setFaces,
-} from '../support/face-fixture.ts';
+import { STORE_HOOK, faceList, faceTrace, setFaces } from '../support/face-fixture.ts';
+import { readStill } from '../../src/media/recovery-stills.ts';
+import { typeMatchesBytes } from '../../src/media/export-policy.ts';
 import { builtBreakpoints, visualOrderProblems, type FocusStop } from '../verify/harness.ts';
 import {
   FACE_MANY_COUNTS,
@@ -59,18 +64,33 @@ import {
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
 const out = resolve(process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO);
-const results = join(REPO, 'apps/web/test-results/face-many');
+const results = resolve(
+  process.env['FACE_MANY_RESULTS'] ?? join(REPO, 'apps/web/test-results/face-many'),
+);
 const MODEL = /^\/runtime\/(assets|chunks|encoder-stream|photo)\//;
 const CASES = new Set(
   (
     process.env['FACE_MANY_CASES'] ??
-    'matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate'
+    'matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate,start-over-generated,one-face-encode,one-face-generate'
   ).split(','),
 );
 const ONLY_WIDTHS = process.env['FACE_MANY_WIDTHS']?.split(',').map(Number);
 const ONLY_COUNTS = process.env['FACE_MANY_COUNTS']?.split(',').map(Number);
 const SESSION_LIMIT = 32 * 2 ** 20;
 const PHOTO_LIMIT = 128 * 2 ** 20;
+let runTag: Readonly<Record<string, string>> | undefined;
+const operatedSessions = new Map<Page, { id: number; sequence: number; log: StepLog }>();
+/** Use the shared verifier for every graded press while retaining native traversal below. */
+async function press(page: Page, control: Locator, { touch = false } = {}) {
+  const session = operatedSessions.get(page);
+  assert.ok(session, 'the operated page belongs to an identified face.many session');
+  const operate = touch ? operatedTap : operatedClick;
+  const result = await operate(page, control, {
+    log: session.log,
+    step: `fm-id4c/session-${session.id}/press-${++session.sequence}`,
+  });
+  return { inside: result.ok, x: result.point?.x, y: result.point?.y };
+}
 const evidence: Record<string, unknown> = {};
 const record = (key: string, value: unknown) => {
   evidence[key] = value;
@@ -108,6 +128,13 @@ async function open(
   if (init) await context.addInitScript(init);
   const page = await context.newPage();
   const s: Session = { context, page, touch, errors: [], models: [], navigations: 0 };
+  assert.ok(runTag, 'the operated session has a validated artifact identity');
+  const log = new StepLog({
+    map: bindOrigins(DEFAULT_HOST_MAP, { app: [ORIGIN] }),
+    run: runTag,
+  });
+  log.attach(page);
+  operatedSessions.set(page, { id: operatedSessions.size + 1, sequence: 0, log });
   page.on('pageerror', (error) => s.errors.push(error.message));
   page.on('request', (request) => {
     const path = new URL(request.url()).pathname;
@@ -575,6 +602,13 @@ test(
     const artifact = readIdentity(out);
     assert.deepEqual(artifact.findings, []);
     assert.equal(artifact.identity?.label, 'destination');
+    runTag = {
+      artifactDigest: artifactDigest(artifact.identity.files),
+      source: artifact.identity.deploySource.buildId,
+      label: artifact.identity.label,
+      requestByteTotals:
+        'Known lengths only; null bytes in the raw session network receipt remain unknown.',
+    };
     const site = await startControl({
       runtime,
       artifact: join(out, 'deploy-next'),
@@ -1094,199 +1128,1246 @@ test(
         });
 
       if (CASES.has('admission'))
-        await t.test('admission at 64 and 150 faces from every entry path', async () => {
-          const rows: unknown[] = [];
-          // `files` real PNG-headed files, together `bytes` long, as a drag-and-drop payload.
-          const photoFiles = (page: Page, bytes: number, files: number) =>
-            page.evaluateHandle(
-              ([total, n]) => {
-                const dt = new DataTransfer();
-                const head = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
-                for (let i = 0; i < n; i++) {
-                  const size = Math.floor(total / n) + (i === n - 1 ? total % n : 0);
-                  const body = new Uint8Array(Math.max(0, size - head.length));
-                  dt.items.add(new File([head, body], `big-${i}.png`, { type: 'image/png' }));
-                }
-                return dt;
-              },
-              [bytes, files] as const,
-            );
-          for (const [width, touch] of [
-            [1280, false],
-            [390, true],
-          ] as const)
-            for (const count of [64, 150].filter((c) => !ONLY_COUNTS || ONLY_COUNTS.includes(c))) {
-              // Admitted: each path adds the next face.
-              {
-                const s = await open(browser, width, touch);
-                const { page } = s;
-                await setFaces(page, count);
-                const n = async () => (await faceList(page)).length;
-                const plus = page.getByRole('button', { name: `Add a face after Face ${count}` });
-                await reach(s, count - 1);
-                assert.ok((await press(page, plus, { touch })).inside);
-                await page.waitForFunction(
-                  (k) =>
-                    (
-                      window as unknown as { __fmStore: { getState(): { Inputs: unknown[] } } }
-                    ).__fmStore.getState().Inputs.length === k,
-                  count + 1,
+        await t.test(
+          'available admission paths at 64 and 150 faces; batch OK remains fm-3peb',
+          async () => {
+            const rows: Record<string, unknown>[] = [];
+            const paths = [
+              'insertion +',
+              'Add face',
+              'multi-file drop',
+              'background drop',
+              'paste into new face',
+            ] as const;
+            type Entry = (typeof paths)[number];
+            type AdmissionWindow = Window & {
+              __fmStore: import('../../src/controller/store.ts').Store;
+              __admissionPhoto: Blob;
+              __admissionBase: import('../../src/controller/state.ts').Input[];
+              __admissionPasteBytes?: number;
+            };
+            record('admissionScope', {
+              status: 'partial acceptance; available paths tested below',
+              untested: [
+                {
+                  path: 'batch OK',
+                  owner: 'fm-3peb',
+                  reason:
+                    'React batch proposal is not implemented; fm-2rwl was merged into fm-3peb',
+                },
+              ],
+              paste:
+                'An operated Add face first creates the empty 65th/151st target. Native paste fills that target; paste is not claimed to insert a face.',
+              drops:
+                'Real decodable image Files enter a DataTransfer drop event on the visible face/background; graded buttons use real pointer/touch.',
+            });
+            const snapshot = (page: Page) =>
+              page.evaluate(() => {
+                const s = (window as unknown as AdmissionWindow).__fmStore.getState();
+                return {
+                  ids: s.Inputs.map((i) => i.id),
+                  inputs: s.Inputs.map((i) => ({
+                    id: i.id,
+                    mode: i.mode,
+                    value: i.value,
+                    bytes: i.file?.size ?? 0,
+                  })),
+                  checks: s.StillChecks?.size ?? 0,
+                };
+              });
+            const preparePhoto = async (page: Page) =>
+              page.evaluate(async () => {
+                const response = await fetch('/preview/hello-1024.webp');
+                if (!response.ok) throw Error('Usable photo fixture was not served');
+                const bitmap = await createImageBitmap(await response.blob());
+                const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+                canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
+                bitmap.close();
+                const photo = await canvas.convertToBlob({ type: 'image/png' });
+                const decoded = await createImageBitmap(photo);
+                if (decoded.width !== 1024 || decoded.height !== 1024)
+                  throw Error('Photo fixture did not decode');
+                decoded.close();
+                const w = window as unknown as AdmissionWindow;
+                w.__admissionPhoto = photo;
+                w.__admissionBase = [...w.__fmStore.getState().Inputs];
+                document.addEventListener(
+                  'paste',
+                  (event) => {
+                    w.__admissionPasteBytes = [...event.clipboardData!.items]
+                      .filter((i) => i.kind === 'file')
+                      .reduce((n, i) => n + (i.getAsFile()?.size ?? 0), 0);
+                  },
+                  { capture: true },
                 );
-                assert.ok(
-                  (
-                    await press(page, page.getByRole('button', { name: 'Add face', exact: true }), {
-                      touch,
-                    })
-                  ).inside,
-                );
-                await page.waitForFunction(
-                  (k) =>
-                    (
-                      window as unknown as { __fmStore: { getState(): { Inputs: unknown[] } } }
-                    ).__fmStore.getState().Inputs.length === k,
-                  count + 2,
-                );
-                rows.push({ width, count, plus: count + 1, addFace: count + 2, total: await n() });
-                await s.context.close();
-              }
-              // Forced one over: the stored session holds 32 MB + 1 byte before the page starts.
-              {
-                const s = await open(browser, width, touch);
-                const { page } = s;
+                return { bytes: photo.size, width: canvas.width, height: canvas.height };
+              });
+            const add = async (s: Session) => {
+              const before = (await faceList(s.page)).length;
+              assert.ok(
+                (
+                  await press(
+                    s.page,
+                    s.page.getByRole('button', { name: 'Add face', exact: true }),
+                    { touch: s.touch },
+                  )
+                ).inside,
+              );
+              await s.page.waitForFunction(
+                (n) =>
+                  (window as unknown as AdmissionWindow).__fmStore.getState().Inputs.length === n,
+                before + 1,
+              );
+            };
+            const seed = async (
+              s: Session,
+              count: number,
+              paste: boolean,
+              sessionBudget: boolean,
+            ) => {
+              const { page } = s;
+              await setFaces(page, count);
+              const original = await faceList(page);
+              if (paste) await add(s); // Explicit operated setup; the paste itself must not insert another face.
+              const saved = await page.evaluate(() =>
+                (window as unknown as AdmissionWindow).__fmStore
+                  .getState()
+                  .Inputs.map(({ id, mode, value }) => ({ id, mode, value, file: null })),
+              );
+              if (sessionBudget) {
+                // Store a Blob directly: valueBytes counts precisely its size, without object-key overhead.
                 await page.evaluate(
                   (bytes) =>
-                    new Promise<void>((done, fail) => {
-                      const req = indexedDB.open('checkface-originals-v1', 1);
-                      req.onupgradeneeded = () => req.result.createObjectStore('originals');
-                      req.onsuccess = () => {
-                        const tx = req.result.transaction('originals', 'readwrite');
+                    new Promise<void>((resolve, reject) => {
+                      const request = indexedDB.open('checkface-originals-v1', 1);
+                      request.onupgradeneeded = () => request.result.createObjectStore('originals');
+                      request.onerror = () => reject(request.error);
+                      request.onsuccess = () => {
+                        const db = request.result;
+                        const tx = db.transaction('originals', 'readwrite');
                         tx.objectStore('originals').put(
-                          { padding: new Blob([new Uint8Array(bytes)]) },
+                          new Blob([new Uint8Array(bytes)]),
                           'last-generated-session-v2',
                         );
-                        tx.oncomplete = () => done();
-                        tx.onerror = () => fail(tx.error);
+                        tx.oncomplete = () => {
+                          db.close();
+                          resolve();
+                        };
+                        tx.onerror = () => {
+                          db.close();
+                          reject(tx.error);
+                        };
                       };
                     }),
                   SESSION_LIMIT + 1,
                 );
                 await page.reload();
-                await page.locator('section.next-face').first().waitFor();
-                await page.waitForTimeout(1500); // the runner measures the stored session at start
-                // The budget is over, so no face can be added: they arrive by the arrival restore (setup).
-                await restoreFaces(page, count);
-                const status = page.locator('.next-morph-slot .next-status');
-                const sessionMessage =
-                  /^Not added: a saved session can hold at most 32 MB, and this would go over it\. Remove some faces first\.$/;
-                const refusedBy = async (what: string, act: () => Promise<void>) => {
-                  const traced = (await faceTrace(page)).filter(
-                    (e) => e.type === 'admissionRefused',
-                  ).length;
-                  await act();
-                  await page.waitForFunction(
-                    (k) =>
-                      (
-                        window as unknown as { __FACEMORPH_FACE_TRACE__: { type: string }[] }
-                      ).__FACEMORPH_FACE_TRACE__.filter((e) => e.type === 'admissionRefused')
-                        .length > k,
-                    traced,
+                await page.waitForFunction(
+                  () => !!(window as unknown as AdmissionWindow).__fmStore,
+                );
+                await page.waitForTimeout(1500); // Existing runner measures the actual IndexedDB record at startup.
+                // Restore the exact controlled setup after reload, including the ID created by the operated Add.
+                await page.evaluate((inputs) => {
+                  (window as unknown as AdmissionWindow).__fmStore.update((state) => ({
+                    state: { ...state, Inputs: inputs },
+                    effects: [],
+                  }));
+                }, saved);
+              }
+              const fixture = await preparePhoto(page);
+              return {
+                original,
+                fixture,
+                target: paste ? saved.at(-1)!.id : saved[0]!.id,
+                baseline: saved.length,
+              };
+            };
+            const clipboard = async (page: Page) =>
+              page.evaluate(async () => {
+                const photo = (window as unknown as AdmissionWindow).__admissionPhoto;
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': photo })]);
+                const item = (await navigator.clipboard.read())[0]!;
+                return (await item.getType('image/png')).size;
+              });
+            const act = async (s: Session, path: Entry, count: number, target: string) => {
+              const { page } = s;
+              if (path === 'insertion +') {
+                await reach(s, count - 1);
+                assert.ok(
+                  (
+                    await press(
+                      page,
+                      page.getByRole('button', {
+                        name: `Add a face after Face ${count}`,
+                        exact: true,
+                      }),
+                      { touch: s.touch },
+                    )
+                  ).inside,
+                );
+              } else if (path === 'Add face') {
+                assert.ok(
+                  (
+                    await press(page, page.getByRole('button', { name: 'Add face', exact: true }), {
+                      touch: s.touch,
+                    })
+                  ).inside,
+                );
+              } else if (path === 'paste into new face') {
+                await reach(s, count);
+                const field = page.locator(
+                  `section.next-face[data-next-face="${target}"] .next-field input`,
+                );
+                assert.ok((await press(page, field, { touch: s.touch })).inside);
+                await page.keyboard.press('Control+V'); // Native clipboard input; no synthetic paste dispatch.
+              } else {
+                const dt = await page.evaluateHandle(
+                  (n) => {
+                    const transfer = new DataTransfer();
+                    const photo = (window as unknown as AdmissionWindow).__admissionPhoto;
+                    for (let i = 0; i < n; i++)
+                      transfer.items.add(
+                        new File([photo], `admission-${i}.png`, { type: 'image/png' }),
+                      );
+                    return transfer;
+                  },
+                  path === 'multi-file drop' ? 2 : 1,
+                );
+                try {
+                  const target =
+                    path === 'multi-file drop'
+                      ? await reach(s, 0).then(() => page.locator('section.next-face').first())
+                      : page.locator('.next-tagline');
+                  await target.scrollIntoViewIfNeeded();
+                  await target.dispatchEvent('drop', { dataTransfer: dt });
+                } finally {
+                  await dt.dispose();
+                }
+              }
+            };
+            const forcePhoto = async (page: Page, bytes: number, excluded: string | null) =>
+              page.evaluate(
+                async ({ bytes, excluded }) => {
+                  const w = window as unknown as AdmissionWindow;
+                  const eligible = w.__admissionBase.filter((i) => i.id !== excluded).slice(-7);
+                  const files = eligible.map((input, index) => {
+                    const size =
+                      Math.floor(bytes / eligible.length) +
+                      (index === eligible.length - 1 ? bytes % eligible.length : 0);
+                    return [
+                      input.id,
+                      new File(
+                        [w.__admissionPhoto, new Uint8Array(size - w.__admissionPhoto.size)],
+                        `retained-${index}.png`,
+                        { type: 'image/png' },
+                      ),
+                    ] as const;
+                  });
+                  const decoded = await createImageBitmap(files[0]![1]);
+                  decoded.close();
+                  const byId = new Map(files);
+                  w.__fmStore.update((state) => ({
+                    state: {
+                      ...state,
+                      Inputs: w.__admissionBase.map((input) =>
+                        byId.has(input.id)
+                          ? {
+                              ...input,
+                              mode: 'photo',
+                              file: byId.get(input.id)!,
+                              value: byId.get(input.id)!.name,
+                            }
+                          : input,
+                      ),
+                      RunInputs: [],
+                      RunSettings: '',
+                    },
+                    effects: [],
+                  }));
+                  return files.reduce((sum, [, file]) => sum + file.size, 0);
+                },
+                { bytes, excluded },
+              );
+            for (const [width, touch] of (
+              [
+                [1280, false],
+                [390, true],
+              ] as const
+            ).filter(([w]) => !ONLY_WIDTHS || ONLY_WIDTHS.includes(w))) {
+              for (const count of [64, 150].filter(
+                (c) => !ONLY_COUNTS || ONLY_COUNTS.includes(c),
+              )) {
+                for (const path of paths) {
+                  const s = await open(browser, width, touch);
+                  try {
+                    const setup = await seed(s, count, path === 'paste into new face', false);
+                    if (path === 'paste into new face') await clipboard(s.page);
+                    await act(s, path, count, setup.target);
+                    await s.page.waitForFunction(
+                      (n) =>
+                        (window as unknown as AdmissionWindow).__fmStore.getState().Inputs
+                          .length === n,
+                      count + 1,
+                    );
+                    if (path === 'paste into new face') {
+                      await s.page.locator('.next-encode-ok').waitFor();
+                      assert.ok(
+                        (await press(s.page, s.page.locator('.next-encode-ok'), { touch })).inside,
+                      );
+                      await s.page.waitForFunction(
+                        (id) =>
+                          (window as unknown as AdmissionWindow).__fmStore
+                            .getState()
+                            .Inputs.some((i) => i.id === id && i.mode === 'photo' && !!i.file),
+                        setup.target,
+                      );
+                    } else if (path.includes('drop'))
+                      await s.page.locator('.next-encode-dialog').waitFor();
+                    const after = await faceList(s.page);
+                    assert.deepEqual(
+                      after.slice(0, count).map((i) => i.id),
+                      setup.original.map((i) => i.id),
+                      'original face order is preserved',
+                    );
+                    assert.equal(after.length, count + 1);
+                    assert.equal(new Set(after.map((i) => i.id)).size, after.length);
+                    assert.deepEqual(
+                      (await faceTrace(s.page)).filter((e) => e.type === 'admissionRefused'),
+                      [],
+                    );
+                    assert.deepEqual(s.errors, []);
+                    rows.push({
+                      width,
+                      count,
+                      path,
+                      outcome: 'admitted',
+                      before: count,
+                      after: after.length,
+                      originalIds: setup.original.map((i) => i.id),
+                      newIds: after
+                        .filter((i) => !setup.original.some((old) => old.id === i.id))
+                        .map((i) => i.id),
+                      fixture: setup.fixture,
+                      pasteSetup:
+                        path === 'paste into new face'
+                          ? 'operated Add face created the target before native paste; paste inserted zero additional faces'
+                          : undefined,
+                    });
+                    await s.page.screenshot({
+                      path: join(
+                        results,
+                        `admission-ok-${count}-${width}-${paths.indexOf(path)}.png`,
+                      ),
+                    });
+                    record('admission', rows);
+                  } finally {
+                    await s.context.close();
+                  }
+                }
+                for (const budget of [
+                  'BATCH_RETAINED_INPUT_BYTES',
+                  'STORED_SESSION_BYTES',
+                ] as const) {
+                  // Share a refusal context only where no modal/new target changes the baseline.
+                  for (const group of [paths.slice(0, 4), paths.slice(4)]) {
+                    const s = await open(browser, width, touch);
+                    try {
+                      const paste = group[0] === 'paste into new face';
+                      const setup = await seed(s, count, paste, budget === 'STORED_SESSION_BYTES');
+                      const pasteBytes = paste ? await clipboard(s.page) : 0;
+                      for (const path of group) {
+                        const incoming =
+                          path === 'multi-file drop'
+                            ? setup.fixture.bytes * 2
+                            : path === 'background drop'
+                              ? setup.fixture.bytes
+                              : path === 'paste into new face'
+                                ? pasteBytes
+                                : 0;
+                        const retained =
+                          budget === 'BATCH_RETAINED_INPUT_BYTES'
+                            ? await forcePhoto(
+                                s.page,
+                                PHOTO_LIMIT + 1 - incoming,
+                                path === 'multi-file drop' || paste ? setup.target : null,
+                              )
+                            : 0;
+                        const before = await snapshot(s.page);
+                        const traced = (await faceTrace(s.page)).filter(
+                          (e) => e.type === 'admissionRefused',
+                        ).length;
+                        await act(s, path, count, setup.target);
+                        await s.page.waitForFunction(
+                          (n) =>
+                            (
+                              window as unknown as { __FACEMORPH_FACE_TRACE__: { type: string }[] }
+                            ).__FACEMORPH_FACE_TRACE__.filter((e) => e.type === 'admissionRefused')
+                              .length > n,
+                          traced,
+                        );
+                        const refusals = (await faceTrace(s.page))
+                          .filter((e) => e.type === 'admissionRefused')
+                          .slice(traced);
+                        assert.deepEqual(
+                          refusals.map((e) => e.id),
+                          [budget],
+                          'exactly one named refusal, before any partial insertion',
+                        );
+                        assert.deepEqual(
+                          await snapshot(s.page),
+                          before,
+                          'all face IDs/content/retained files and pending classifications unchanged',
+                        );
+                        const message = (
+                          await s.page.locator('.next-morph-slot .next-status').innerText()
+                        ).trim();
+                        const expected =
+                          budget === 'BATCH_RETAINED_INPUT_BYTES'
+                            ? 'Not added: photos for your faces can use at most 128 MB, and this would go over it. Choose fewer or smaller photos, or remove a photo face.'
+                            : 'Not added: a saved session can hold at most 32 MB, and this would go over it. Remove some faces first.';
+                        assert.equal(message, expected);
+                        const actualPaste = paste
+                          ? await s.page.evaluate(
+                              () => (window as unknown as AdmissionWindow).__admissionPasteBytes,
+                            )
+                          : 0;
+                        if (paste)
+                          assert.equal(
+                            actualPaste,
+                            pasteBytes,
+                            'native paste delivered the normalized real PNG bytes',
+                          );
+                        if (budget === 'BATCH_RETAINED_INPUT_BYTES')
+                          assert.equal(retained + incoming, PHOTO_LIMIT + 1);
+                        rows.push({
+                          width,
+                          count,
+                          path,
+                          outcome: 'refused',
+                          budget,
+                          baselineFaces: setup.baseline,
+                          after: before.ids.length,
+                          requestedBytes:
+                            budget === 'BATCH_RETAINED_INPUT_BYTES'
+                              ? retained + incoming
+                              : SESSION_LIMIT + 1,
+                          retainedBytes: retained,
+                          incomingBytes: incoming,
+                          message,
+                          trace: refusals,
+                          pasteSetup: paste
+                            ? 'operated Add face created empty target before the budget was forced; native paste added/changed nothing'
+                            : undefined,
+                        });
+                        await s.page.screenshot({
+                          path: join(
+                            results,
+                            `admission-no-${budget}-${count}-${width}-${paths.indexOf(path)}.png`,
+                          ),
+                        });
+                        record('admission', rows);
+                      }
+                      assert.deepEqual(s.models, [], 'no model asset request for a refused entry');
+                      assert.deepEqual(s.errors, []);
+                    } finally {
+                      await s.context.close();
+                    }
+                  }
+                }
+              }
+            }
+            t.diagnostic(
+              'Available entry paths graded with real image/clipboard bytes and operated controls. Batch OK is explicitly untested under fm-3peb; acceptance 12 remains incomplete.',
+            );
+          },
+        );
+
+      if (CASES.has('start-over-generated'))
+        await t.test(
+          'Start over and Undo preserve real generated pixels without inference',
+          async () => {
+            const s = await open(browser, 1280, false);
+            const { page } = s;
+            try {
+              await setFaces(page, 3);
+              const initial = await faceList(page);
+              // Setup only: leave the third face empty; both other results below are real inference.
+              await page.evaluate((id) => {
+                const store = (window as unknown as { __fmStore: { dispatch(m: unknown): void } })
+                  .__fmStore;
+                store.dispatch({ type: 'Mode', args: [id, 'text'] });
+                store.dispatch({ type: 'Edit', args: [id, ''] });
+              }, initial[2]!.id);
+              const before = await faceList(page);
+              const pixels = async (id: string) => {
+                await page.waitForFunction(
+                  (faceId) => {
+                    const canvas = document.querySelector(
+                      `[data-next-face="${faceId}"] canvas.next-face-img`,
+                    );
+                    return (
+                      canvas instanceof HTMLCanvasElement && canvas.dataset.faceDrawn === 'true'
+                    );
+                  },
+                  id,
+                  { timeout: 600_000 },
+                );
+                return page.evaluate(async (faceId) => {
+                  const canvas = document.querySelector(
+                    `[data-next-face="${faceId}"] canvas.next-face-img`,
+                  ) as HTMLCanvasElement;
+                  const rgba = canvas
+                    .getContext('2d')!
+                    .getImageData(0, 0, canvas.width, canvas.height).data;
+                  const digest = await crypto.subtle.digest('SHA-256', rgba);
+                  return {
+                    width: canvas.width,
+                    height: canvas.height,
+                    sha256: Array.from(new Uint8Array(digest), (byte) =>
+                      byte.toString(16).padStart(2, '0'),
+                    ).join(''),
+                  };
+                }, id);
+              };
+              const operations = () =>
+                page.evaluate(() =>
+                  (
+                    globalThis as unknown as { __FACEMORPH_OPCTL_TRACE__: { type: string }[] }
+                  ).__FACEMORPH_OPCTL_TRACE__.filter(
+                    (event) => event.type === 'request' || event.type === 'started',
+                  ),
+                );
+              const originals = [];
+              for (const face of before.slice(0, 2)) {
+                const tile = page.locator(`[data-next-face="${face.id}"]`);
+                assert.ok((await press(page, tile.locator('.next-face-operation'))).inside);
+                const accept = page.locator('.next-download-accept');
+                if (
+                  await accept.waitFor({ timeout: 8000 }).then(
+                    () => true,
+                    () => false,
+                  )
+                )
+                  assert.ok((await press(page, accept)).inside);
+                const painted = await pixels(face.id);
+                assert.equal(painted.width, 1024);
+                assert.equal(painted.height, 1024);
+                await page.waitForFunction(
+                  () => {
+                    const trace = (
+                      globalThis as unknown as {
+                        __FACEMORPH_OPCTL_TRACE__: { type: string; requestId?: string }[];
+                      }
+                    ).__FACEMORPH_OPCTL_TRACE__;
+                    const latest = trace.filter((event) => event.type === 'request').at(-1);
+                    return (
+                      latest &&
+                      trace.some(
+                        (event) => event.type === 'settled' && event.requestId === latest.requestId,
+                      )
+                    );
+                  },
+                  null,
+                  { timeout: 600_000 },
+                );
+                originals.push({ id: face.id, ...painted });
+              }
+              const opsBefore = await operations(),
+                modelRequestsBefore = s.models.length;
+              const traceBefore = (await faceTrace(page)).length;
+              const more = page.getByRole('button', { name: 'More options' });
+              if ((await more.getAttribute('aria-expanded')) !== 'true')
+                assert.ok((await press(page, more)).inside);
+              assert.ok(
+                (await press(page, page.getByRole('button', { name: 'Start over', exact: true })))
+                  .inside,
+              );
+              await page.waitForFunction(
+                () => document.querySelectorAll('section.next-face').length === 2,
+              );
+              const cleared = await faceList(page);
+              assert.deepEqual(
+                cleared.map(({ mode, value }) => [mode, value]),
+                [
+                  ['text', ''],
+                  ['text', ''],
+                ],
+              );
+              assert.ok(cleared.every((face) => !before.some((old) => old.id === face.id)));
+              assert.ok(
+                (await press(page, page.locator('[data-next-undo-notice] .next-undo'))).inside,
+              );
+              await page.waitForFunction(
+                () => document.querySelectorAll('section.next-face').length === 3,
+              );
+              assert.deepEqual(
+                await faceList(page),
+                before,
+                'every original input returns in its original order',
+              );
+              const restored = [];
+              for (const face of originals)
+                restored.push({ id: face.id, ...(await pixels(face.id)) });
+              record('start-over-generated', {
+                before,
+                cleared,
+                originals,
+                restored,
+                opsBefore,
+                opsAfter: await operations(),
+                modelRequestsBefore,
+                modelRequestsAfter: s.models.length,
+              });
+              assert.deepEqual(
+                restored,
+                originals,
+                'Start over -> Undo preserves exact generated RGBA pixels',
+              );
+              assert.deepEqual(
+                await operations(),
+                opsBefore,
+                'Start over -> Undo performs no inference',
+              );
+              assert.equal(s.models.length, modelRequestsBefore, 'Undo acquires no model bytes');
+              assert.deepEqual(
+                (await faceTrace(page))
+                  .slice(traceBefore)
+                  .filter((event) => event.type === 'invalidateFace'),
+                [],
+                'Undo does not invalidate any hidden face',
+              );
+              assert.deepEqual(s.errors, []);
+              await page.screenshot({ path: join(results, 'start-over-generated.png') });
+            } finally {
+              await s.context.close();
+            }
+          },
+        );
+
+      if (CASES.has('one-face-generate'))
+        await t.test('one remaining face: operated numeric Generate and Save on CPU', async () => {
+          type SeedWindow = Window & {
+            __fmStore: import('../../src/controller/store.ts').Store;
+            __FACEMORPH_OPCTL_TRACE__: {
+              type: string;
+              kind?: string;
+              provider?: string;
+              outcome?: string;
+              requestId?: string;
+              inputs?: { slot: string; mode: string }[];
+            }[];
+          };
+          const rows: Record<string, unknown>[] = [];
+          for (const [width, touch] of (
+            [
+              [1280, false],
+              [390, true],
+            ] as const
+          ).filter(([w]) => !ONLY_WIDTHS || ONLY_WIDTHS.includes(w))) {
+            const s = await open(browser, width, touch);
+            const { page } = s;
+            const operated: Record<string, unknown>[] = [];
+            const hit = async (label: string, control: Locator) => {
+              const landed = await press(page, control, { touch });
+              assert.ok(landed.inside, label);
+              operated.push({ control: label, ...landed });
+              record('one-face-generate-progress', { width, touch, operated });
+            };
+            await s.context.tracing.start({ screenshots: true, snapshots: false, sources: false });
+            try {
+              const before = await setFaces(page, 2); // Input setup only; all graded actions below use real input.
+              const id = before[0]!.id;
+              const tile = page.locator(`section.next-face[data-next-face="${id}"]`);
+              const timeOrigin = await page.evaluate(() => performance.timeOrigin);
+              await hit(
+                'Remove second face',
+                page.locator(`[data-next-face="${before[1]!.id}"] .next-face-close`),
+              );
+              await page.waitForFunction(
+                () => document.querySelectorAll('section.next-face').length === 1,
+              );
+              const checkOne = async () => {
+                assert.deepEqual(
+                  (await faceList(page)).map((face) => face.id),
+                  [id],
+                );
+                assert.equal(await page.locator('.next-face-close').count(), 0);
+                assert.match(await page.locator('.next-last-face-note').innerText(), /only face/);
+                assert.ok(await page.locator('.next-primary-action').isDisabled());
+                assert.match(await page.locator('.next-morph-reason').innerText(), /second face/);
+              };
+              await checkOne();
+              await hit(
+                'Change mode',
+                tile.getByRole('button', { name: 'Change mode', exact: true }),
+              );
+              await hit(
+                'Numeric seed',
+                page.getByRole('menuitem', { name: 'Numeric seed', exact: true }),
+              );
+              const field = tile.locator('.next-field input[inputmode=numeric]');
+              await field.waitFor();
+              await hit('Focus numeric seed', field);
+              await page.keyboard.press('ControlOrMeta+A');
+              await page.keyboard.type('7003'); // Native key events; no controller edit or fill replacement.
+              assert.equal(await field.inputValue(), '7003');
+              assert.deepEqual(await faceList(page), [{ id, mode: 'seed', value: '7003' }]);
+              assert.deepEqual(s.models, [], 'typing a seed acquires no model');
+              await page.screenshot({
+                path: join(results, `one-face-generate-${width}-before.png`),
+              });
+              const generate = tile.locator('.next-face-operation');
+              assert.equal((await generate.textContent())?.trim(), 'Generate');
+              await hit('Generate', generate);
+              const accept = page.locator('.next-download-accept');
+              await accept.waitFor({ timeout: 15_000 });
+              assert.deepEqual(s.models, [], 'cold CPU models wait for actual consent');
+              const disclosure = await page.locator('.next-download-dialog').innerText();
+              await hit('Approve CPU model download', accept);
+              await page.waitForFunction(
+                () => {
+                  const w = window as unknown as SeedWindow;
+                  return (
+                    !!w.__fmStore.getState().Error ||
+                    w.__FACEMORPH_OPCTL_TRACE__.some((event) => event.type === 'settled')
+                  );
+                },
+                null,
+                { timeout: 600_000 },
+              );
+              await page.waitForFunction(
+                () => !(window as unknown as SeedWindow).__fmStore.getState().Busy,
+              );
+              const generated = await page.evaluate(() => {
+                const w = window as unknown as SeedWindow;
+                const state = w.__fmStore.getState();
+                return {
+                  error: state.Error,
+                  faces: state.Faces.map((face) => face.id),
+                  trace: w.__FACEMORPH_OPCTL_TRACE__,
+                };
+              });
+              record('one-face-generate-operation', { width, ...generated });
+              assert.equal(generated.error, null);
+              assert.deepEqual(generated.faces, [id]);
+              const requests = generated.trace.filter((event) => event.type === 'request');
+              assert.equal(requests.length, 1, 'one explicit Generate runs once');
+              assert.equal(requests[0]!.kind, 'face');
+              assert.deepEqual(
+                requests[0]!.inputs?.map(({ slot, mode }) => ({ slot, mode })),
+                [{ slot: id, mode: 'seed' }],
+              );
+              assert.deepEqual(
+                generated.trace
+                  .filter((event) => event.type === 'settled')
+                  .map((event) => event.outcome),
+                ['completed'],
+              );
+              assert.equal(
+                generated.trace.filter((event) => event.type === 'compute-ready').length,
+                1,
+              );
+              assert.equal(
+                generated.trace.filter((event) => event.type === 'file-ready').length,
+                1,
+              );
+              assert.ok(
+                generated.trace.some(
+                  (event) => event.type === 'provider-actual' && event.provider === 'cpu',
+                ),
+              );
+              await page.waitForFunction((id) => {
+                const image = document.querySelector(`[data-next-face="${id}"] .next-face-img`);
+                return image instanceof HTMLCanvasElement
+                  ? image.dataset.faceDrawn === 'true'
+                  : image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
+              }, id);
+              await checkOne();
+              const save = tile.getByRole('button', { name: 'Save image', exact: true });
+              await page.waitForFunction(
+                (id) =>
+                  [...document.querySelectorAll(`[data-next-face="${id}"] button`)].some(
+                    (button) =>
+                      button instanceof HTMLButtonElement &&
+                      button.textContent?.trim() === 'Save image' &&
+                      !button.disabled,
+                  ),
+                id,
+              );
+              const downloading = page.waitForEvent('download', { timeout: 60_000 });
+              await hit('Save generated image', save);
+              const download = await downloading;
+              assert.equal(await download.failure(), null);
+              const saved = join(
+                results,
+                `one-face-generate-${width}-${download.suggestedFilename()}`,
+              );
+              await download.saveAs(saved);
+              const bytes = new Uint8Array(readFileSync(saved));
+              const recovered = readStill(bytes);
+              assert.ok(recovered, 'the actual exported file has verified recovery');
+              assert.equal(recovered.schemaVersion, 3);
+              assert.equal(recovered.generationKind, 'seed');
+              assert.equal(recovered.seed, 7003, 'export preserves the natively typed seed');
+              assert.deepEqual(recovered.latent.shape, [18, 512]);
+              assert.ok(recovered.latent.values.every(Number.isFinite));
+              assert.ok(recovered.latent.values.some((value) => value !== 0));
+              assert.equal(recovered.provenance.route, 'cpu');
+              assert.equal(recovered.provenance.provider, 'wasm');
+              assert.ok(
+                typeMatchesBytes(bytes, {
+                  mime: recovered.mime,
+                  filename: download.suggestedFilename(),
+                }),
+              );
+              const decoded = await page.evaluate(async (bytes) => {
+                const bitmap = await createImageBitmap(new Blob([Uint8Array.from(bytes)]));
+                const size = { width: bitmap.width, height: bitmap.height };
+                bitmap.close();
+                return size;
+              }, Array.from(bytes));
+              assert.deepEqual(decoded, { width: 1024, height: 1024 });
+              await checkOne();
+              assert.equal(
+                await page.evaluate(() => performance.timeOrigin),
+                timeOrigin,
+                'Generate/Save preserves the actual document',
+              );
+              assert.deepEqual(s.errors, []);
+              rows.push({
+                width,
+                touch,
+                artifact: runTag,
+                before,
+                after: await faceList(page),
+                disclosure,
+                operated,
+                generated,
+                modelRequests: s.models,
+                documentTimeOrigin: timeOrigin,
+                saved: {
+                  path: saved,
+                  bytes: bytes.length,
+                  sha256: createHash('sha256').update(bytes).digest('hex'),
+                  ...decoded,
+                  schemaVersion: recovered.schemaVersion,
+                  generationKind: recovered.generationKind,
+                  seed: recovered.seed,
+                  imageSha256: recovered.imageSha256,
+                  latentSha256: recovered.latentSha256,
+                  provenance: recovered.provenance,
+                },
+                errors: s.errors,
+              });
+              record('one-face-generate', rows);
+              await page.screenshot({
+                path: join(results, `one-face-generate-${width}-saved.png`),
+              });
+            } catch (error) {
+              record('one-face-generate-failure', {
+                width,
+                message: String(error),
+                errors: s.errors,
+              });
+              await page
+                .screenshot({ path: join(results, `one-face-generate-${width}-failure.png`) })
+                .catch(() => {});
+              throw error;
+            } finally {
+              try {
+                await s.context.tracing.stop({
+                  path: join(results, `one-face-generate-${width}.zip`),
+                });
+              } finally {
+                await s.context.close();
+              }
+            }
+          }
+        });
+
+      if (CASES.has('one-face-encode'))
+        await t.test(
+          'one remaining face: operated Encode image, real CPU inference and Save',
+          async () => {
+            type OperationEvent = {
+              type: string;
+              requestId?: string;
+              attemptId?: string;
+              kind?: string;
+              outcome?: string;
+              provider?: string;
+              inputs?: { slot: string; mode: string }[];
+            };
+            type PhotoWindow = Window & {
+              __fmStore: import('../../src/controller/store.ts').Store;
+              __FACEMORPH_OPCTL_TRACE__: OperationEvent[];
+            };
+            const fixture = join(REPO, 'tests/crop/fixtures/non-square.jpg');
+            const source = readFileSync(fixture);
+            const rows: Record<string, unknown>[] = [];
+            record('one-face-encode-source', {
+              artifact: out,
+              deploySource: artifact.identity.deploySource,
+              fixture,
+              bytes: source.length,
+              sha256: createHash('sha256').update(source).digest('hex'),
+              note: 'Existing JPEG fixture derived from the shipped generated hello face; no personal photo.',
+            });
+            for (const [width, touch] of (
+              [
+                [1280, false],
+                [390, true],
+              ] as const
+            ).filter(([w]) => !ONLY_WIDTHS || ONLY_WIDTHS.includes(w))) {
+              const s = await open(browser, width, touch);
+              const { page } = s;
+              const operated: Record<string, unknown>[] = [];
+              const diagnostics: Record<string, unknown>[] = [];
+              page.on('console', (message) => {
+                if (['error', 'warning'].includes(message.type()))
+                  diagnostics.push({ type: message.type(), text: message.text() });
+              });
+              page.on('response', (response) => {
+                if (response.status() >= 400)
+                  diagnostics.push({ status: response.status(), url: response.url() });
+              });
+              page.on('requestfailed', (request) =>
+                diagnostics.push({ url: request.url(), failure: request.failure() }),
+              );
+              const hit = async (label: string, control: Locator) => {
+                const landed = await press(page, control, { touch });
+                assert.ok(landed.inside, label);
+                operated.push({ control: label, ...landed });
+                record('one-face-encode-progress', { width, touch, operated });
+              };
+              await s.context.tracing.start({
+                screenshots: true,
+                snapshots: false,
+                sources: false,
+              });
+              try {
+                const before = await setFaces(page, 2); // Input fixture only; removal and encoding below are operated.
+                const documentTimeOrigin = await page.evaluate(() => performance.timeOrigin);
+                await hit(
+                  'Remove second face',
+                  page.locator(`[data-next-face="${before[1]!.id}"] .next-face-close`),
+                );
+                await page.waitForFunction(
+                  () => document.querySelectorAll('section.next-face').length === 1,
+                );
+                const only = before[0]!;
+                const tile = page.locator(`section.next-face[data-next-face="${only.id}"]`);
+                const oneFace = async () => {
+                  assert.deepEqual(
+                    (await faceList(page)).map(({ id }) => id),
+                    [only.id],
                   );
                   assert.equal(
-                    (await faceList(page)).length,
-                    count,
-                    `${width} ${count} ${what}: nothing added`,
+                    await page.locator('.next-face-close').count(),
+                    0,
+                    'last face has no Remove',
                   );
-                  assert.match(
-                    (await status.innerText()).trim(),
-                    sessionMessage,
-                    `${width} ${count} ${what}: the message names the limit`,
+                  assert.match(await page.locator('.next-last-face-note').innerText(), /only face/);
+                  assert.ok(
+                    await page.locator('.next-primary-action').isDisabled(),
+                    'one face: Create morph disabled',
                   );
-                  rows.push({
-                    width,
-                    count,
-                    forced: 'STORED_SESSION_BYTES',
-                    path: what,
-                    refused: true,
-                  });
+                  assert.match(await page.locator('.next-morph-reason').innerText(), /second face/);
                 };
-                await reach(s, count - 1);
-                await refusedBy('insertion +', async () => {
-                  await press(
-                    page,
-                    page.getByRole('button', { name: `Add a face after Face ${count}` }),
-                    { touch },
-                  );
-                });
-                await refusedBy('Add face', async () => {
-                  await press(page, page.getByRole('button', { name: 'Add face', exact: true }), {
-                    touch,
-                  });
-                });
-                const two = await photoFiles(page, 4000, 2);
-                await refusedBy('multi-file drop onto a face', async () => {
-                  await page
-                    .locator('section.next-face')
-                    .first()
-                    .dispatchEvent('drop', { dataTransfer: two });
-                });
-                await refusedBy('drop on the page', async () => {
-                  await page.locator('.next-product').dispatchEvent('drop', { dataTransfer: two });
-                });
-                const one = await photoFiles(page, 2000, 1);
-                await refusedBy('one photo dropped onto a face (pick/paste path)', async () => {
-                  await page
-                    .locator('section.next-face')
-                    .first()
-                    .dispatchEvent('drop', { dataTransfer: one });
-                });
+                await oneFace();
                 await page.screenshot({
-                  path: join(results, `admission-session-${count}-${width}.png`),
+                  path: join(results, `one-face-encode-${width}-before.png`),
                 });
-                await s.context.close();
-              }
-              // Forced one over: retained photo-input bytes, 128 MB + 1 byte in one drop.
-              {
-                const s = await open(browser, width, touch);
-                const { page } = s;
-                await setFaces(page, count);
-                const dt = await photoFiles(page, PHOTO_LIMIT + 1, 2);
-                const photoMessage =
-                  /^Not added: photos for your faces can use at most 128 MB, and this would go over it\. Choose fewer or smaller photos, or remove a photo face\.$/;
-                for (const [what, target] of [
-                  ['drop on the page', '.next-product'],
-                  ['multi-file drop onto a face', 'section.next-face >> nth=0'],
-                ] as const) {
-                  await page.locator(target).dispatchEvent('drop', { dataTransfer: dt });
-                  await page.waitForFunction(() =>
-                    /Not added: photos/.test(
-                      document.querySelector('.next-morph-slot .next-status')?.textContent ?? '',
+                await hit(
+                  'Change mode',
+                  tile.getByRole('button', { name: 'Change mode', exact: true }),
+                );
+                const entry = page.getByRole('menuitem', { name: 'Encode image', exact: true });
+                await entry.evaluate(async (element) => {
+                  const panel = element.closest('.MuiPaper-root');
+                  await Promise.allSettled(
+                    (panel?.getAnimations({ subtree: true }) ?? []).map(
+                      (animation) => animation.finished,
                     ),
                   );
-                  assert.equal((await faceList(page)).length, count, `${what}: nothing added`);
-                  assert.match(
-                    (await page.locator('.next-morph-slot .next-status').innerText()).trim(),
-                    photoMessage,
-                  );
-                  rows.push({
-                    width,
-                    count,
-                    forced: 'BATCH_RETAINED_INPUT_BYTES',
-                    path: what,
-                    refused: true,
-                  });
-                }
-                assert.ok(
-                  (await faceTrace(page)).some(
-                    (e) => e.type === 'admissionRefused' && e.id === 'BATCH_RETAINED_INPUT_BYTES',
-                  ),
-                  'refusal traced',
+                });
+                const choosing = page.waitForEvent('filechooser');
+                await hit('Encode image', entry);
+                const chooser = await choosing;
+                assert.equal(
+                  await page.getByRole('dialog').count(),
+                  0,
+                  'Encode image opens its chooser directly',
                 );
-                assert.deepEqual(s.models, [], 'no model request for a refused drop');
+                assert.equal(
+                  await chooser
+                    .element()
+                    .evaluate((element) =>
+                      (element as Element)
+                        .closest('[data-next-face]')
+                        ?.getAttribute('data-next-face'),
+                    ),
+                  only.id,
+                  'the chooser belongs to the remaining face',
+                );
+                await chooser.setFiles(fixture); // Real chooser input, not a controller/bridge replacement.
+                const dialog = page.getByRole('dialog', { name: 'Encode an image', exact: true });
+                await dialog.waitFor();
+                await page.waitForFunction(() => {
+                  const image = document.querySelector('.next-encode-preview img');
+                  return (
+                    image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
+                  );
+                });
+                const proposal = await page.evaluate(() => {
+                  const w = window as unknown as PhotoWindow;
+                  const image = document.querySelector(
+                    '.next-encode-preview img',
+                  ) as HTMLImageElement;
+                  return {
+                    owner: w.__fmStore.getState().Crop?.faceId,
+                    width: image.naturalWidth,
+                    height: image.naturalHeight,
+                  };
+                });
+                assert.equal(proposal.owner, only.id);
+                assert.deepEqual(s.models, [], 'no model acquisition before crop confirmation');
+                await page.screenshot({ path: join(results, `one-face-encode-${width}-crop.png`) });
+                await hit(
+                  'Confirm crop OK',
+                  dialog.getByRole('button', { name: 'OK', exact: true }),
+                );
+                const accept = page.locator('.next-download-accept');
+                await accept.waitFor({ timeout: 15_000 });
+                assert.deepEqual(s.models, [], 'cold model acquisition waits for actual consent');
+                const disclosure = await page.locator('.next-download-dialog').innerText();
+                await hit('Approve model download', accept);
+                const waitForSettlement = async (minimumRequests: number) => {
+                  await page.waitForFunction(
+                    ({ id, minimumRequests }) => {
+                      const w = window as unknown as PhotoWindow;
+                      const state = w.__fmStore.getState();
+                      const requests = w.__FACEMORPH_OPCTL_TRACE__.filter(
+                        (event) =>
+                          event.type === 'request' &&
+                          event.kind === 'face' &&
+                          event.inputs?.some(
+                            (input) => input.slot === id && input.mode === 'photo',
+                          ),
+                      );
+                      const request =
+                        requests.length >= minimumRequests ? requests.at(-1) : undefined;
+                      return (
+                        !!state.Error ||
+                        (!!request &&
+                          w.__FACEMORPH_OPCTL_TRACE__.some(
+                            (event) =>
+                              event.type === 'settled' && event.requestId === request.requestId,
+                          ))
+                      );
+                    },
+                    { id: only.id, minimumRequests },
+                    { timeout: 600_000 },
+                  );
+                  await page.waitForFunction(
+                    () => !(window as unknown as PhotoWindow).__fmStore.getState().Busy,
+                    null,
+                    { timeout: 30_000 },
+                  );
+                };
+                await waitForSettlement(1);
+                const revisedDisclosures: string[] = [];
+                if (await accept.isVisible()) {
+                  const discovered = [...s.models];
+                  assert.equal(
+                    discovered.length,
+                    1,
+                    'the initial failed attempt fetched only the descriptor',
+                  );
+                  assert.match(discovered[0]!, /\/encoder-stream\/.+\/manifest\.json$/);
+                  revisedDisclosures.push(await page.locator('.next-download-dialog').innerText());
+                  record('one-face-encode-revised-consent', {
+                    width,
+                    discovered,
+                    revisedDisclosures,
+                  });
+                  await hit('Approve discovered encoder schedule', accept);
+                  await waitForSettlement(2);
+                  assert.equal(
+                    await accept.isVisible(),
+                    false,
+                    'one revised decision covers the discovered schedule',
+                  );
+                }
+                const encoded = await page.evaluate(() => {
+                  const w = window as unknown as PhotoWindow;
+                  const state = w.__fmStore.getState();
+                  return {
+                    error: state.Error,
+                    status: state.Status,
+                    gate: state.Gate,
+                    stage: state.Stage,
+                    inputs: state.Inputs.map(({ id, mode, value, file }) => ({
+                      id,
+                      mode,
+                      value,
+                      bytes: file?.size ?? 0,
+                    })),
+                    faces: state.Faces.map(({ id }) => id),
+                    trace: w.__FACEMORPH_OPCTL_TRACE__,
+                  };
+                });
+                record('one-face-encode-operation', {
+                  width,
+                  ...encoded,
+                  modelRequests: s.models,
+                  diagnostics,
+                });
+                assert.equal(encoded.error, null, 'real photo encode has no product error');
+                assert.deepEqual(
+                  encoded.inputs.map(({ id }) => id),
+                  [only.id],
+                );
+                assert.equal(encoded.inputs[0]!.mode, 'photo');
+                assert.ok(encoded.inputs[0]!.bytes > 0, 'confirmed photo remains installed');
+                assert.deepEqual(
+                  encoded.faces,
+                  [only.id],
+                  'CPU inference installed exactly the remaining face',
+                );
+                const requests = encoded.trace.filter((event) => event.type === 'request');
+                assert.equal(
+                  requests.length,
+                  1 + revisedDisclosures.length,
+                  'descriptor discovery plus one real face operation',
+                );
+                assert.equal(requests[0]!.inputs?.[0]?.mode, 'photo');
+                assert.deepEqual(
+                  encoded.trace
+                    .filter((event) => event.type === 'settled')
+                    .map((event) => event.outcome),
+                  [...revisedDisclosures.map(() => 'failed'), 'completed'],
+                );
+                assert.equal(
+                  encoded.trace.filter((event) => event.type === 'compute-ready').length,
+                  1,
+                );
+                assert.equal(
+                  encoded.trace.filter((event) => event.type === 'file-ready').length,
+                  1,
+                );
+                assert.ok(
+                  encoded.trace.some(
+                    (event) => event.type === 'provider-actual' && event.provider === 'cpu',
+                  ),
+                  'actual CPU route, not a provider override',
+                );
+                await page.waitForFunction((id) => {
+                  const image = document.querySelector(`[data-next-face="${id}"] .next-face-img`);
+                  return image instanceof HTMLCanvasElement
+                    ? image.dataset.faceDrawn === 'true'
+                    : image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
+                }, only.id);
+                await oneFace();
+                const save = tile.getByRole('button', { name: 'Save image', exact: true });
+                await page.waitForFunction(
+                  (id) =>
+                    [...document.querySelectorAll(`[data-next-face="${id}"] button`)].some(
+                      (button) =>
+                        button instanceof HTMLButtonElement &&
+                        button.textContent?.trim() === 'Save image' &&
+                        !button.disabled,
+                    ),
+                  only.id,
+                );
+                const downloading = page.waitForEvent('download', { timeout: 60_000 });
+                await hit('Save encoded image', save);
+                const download = await downloading;
+                assert.equal(await download.failure(), null);
+                const saved = join(
+                  results,
+                  `one-face-encode-${width}-${download.suggestedFilename()}`,
+                );
+                await download.saveAs(saved);
+                const bytes = new Uint8Array(readFileSync(saved));
+                const recovered = readStill(bytes);
+                assert.ok(recovered, 'saved file has verified recovery metadata');
+                assert.equal(recovered.schemaVersion, 3);
+                assert.equal(
+                  recovered.generationKind,
+                  'photo',
+                  'export is the encoded photo result',
+                );
+                assert.deepEqual(recovered.latent.shape, [18, 512]);
+                assert.ok(recovered.latent.values.every(Number.isFinite));
+                assert.ok(recovered.latent.values.some((value) => value !== 0));
+                assert.ok(
+                  typeMatchesBytes(bytes, {
+                    mime: recovered.mime,
+                    filename: download.suggestedFilename(),
+                  }),
+                );
+                const decoded = await page.evaluate(async (bytes) => {
+                  const bitmap = await createImageBitmap(new Blob([Uint8Array.from(bytes)]));
+                  const size = { width: bitmap.width, height: bitmap.height };
+                  bitmap.close();
+                  return size;
+                }, Array.from(bytes));
+                assert.deepEqual(decoded, { width: 1024, height: 1024 });
+                await oneFace();
+                assert.equal(
+                  await page.evaluate(() => performance.timeOrigin),
+                  documentTimeOrigin,
+                  'the same document survives Remove/Encode/Save, including same-document history updates',
+                );
+                assert.deepEqual(s.errors, []);
+                rows.push({
+                  width,
+                  touch,
+                  before: before.map(({ id }) => id),
+                  after: [only.id],
+                  proposal,
+                  disclosure,
+                  revisedDisclosures,
+                  operated,
+                  encoded,
+                  modelRequests: s.models,
+                  saved: {
+                    path: saved,
+                    name: download.suggestedFilename(),
+                    bytes: bytes.length,
+                    sha256: createHash('sha256').update(bytes).digest('hex'),
+                    ...decoded,
+                    schemaVersion: recovered.schemaVersion,
+                    generationKind: recovered.generationKind,
+                    imageSha256: recovered.imageSha256,
+                    latentSha256: recovered.latentSha256,
+                  },
+                  errors: s.errors,
+                });
+                record('one-face-encode', rows);
+                await page.screenshot({
+                  path: join(results, `one-face-encode-${width}-saved.png`),
+                });
+              } catch (error) {
+                record('one-face-encode-failure', {
+                  width,
+                  message: String(error),
+                  errors: s.errors,
+                });
+                await page
+                  .screenshot({ path: join(results, `one-face-encode-${width}-failure.png`) })
+                  .catch(() => {});
+                throw error;
+              } finally {
+                await s.context.tracing.stop({
+                  path: join(results, `one-face-encode-${width}.zip`),
+                });
                 await s.context.close();
               }
-              record('admission', rows);
             }
-        });
+          },
+        );
 
       if (CASES.has('generate'))
         await t.test(
@@ -1324,8 +2405,16 @@ test(
               faces[0]!.id,
               { timeout: 600_000 },
             );
-            const digest = (id: string) =>
-              page.evaluate(async (faceId) => {
+            const digest = async (id: string) => {
+              // Filled is controller state; a restored canvas still awaits the retained file's decode.
+              // Hash the painted result, never the newly mounted transparent canvas.
+              await page.waitForFunction((faceId) => {
+                const el = document.querySelector(`[data-next-face="${faceId}"] .next-face-img`);
+                return el instanceof HTMLCanvasElement
+                  ? el.dataset.faceDrawn === 'true'
+                  : el instanceof HTMLImageElement && el.complete && el.naturalWidth > 0;
+              }, id);
+              return page.evaluate(async (faceId) => {
                 const el = document.querySelector(`[data-next-face="${faceId}"] .next-face-img`) as
                   | HTMLImageElement
                   | HTMLCanvasElement
@@ -1340,6 +2429,7 @@ test(
                   .map((b) => b.toString(16).padStart(2, '0'))
                   .join('');
               }, id);
+            };
             const resultDigest = await digest(faces[0]!.id);
             assert.ok(resultDigest);
             // Face 2 generating, face 3 queued behind it; Remove face 2 while it runs.
@@ -1373,6 +2463,22 @@ test(
               faces[2]!.id,
               { timeout: 600_000 },
             );
+            // A filled face is compute-ready; the real file-ready/settled events can still follow.
+            // End the sibling's operation before measuring whether Undo starts any new work.
+            await page.waitForFunction(() => {
+              const trace = (
+                globalThis as unknown as {
+                  __FACEMORPH_OPCTL_TRACE__: { type: string; requestId?: string }[];
+                }
+              ).__FACEMORPH_OPCTL_TRACE__;
+              const latest = trace.filter((event) => event.type === 'request').at(-1);
+              return (
+                latest &&
+                trace.some(
+                  (event) => event.type === 'settled' && event.requestId === latest.requestId,
+                )
+              );
+            });
             const opctlAt = await opctl();
             const modelsAt = s.models.length;
             // Undo is still open only if the sibling finished inside the window; otherwise the expiry is checked here.
@@ -1396,6 +2502,12 @@ test(
                 'expiry: exactly one invalidateFace',
               );
             // The Undo window on a finished face: Remove face 1, Undo shows the same digest with zero inference.
+            assert.equal(
+              await digest(faces[0]!.id),
+              resultDigest,
+              'removing its sibling preserves the displayed pixels across the layout boundary',
+            );
+            const siblingDigest = await digest(faces[2]!.id);
             const t1 = (await faceTrace(page)).length;
             await press(page, tile(faces[0]!.id).locator('.next-face-close'));
             await page.waitForFunction(
@@ -1410,6 +2522,7 @@ test(
               faces[0]!.id,
             );
             assert.equal(await digest(faces[0]!.id), resultDigest, 'Undo shows the same result');
+            assert.equal(await digest(faces[2]!.id), siblingDigest, 'Undo preserves its sibling');
             assert.deepEqual(
               (await faceTrace(page)).slice(t1).filter((e) => e.type === 'invalidateFace'),
               [],
@@ -1417,19 +2530,17 @@ test(
             );
             assert.equal(s.models.length, modelsAt, 'Undo: no model request');
             const opctlAfterUndo = await opctl();
+            assert.equal(opctlAfterUndo, opctlAt, 'Undo: no inference or operation dispatch');
             // Removed again; the next action (an edit of face 3) ends the notice with exactly one invalidateFace.
             const t2 = (await faceTrace(page)).length;
             await press(page, tile(faces[0]!.id).locator('.next-face-close'));
             await page.waitForFunction(
               () => !!document.querySelector('[data-next-undo-notice] .next-undo'),
             );
-            await page.evaluate(
-              (id) =>
-                (
-                  window as unknown as { __fmStore: { dispatch(m: unknown): void } }
-                ).__fmStore.dispatch({ type: 'Edit', args: [id, 'replacing action'] }),
-              faces[2]!.id,
-            );
+            const remainingField = tile(faces[2]!.id).locator('.next-field input');
+            await press(page, remainingField);
+            await page.keyboard.press('ControlOrMeta+A');
+            await page.keyboard.insertText(faces[2]!.mode === 'seed' ? '7003' : 'replacing action');
             await page.waitForFunction(
               () => !document.querySelector('[data-next-undo-notice] .next-undo'),
             );
@@ -1483,6 +2594,15 @@ test(
               () => null,
             );
             const save = tile(only.id).getByRole('button', { name: /^Save/ }).first();
+            await page.waitForFunction((id) => {
+              const buttons = document.querySelectorAll(`[data-next-face="${id}"] button`);
+              return [...buttons].some(
+                (button) =>
+                  (button.textContent?.trim() ?? '').startsWith('Save') &&
+                  button instanceof HTMLButtonElement &&
+                  !button.disabled,
+              );
+            }, only.id);
             assert.ok((await press(page, save)).inside, 'Save pressed');
             const saved = await download;
             record('one-face', {
@@ -1500,6 +2620,15 @@ test(
         );
     } finally {
       record('failures', failures);
+      for (const [page, session] of operatedSessions) {
+        session.log.write(join(results, `operated-session-${session.id}.jsonl`));
+        // Preserve unknown byte/status fields as null in the raw request receipt.
+        // A bounded observation wait must never turn incomplete traffic into a zero-byte claim.
+        writeFileSync(
+          join(results, `operated-session-${session.id}-network.json`),
+          JSON.stringify(session.log.record(page), null, 2),
+        );
+      }
       await browser.close();
       await site.stop();
     }

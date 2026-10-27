@@ -17,7 +17,8 @@ on:
         type: string
 jobs:
   check:
-    runs-on: [self-hosted, linux-x64]
+    # Browser-free commands qualified on Triton; leave portable slots for browser/workerd lanes (fm-jx26).
+    runs-on: [self-hosted, triton]
     env:
       GH_TOKEN: ${{ github.token }}
     steps:

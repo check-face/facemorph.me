@@ -11,7 +11,8 @@ permissions:
   actions: read
 jobs:
   check:
-    runs-on: [self-hosted, linux-x64]
+    # Browser-free commands qualified with the pinned gh version on Triton (fm-jx26).
+    runs-on: [self-hosted, triton]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4

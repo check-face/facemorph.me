@@ -10,7 +10,13 @@
 
 import type { RequestedRoute } from '../../contracts/capability.ts';
 import type { ModelDescriptor } from '../../contracts/descriptor.ts';
-import { floats, readLocal, type EngineAsset, type LocalAssetReader } from '../reader.ts';
+import {
+  floats,
+  readLocal,
+  runCompute,
+  type EngineAsset,
+  type LocalAssetReader,
+} from '../reader.ts';
 import { BufferUsage, MapMode } from './gpu-constants.ts';
 import { DIRECT_LIMITS, directSupported } from '../routes.ts';
 import {
@@ -28,6 +34,7 @@ import {
 } from './direct-shaders.ts';
 import {
   assembleGenerator,
+  submitWithCompute,
   describedGeometry,
   type Generator,
   type GeneratorManifest,
@@ -110,11 +117,13 @@ export async function loadDirectWebGpuGenerator(o: {
     ...(o.now ? { now: o.now } : {}),
     ...(o.release ? { release: o.release } : {}),
     backend: async (_noise, _trace, reader): Promise<SynthesisBackend> => {
-      const device = await adapter.requestDevice({
-        requiredLimits: Object.fromEntries(
-          Object.keys(DIRECT_LIMITS).map((k) => [k, limits[k] as number]),
-        ),
-      });
+      const device = await runCompute(reader, () =>
+        adapter.requestDevice({
+          requiredLimits: Object.fromEntries(
+            Object.keys(DIRECT_LIMITS).map((k) => [k, limits[k] as number]),
+          ),
+        }),
+      );
       let failure: Error | null = null;
       let closing = false;
       const lost: ((message: string) => void)[] = [];
@@ -208,266 +217,281 @@ export async function loadDirectWebGpuGenerator(o: {
           const g = Math.ceil(n / 64);
           return [Math.min(g, 65535), Math.ceil(g / 65535)];
         };
-        const latent = buffer(
-            described.geometry.latent.layers * described.geometry.latent.width * 4,
-          ),
-          noiseBuf: Record<string, GPUBuffer> = {},
-          dummy = buffer(16);
-        for (const n of manifest.noise)
-          noiseBuf[n.name] = buffer(n.shape.reduce((a, b) => a * b, 1) * 4);
+        const { latent, noiseBuf, dummy } = await runCompute(reader, () => {
+          const latent = buffer(
+              described.geometry.latent.layers * described.geometry.latent.width * 4,
+            ),
+            noiseBuf: Record<string, GPUBuffer> = {},
+            dummy = buffer(16);
+          for (const n of manifest.noise)
+            noiseBuf[n.name] = buffer(n.shape.reduce((a, b) => a * b, 1) * 4);
+          return { latent, noiseBuf, dummy };
+        });
         const lf = floats(await readLocal(reader, asset(stream.learnedInput.file)));
-        const nhwc = new Float32Array(16 * 512);
-        for (let c = 0; c < 512; c++)
-          for (let i = 0; i < 16; i++) nhwc[i * 512 + c] = lf[c * 16 + i] as number;
-        let features = upload(nhwc),
-          skip: GPUBuffer | null = null;
+        let features = await runCompute(reader, () => {
+          const nhwc = new Float32Array(16 * 512);
+          for (let c = 0; c < 512; c++)
+            for (let i = 0; i < 16; i++) nhwc[i * 512 + c] = lf[c * 16 + i] as number;
+          return upload(nhwc);
+        });
+        let skip: GPUBuffer | null = null;
         for (const block of stream.blocks) {
           const raw = await readLocal(reader, asset(block.coefficients.file));
-          const arr = Object.fromEntries(
-            Object.entries(block.coefficients.arrays).map(([k, r]) => [
-              k,
-              floats(raw.subarray(r.offset, r.offset + r.bytes)),
-            ]),
-          ) as Record<string, Float32Array>;
-          const get = (k: string) => {
-            const a = arr[k];
-            if (!a) throw Error(`Direct engine coefficient missing: ${k}`);
-            return a;
-          };
-          const k = block.constants,
-            size = block.size,
-            inC = block.inChannels,
-            outC = block.outChannels;
-          const styleOf = (suffix: string, C: number, plan: BlockPlan) => {
-            const s = buffer(C * 4);
-            step(
-              AFFINE,
-              [
-                latent,
-                upload(get('affineWeight' + suffix)),
-                upload(get('affineBias' + suffix)),
-                s,
-                uniform([C, plan.wIndex], [plan.styleMultiplier]),
-              ],
-              [Math.ceil(C / 64), 1],
-            );
-            return s;
-          };
-          const demodOf = (
-            suffix: string,
-            s: GPUBuffer,
-            Ci: number,
-            Co: number,
-            plan: BlockPlan,
-          ) => {
-            const d = buffer(Co * 4);
-            step(
-              DEMOD,
-              [
-                s,
-                upload(get('energy' + suffix)),
-                d,
-                uniform([Ci, Co], [plan.demodulation.epsilon, plan.demodulation.numerator]),
-              ],
-              [Math.ceil(Co / 64), 1],
-            );
-            return d;
-          };
-          let act = features;
-          if (block.hasConv0) {
-            const plan = block.stylePlans.conv0,
-              s0 = styleOf('0', inC, plan),
-              d0 = demodOf('0', s0, inC, outC, plan),
-              n = block.inSize,
-              P = size + 1,
-              phase = buffer(P * P * outC * 4);
-            for (const [py, px] of [
-              [0, 0],
-              [0, 1],
-              [1, 0],
-              [1, 1],
-            ] as const) {
-              const taps = parityTaps(py, px),
-                Ho = py ? n : n + 1,
-                Wo = px ? n : n + 1,
-                t = TILES(outC);
+          await runCompute(reader, () => {
+            const arr = Object.fromEntries(
+              Object.entries(block.coefficients.arrays).map(([k, r]) => [
+                k,
+                floats(raw.subarray(r.offset, r.offset + r.bytes)),
+              ]),
+            ) as Record<string, Float32Array>;
+            const get = (k: string) => {
+              const a = arr[k];
+              if (!a) throw Error(`Direct engine coefficient missing: ${k}`);
+              return a;
+            };
+            const k = block.constants,
+              size = block.size,
+              inC = block.inChannels,
+              outC = block.outChannels;
+            const styleOf = (suffix: string, C: number, plan: BlockPlan) => {
+              const s = buffer(C * 4);
               step(
-                gemmShader(t, taps, false, px ? 1 : 2, 0),
+                AFFINE,
                 [
-                  features,
-                  upload(repack(get('weight0'), inC, outC, taps)),
-                  phase,
-                  uniform([n, n, inC, outC, Ho, Wo, P, 2, py, px], [0, 0, 0]),
-                  s0,
+                  latent,
+                  upload(get('affineWeight' + suffix)),
+                  upload(get('affineBias' + suffix)),
+                  s,
+                  uniform([C, plan.wIndex], [plan.styleMultiplier]),
                 ],
-                [Math.ceil((Ho * Wo) / t.BM), outC / t.BN, 1],
+                [Math.ceil(C / 64), 1],
+              );
+              return s;
+            };
+            const demodOf = (
+              suffix: string,
+              s: GPUBuffer,
+              Ci: number,
+              Co: number,
+              plan: BlockPlan,
+            ) => {
+              const d = buffer(Co * 4);
+              step(
+                DEMOD,
+                [
+                  s,
+                  upload(get('energy' + suffix)),
+                  d,
+                  uniform([Ci, Co], [plan.demodulation.epsilon, plan.demodulation.numerator]),
+                ],
+                [Math.ceil(Co / 64), 1],
+              );
+              return d;
+            };
+            let act = features;
+            if (block.hasConv0) {
+              const plan = block.stylePlans.conv0,
+                s0 = styleOf('0', inC, plan),
+                d0 = demodOf('0', s0, inC, outC, plan),
+                n = block.inSize,
+                P = size + 1,
+                phase = buffer(P * P * outC * 4);
+              for (const [py, px] of [
+                [0, 0],
+                [0, 1],
+                [1, 0],
+                [1, 1],
+              ] as const) {
+                const taps = parityTaps(py, px),
+                  Ho = py ? n : n + 1,
+                  Wo = px ? n : n + 1,
+                  t = TILES(outC);
+                step(
+                  gemmShader(t, taps, false, px ? 1 : 2, 0),
+                  [
+                    features,
+                    upload(repack(get('weight0'), inC, outC, taps)),
+                    phase,
+                    uniform([n, n, inC, outC, Ho, Wo, P, 2, py, px], [0, 0, 0]),
+                    s0,
+                  ],
+                  [Math.ceil((Ho * Wo) / t.BM), outC / t.BN, 1],
+                );
+              }
+              act = buffer(size * size * outC * 4);
+              step(
+                FIR,
+                [
+                  phase,
+                  act,
+                  uniform(
+                    [size, outC],
+                    [
+                      k['noiseStrength0'] as number,
+                      k['leakyAlpha0'] as number,
+                      k['gain0'] as number,
+                    ],
+                  ),
+                  upload(get('filter0')),
+                  d0,
+                  noiseBuf[block.noise.conv0.name] as GPUBuffer,
+                  upload(get('bias0')),
+                ],
+                grid((size * size * outC) / 4),
               );
             }
-            act = buffer(size * size * outC * 4);
+            const plan1 = block.stylePlans.conv1,
+              c1In = block.hasConv0 ? outC : inC,
+              s1 = styleOf('1', c1In, plan1),
+              d1 = demodOf('1', s1, c1In, outC, plan1),
+              t = TILES(outC),
+              out = buffer(size * size * outC * 4);
             step(
-              FIR,
+              gemmShader(t, TAPS3, true),
               [
-                phase,
                 act,
+                upload(repack(get('weight1'), c1In, outC, TAPS3)),
+                out,
                 uniform(
-                  [size, outC],
-                  [k['noiseStrength0'] as number, k['leakyAlpha0'] as number, k['gain0'] as number],
+                  [size, size, c1In, outC, size, size, size, 1, 0, 0],
+                  [k['noiseStrength1'] as number, k['leakyAlpha1'] as number, k['gain1'] as number],
                 ),
-                upload(get('filter0')),
-                d0,
-                noiseBuf[block.noise.conv0.name] as GPUBuffer,
-                upload(get('bias0')),
+                s1,
+                d1,
+                noiseBuf[block.noise.conv1.name] as GPUBuffer,
+                upload(get('bias1')),
               ],
-              grid((size * size * outC) / 4),
+              [Math.ceil((size * size) / t.BM), outC / t.BN, 1],
             );
-          }
-          const plan1 = block.stylePlans.conv1,
-            c1In = block.hasConv0 ? outC : inC,
-            s1 = styleOf('1', c1In, plan1),
-            d1 = demodOf('1', s1, c1In, outC, plan1),
-            t = TILES(outC),
-            out = buffer(size * size * outC * 4);
-          step(
-            gemmShader(t, TAPS3, true),
-            [
-              act,
-              upload(repack(get('weight1'), c1In, outC, TAPS3)),
-              out,
-              uniform(
-                [size, size, c1In, outC, size, size, size, 1, 0, 0],
-                [k['noiseStrength1'] as number, k['leakyAlpha1'] as number, k['gain1'] as number],
-              ),
-              s1,
-              d1,
-              noiseBuf[block.noise.conv1.name] as GPUBuffer,
-              upload(get('bias1')),
-            ],
-            [Math.ceil((size * size) / t.BM), outC / t.BN, 1],
-          );
-          const sr = styleOf('Rgb', outC, block.stylePlans.torgb),
-            rgb = buffer(size * size * 16),
-            brgb = new Float32Array(4);
-          brgb.set(get('biasRgb'));
-          step(
-            RGB,
-            [
-              out,
-              rgb,
-              uniform([size, outC, block.hasSkip ? 1 : 0]),
-              sr,
-              upload(get('weightRgb')),
-              skip ?? dummy,
-              upload(block.hasSkip ? get('filterRgb') : new Float32Array(16)),
-              upload(brgb),
-            ],
-            grid(size * size),
-          );
-          features = out;
-          skip = rgb;
-        }
-        if (!skip) throw Error('Direct engine stream has no blocks');
-        const finalRgb: GPUBuffer = skip;
-        const output = buffer(3 * PIXELS * 4, S | CS);
-        step(outShader(PIXELS), [finalRgb, output], grid(PIXELS));
-        const outSteps = steps.length;
-        const rgba = buffer(PIXELS * 4 + 16, S | CS | CD),
-          bad = buffer(16, S | CS | CD);
-        step(
-          rgba8Shader(PIXELS),
-          [finalRgb, rgba, bad, upload(new Uint32Array(4), U | CD)],
-          grid(PIXELS),
-        );
-        o.progress?.('gpu-direct-ready');
-        const lastNoise: Record<string, Float32Array> = {};
-        const writeInputs = (values: Float32Array, noise: NoiseSet) => {
-          device.queue.writeBuffer(latent, 0, values as Float32Array<ArrayBuffer>);
-          // Noise is constant across a morph: an array is uploaded only when a different one is handed over.
-          for (const n of manifest.noise) {
-            const a = noise[n.name] as Float32Array;
-            if (lastNoise[n.name] !== a) {
-              device.queue.writeBuffer(
-                noiseBuf[n.name] as GPUBuffer,
-                0,
-                a as Float32Array<ArrayBuffer>,
-              );
-              lastNoise[n.name] = a;
-            }
-          }
-        };
-        const zero = new Uint32Array(4);
-        function queue(values: Float32Array, noise: NoiseSet, mode: 'raw'): Promise<Float32Array>;
-        function queue(
-          values: Float32Array,
-          noise: NoiseSet,
-          mode: 'rgba',
-        ): Promise<Uint8ClampedArray>;
-        function queue(
-          values: Float32Array,
-          noise: NoiseSet,
-          mode: 'raw' | 'rgba',
-        ): Promise<Float32Array | Uint8ClampedArray> {
-          if (failure) throw failure;
-          if (closing) throw Error('GPU session closed.');
-          writeInputs(values, noise);
-          const e = device.createCommandEncoder(),
-            pass = e.beginComputePass();
-          steps.forEach((s, i) => {
-            if (mode === 'raw' ? i >= outSteps : i === outSteps - 1) return;
-            pass.setPipeline(s.pipe);
-            pass.setBindGroup(0, s.group);
-            pass.dispatchWorkgroups(s.wg[0], s.wg[1], s.wg[2] ?? 1);
+            const sr = styleOf('Rgb', outC, block.stylePlans.torgb),
+              rgb = buffer(size * size * 16),
+              brgb = new Float32Array(4);
+            brgb.set(get('biasRgb'));
+            step(
+              RGB,
+              [
+                out,
+                rgb,
+                uniform([size, outC, block.hasSkip ? 1 : 0]),
+                sr,
+                upload(get('weightRgb')),
+                skip ?? dummy,
+                upload(block.hasSkip ? get('filterRgb') : new Float32Array(16)),
+                upload(brgb),
+              ],
+              grid(size * size),
+            );
+            features = out;
+            skip = rgb;
           });
-          pass.end();
-          const src = mode === 'raw' ? output : rgba,
-            size = mode === 'raw' ? output.size : PIXELS * 4,
-            pool = pools[mode];
-          if (mode === 'rgba') e.copyBufferToBuffer(bad, 0, rgba, PIXELS * 4, 4);
-          const readback =
-            pool.pop() ??
-            device.createBuffer({
-              size: mode === 'raw' ? size : size + 16,
-              usage: BufferUsage.MAP_READ | CD,
-            });
-          e.copyBufferToBuffer(src, 0, readback, 0, mode === 'raw' ? size : size + 16);
-          device.queue.submit([e.finish()]);
-          if (mode === 'rgba') device.queue.writeBuffer(bad, 0, zero);
-          const mapped = readback.mapAsync(MapMode.READ);
-          return (async () => {
-            try {
-              await mapped;
-            } catch (error) {
-              readback.destroy();
-              throw failure ?? error;
-            }
-            const range = readback.getMappedRange();
-            let out: Float32Array | Uint8ClampedArray;
-            if (mode === 'raw') out = new Float32Array(range.slice(0));
-            else {
-              const nonFinite = new Uint32Array(range, size, 1)[0];
-              out = new Uint8ClampedArray(range.slice(0, size));
-              if (nonFinite) {
-                readback.unmap();
-                readback.destroy();
-                throw Error('Nonfinite synthesis output');
+        }
+        return await runCompute(reader, (): SynthesisBackend => {
+          if (!skip) throw Error('Direct engine stream has no blocks');
+          const finalRgb: GPUBuffer = skip;
+          const output = buffer(3 * PIXELS * 4, S | CS);
+          step(outShader(PIXELS), [finalRgb, output], grid(PIXELS));
+          const outSteps = steps.length;
+          const rgba = buffer(PIXELS * 4 + 16, S | CS | CD),
+            bad = buffer(16, S | CS | CD);
+          step(
+            rgba8Shader(PIXELS),
+            [finalRgb, rgba, bad, upload(new Uint32Array(4), U | CD)],
+            grid(PIXELS),
+          );
+          o.progress?.('gpu-direct-ready');
+          const lastNoise: Record<string, Float32Array> = {};
+          const writeInputs = (values: Float32Array, noise: NoiseSet) => {
+            device.queue.writeBuffer(latent, 0, values as Float32Array<ArrayBuffer>);
+            // Noise is constant across a morph: an array is uploaded only when a different one is handed over.
+            for (const n of manifest.noise) {
+              const a = noise[n.name] as Float32Array;
+              if (lastNoise[n.name] !== a) {
+                device.queue.writeBuffer(
+                  noiseBuf[n.name] as GPUBuffer,
+                  0,
+                  a as Float32Array<ArrayBuffer>,
+                );
+                lastNoise[n.name] = a;
               }
             }
-            readback.unmap();
-            if (closing || pool.length >= 2) readback.destroy();
-            else pool.push(readback);
+          };
+          const zero = new Uint32Array(4);
+          function queue(values: Float32Array, noise: NoiseSet, mode: 'raw'): Promise<Float32Array>;
+          function queue(
+            values: Float32Array,
+            noise: NoiseSet,
+            mode: 'rgba',
+          ): Promise<Uint8ClampedArray>;
+          function queue(
+            values: Float32Array,
+            noise: NoiseSet,
+            mode: 'raw' | 'rgba',
+          ): Promise<Float32Array | Uint8ClampedArray> {
             if (failure) throw failure;
-            return out;
-          })();
-        }
-        return {
-          engine: 'direct-webgpu',
-          route: 'webgpu',
-          boundary: 'map-async-complete',
-          submitRaw: async (values, noise) => ({ done: queue(values, noise, 'raw') }),
-          submitRgba: async (values, noise) => ({ done: queue(values, noise, 'rgba') }),
-          onLost: (l) => lost.push(l),
-          liveResources: () => (closing ? 0 : all.length + pools.raw.length + pools.rgba.length),
-          dispose,
-        };
+            if (closing) throw Error('GPU session closed.');
+            writeInputs(values, noise);
+            const e = device.createCommandEncoder(),
+              pass = e.beginComputePass();
+            steps.forEach((s, i) => {
+              if (mode === 'raw' ? i >= outSteps : i === outSteps - 1) return;
+              pass.setPipeline(s.pipe);
+              pass.setBindGroup(0, s.group);
+              pass.dispatchWorkgroups(s.wg[0], s.wg[1], s.wg[2] ?? 1);
+            });
+            pass.end();
+            const src = mode === 'raw' ? output : rgba,
+              size = mode === 'raw' ? output.size : PIXELS * 4,
+              pool = pools[mode];
+            if (mode === 'rgba') e.copyBufferToBuffer(bad, 0, rgba, PIXELS * 4, 4);
+            const readback =
+              pool.pop() ??
+              device.createBuffer({
+                size: mode === 'raw' ? size : size + 16,
+                usage: BufferUsage.MAP_READ | CD,
+              });
+            e.copyBufferToBuffer(src, 0, readback, 0, mode === 'raw' ? size : size + 16);
+            device.queue.submit([e.finish()]);
+            if (mode === 'rgba') device.queue.writeBuffer(bad, 0, zero);
+            const mapped = readback.mapAsync(MapMode.READ);
+            return (async () => {
+              try {
+                await mapped;
+              } catch (error) {
+                readback.destroy();
+                throw failure ?? error;
+              }
+              const range = readback.getMappedRange();
+              let out: Float32Array | Uint8ClampedArray;
+              if (mode === 'raw') out = new Float32Array(range.slice(0));
+              else {
+                const nonFinite = new Uint32Array(range, size, 1)[0];
+                out = new Uint8ClampedArray(range.slice(0, size));
+                if (nonFinite) {
+                  readback.unmap();
+                  readback.destroy();
+                  throw Error('Nonfinite synthesis output');
+                }
+              }
+              readback.unmap();
+              if (closing || pool.length >= 2) readback.destroy();
+              else pool.push(readback);
+              if (failure) throw failure;
+              return out;
+            })();
+          }
+          return {
+            engine: 'direct-webgpu',
+            route: 'webgpu',
+            boundary: 'map-async-complete',
+            submitRaw: (values, noise) =>
+              submitWithCompute(reader, async () => ({ done: queue(values, noise, 'raw') })),
+            submitRgba: (values, noise) =>
+              submitWithCompute(reader, async () => ({ done: queue(values, noise, 'rgba') })),
+            onLost: (l) => lost.push(l),
+            liveResources: () => (closing ? 0 : all.length + pools.raw.length + pools.rgba.length),
+            dispose,
+          };
+        });
       } catch (error) {
         await dispose();
         throw error;

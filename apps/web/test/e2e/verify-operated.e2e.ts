@@ -118,6 +118,34 @@ for (const [engine, type] of Object.entries(ENGINES)) {
     assert.ok(steps.includes('verify.harness/defect-1/press-remove'));
     for (const e of log.entries.filter((x) => x.ok))
       assert.ok(e.point && e.hit && e.target, `${e.step} has point, hit and target`);
+    // The pre-input centre is correct, but a real pointerdown reveals an overlay before pointerup/click.
+    // A geometry-only helper passes this while the intended control receives no click.
+    await page.setContent(
+      '<button id="race" style="width:120px;height:60px">Press</button><div id="cover" style="display:none;position:fixed;inset:0;background:red"></div>',
+    );
+    await page.evaluate(() => {
+      const button = document.querySelector<HTMLButtonElement>('#race')!;
+      button.addEventListener('pointerdown', () => {
+        document.querySelector<HTMLElement>('#cover')!.style.display = 'block';
+      });
+      button.addEventListener('click', () => {
+        button.dataset['clicked'] = 'true';
+      });
+    });
+    await assert.rejects(
+      operatedClick(page, page.locator('#race'), {
+        ...fast,
+        step: 'verify.harness/race/late-overlay',
+      }),
+      /trusted click landed outside the control/,
+    );
+    assert.equal(
+      await page.locator('#race').getAttribute('data-clicked'),
+      null,
+      'real input did not click the intended control',
+    );
+    assert.equal(log.entries.at(-1)?.ok, false);
+    assert.ok(log.entries.at(-1)?.hit, 'the actual late target is recorded');
     log.write(new URL(`test-results/verify/${engine}-operated.log`, app).pathname);
   });
 
@@ -146,5 +174,42 @@ for (const [engine, type] of Object.entries(ENGINES)) {
       }),
       /not the control but <button id="mode-menu"/,
     );
+    // Native touch ranges produce trusted input without a compatibility click in all three engines.
+    const rangePage =
+      '<meta name="viewport" content="width=device-width,initial-scale=1"><input id="range" type="range" min="1" max="8" step="0.1" value="1" style="width:265px;margin:50px">';
+    await page.setContent(rangePage);
+    const range = page.locator('#range');
+    await range.evaluate((el) =>
+      el.addEventListener('input', (event) => {
+        (el as HTMLInputElement).dataset['trustedInput'] = String(event.isTrusted);
+      }),
+    );
+    const changed = await operatedTap(page, range, {
+      log,
+      step: 'verify.harness/tap/native-range',
+      activation: 'range-input',
+    });
+    assert.equal(changed.activation, 'range-input');
+    assert.match(changed.hit ?? '', /^<input/);
+    assert.notEqual(await range.inputValue(), '1');
+    assert.equal(await range.getAttribute('data-trusted-input'), 'true');
+    // An untrusted input emitted while the real pointer removes its target cannot replace native activation.
+    await page.setContent(rangePage);
+    await range.evaluate((el) =>
+      el.addEventListener('pointerdown', () => {
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.remove();
+      }),
+    );
+    await assert.rejects(
+      operatedTap(page, range, {
+        log,
+        step: 'verify.harness/tap/untrusted-range',
+        activation: 'range-input',
+        settleMs: 100,
+      }),
+      /no trusted range-input/,
+    );
+    assert.equal(log.entries.at(-1)?.ok, false);
   });
 }

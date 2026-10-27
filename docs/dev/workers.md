@@ -39,9 +39,13 @@ or a runner label is not inference evidence; the adapter column is what a real b
 ## Opportunistic CPU capacity (fm-sziz)
 
 Operator policy on 25 October allowed compatible work on Triton while available.
-The 27 October fm-kfs5 correction removes it from ordinary portable CPU scheduling
-until its workspace/toolchain setup supports that work. Triton remains available
-through its specific labels; development and ordinary CPU CI do not depend on it.
+The 27 October fm-kfs5 correction removed it from ordinary portable CPU scheduling.
+The subsequent fm-jx26 qualification assigns the six scaffold check groups,
+the dependency-free change selector and the browser-free checks listed below to
+its specific `triton` label. Ordinary frozen-policy checks also use Triton;
+dependency-currency qualification and all browser/workerd jobs retain the
+qualified portable pool.
+Triton does not regain `linux-x64`.
 
 Observed pool on 27 October after the operator-directed label changes:
 
@@ -59,12 +63,62 @@ tests, in addition to the workflow-provided Node toolchain. After an observed
 `spawnSync gh ENOENT` scaffold failure, Triton received the checksum-verified
 upstream CLI 2.103.2 in `/usr/local/bin/gh`; the real expired-classic-artifact test
 passed there on 25 October. New/rebuilt workers need the same prerequisite.
+
+Pure Node qualification on 27 October used immutable source `35ec8c1`, cached
+Node 24.22.1 and the current lockfile store on Triton. All six exact scaffold groups
+passed: format 0.9s, lint 0.5s, typecheck 9.9s, seeded violations 15.3s,
+format stability 2.5s and package checks/packs 3.0s. The prerequisite workspace
+build took 12.1s; the final source diff was empty. The real same-dataset cache
+restore was a hardlink hit in 24.9s. A scratch checkout outside the
+`/mnt/unit/gh-runners` dataset fell back to a 44.5s copy. After the reflink-probe
+repair, the same current-lockfile cache restores by hardlink in 1.0–1.1s. The ordinary frozen-policy command passed on immutable
+`4fad472` in 0.9s, so that ordinary job now also uses Triton. Conditional dependency
+updates retain the portable pool for runtime acquisition and currency checks.
+These are standalone qualification timings, not measured main-pipeline improvement
+or browser support.
+Additional browser-free commands were qualified on immutable source `e082c1d`
+(`import-inventory` used `4bf1987`) before moving their jobs to Triton:
+
+| Job | Actual command results on Triton |
+| --- | --- |
+| identity-check/check | Pinned checksum-verified gh 2.101.0, four sibling clones and 20 tests passed, zero skips (37.3s of tests) |
+| rename-check/check | 7 API tests and all 13 rename assertions passed (80.0s + 7.1s) |
+| import-checks/checks | Node/Python tests, real app build/identity check and destination checks passed; destination checks 24.6s |
+| import-inventory/checks | All eight commands passed with full classic history at the frozen commit; 39 tests, zero skips, 32.6s of checks |
+| import-closure/checks | Unit tests, exclusion/resolution scans and independent retained-control download/pin checks passed |
+| research-ledger/check | Full-history classic clone, ledger tests and append-only checks passed |
+| web-shell/check | Real app inventory and bridge import scans passed (0.5s); browser siblings retain their pools |
+| native-retirement/check | 21 tests passed against the real built destination, zero skips |
+
+The same qualification restored the current lockfile's dependency tree by hardlink
+in 1.1s and built the actual app in 12.1s. These are executed standalone commands,
+not a claim about main wall time. Existing artifact restoration, pinned tools,
+checkouts and assertions remain in each workflow. App-contracts stays portable:
+its Node command includes real browser cases, and Triton reported those cases
+untested because it lacks a supported browser.
+
 GitHub can assign independent portable jobs to the eligible eris and temporary CPU
 slots. Four Triton slots share its 20 threads and 125 GiB RAM; they are not four
 separate 20-thread machines. Run compatible work concurrently on its specific
 labels rather than reserving the whole host for one check.
 The main workflow still finishes its running revision before taking the newest
 pending revision; it can execute independent jobs within that revision in parallel.
+
+The dedicated `fmci` container keeps runner IPC alive independently of login sessions.
+Its GitHub runner services use UID 1001 (`runner`) without a PAM session. With logind's
+default `RemoveIPC=yes`, ending a temporary `su - runner` session removed active jobs'
+`/dev/shm` compiled modules, browser profiles and trace files after the 10-second user
+stop delay. The 27 October repair is `/etc/systemd/logind.conf.d/60-facemorph-runner.conf`:
+
+```ini
+[Login]
+RemoveIPC=no
+```
+
+`systemctl reload systemd-logind` applied the policy to the running container.
+`busctl get-property org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager RemoveIPC`
+reports `b false`. A UID-1001 `/dev/shm` canary survived runner logout and the full
+stop delay. Include this policy when rebuilding the service-runner container.
 
 The pool includes scaffold build/typecheck/test/pack, package contracts, web-shell
 builds, import/inventory/identity checks, diagnostics Docker tests, native-retirement checks and

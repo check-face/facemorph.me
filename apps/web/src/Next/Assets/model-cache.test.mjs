@@ -441,6 +441,52 @@ test('shards: a corrupt unit is caught on read, whatever the trailer says, and o
 });
 const notReadable = () => Object.assign(new Error('The requested file could not be read'), { name: 'NotReadableError' });
 const unreadableResponse = () => new Response(new ReadableStream({ pull(controller) { controller.error(notReadable()); } }));
+test('bytes returns the exact retained bytes it verified, without a second cache read', async () => {
+  const f = fixture(); f.entries.set(asset().sha256, bytes);
+  const handle = await f.cache.acquire(asset());
+  const get = f.store.get;
+  let reads = 0;
+  f.store.get = async hash => hash === asset().sha256
+    ? new Response(++reads === 1 ? bytes : new Uint8Array(bytes.length))
+    : get(hash);
+  assert.deepEqual(await handle.bytes(), bytes, 'never substitute a later unverified cache response');
+  assert.equal(reads, 1, 'verification and consumption share one retained read');
+  assert.equal(f.calls.length, 0);
+});
+test('bytes repairs retained corruption and wrong sizes once before returning execution input', async () => {
+  for (const wrong of [new Uint8Array(bytes.length), bytes.slice(1), new Uint8Array(bytes.length + 1)]) {
+    const f = fixture(); f.entries.set(asset().sha256, wrong);
+    assert.deepEqual(await (await f.cache.acquire(asset())).bytes(), bytes);
+    assert.equal(f.calls.length, 1);
+    assert.equal(f.events.filter(e => e.status === 'repairing').length, 1);
+    assert.ok(f.events.some(e => e.status === 'corrupt-removed'));
+  }
+});
+test('bytes stops after one repair when the backing cache file remains unreadable', async () => {
+  const f = fixture(); f.entries.set(asset().sha256, bytes);
+  const get = f.store.get;
+  f.store.get = async hash => hash === asset().sha256 && f.entries.has(hash) ? unreadableResponse() : get(hash);
+  await assert.rejects((await f.cache.acquire(asset())).bytes(), { name: 'NotReadableError' });
+  assert.equal(f.calls.length, 1, 'a failed repair never starts a second download');
+});
+test('bytes output allocation failure preserves the retained identity and never downloads a repair', async () => {
+  const f = fixture(); f.entries.set(asset().sha256, bytes);
+  const handle = await f.cache.acquire(asset());
+  const Original = globalThis.Uint8Array;
+  try {
+    globalThis.Uint8Array = class extends Original {
+      constructor(...args) {
+        if (args[0] === bytes.length) throw new RangeError('Execution buffer allocation failed');
+        super(...args);
+      }
+    };
+    await assert.rejects(handle.bytes(), /Execution buffer allocation failed/);
+  } finally { globalThis.Uint8Array = Original; }
+  assert.ok(f.entries.has(asset().sha256));
+  assert.equal(f.calls.length, 0);
+  assert.equal(f.events.some(e => ['repairing', 'corrupt-removed'].includes(e.status)), false);
+  assert.deepEqual(await handle.bytes(), bytes, 'the retained identity is usable after memory pressure clears');
+});
 test('a Cache Storage entry whose bytes can no longer be read is repaired, on first open and after it was verified (Android Chrome)', async () => {
   const f = fixture(); f.entries.set(asset().sha256, bytes);
   let broken = true; const get = f.store.get;

@@ -1,0 +1,17 @@
+{
+  "local": "/tmp/fm-qeh-remote-cpu-evidence-wvsyb7h4",
+  "controlCases": 31,
+  "candidateCases": 31,
+  "sameAll31RawErrors": true,
+  "browser": {
+    "version": "156.0.8078.4",
+    "executablePath": "/home/runner/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome",
+    "executableSha256": "377a9fc07b495c3b8d0ab8ec1fdfd153641759f9756fea34d8dfce4de82f5025",
+    "launchTargetPath": "/home/runner/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome",
+    "launchTargetSha256": "377a9fc07b495c3b8d0ab8ec1fdfd153641759f9756fea34d8dfce4de82f5025"
+  },
+  "manifestSHAs": [
+    "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+    "d8ed9d5c44fa8afe0434299a99baf8a64db72b254165726f49a81853271eb858"
+  ]
+}

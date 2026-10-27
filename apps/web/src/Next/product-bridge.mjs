@@ -32,7 +32,7 @@ import {selectPhoto} from './photo-selection.mjs';
 import {refusal} from './photo/refusal.mjs';
 import {persistenceAction} from './storage-request.mjs';
 import {routeAssets,photoAssets,measure} from './model-inventory.mjs';
-import {createApprovalGenerations} from './browser/bridge-grant.mjs';
+import {createApprovalGenerations,resolveDiscoveredGrants} from './browser/bridge-grant.mjs';
 import {previewPhoto,cropPhoto} from './photo/crop.mjs';
 import {confirmCrop} from './photo/confirmed-crop.mjs';
 import {getPublicCatalogue,galleryTextUrl,publicNameLatent} from './public-previews.mjs';
@@ -253,7 +253,7 @@ async function inputs(request,revisions){
   let result;
   if(sameSource(faces.get(item.id),item)){result=faces.get(item.id);}
   else if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
-  else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for each photo input.');result=await service.encodePhoto(item.file,{signal:active.signal,raw:true});}
+  else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for each photo input.');await pushGrants({strict:true});result=await service.encodePhoto(item.file,{signal:active.signal,raw:true});}
   else {result=await generateNameOrSeed(service,item);}
   if(revisionOf(item.id)!==revisions.get(item.id))throw superseded();
   jobCounts.facesDone=i+1;
@@ -290,9 +290,9 @@ function warmUp(){
  askForPersistentStorage();
  void refreshInventory();
 }
-const downloads={known:false,phase:'idle',scope:'',loaded:0,total:0,routeReady:false,photoReady:false,photoAvailable:false,routeBytes:0,photoBytes:0};
+const downloads={known:false,phase:'idle',scope:'',loaded:0,total:0,routeReady:false,photoReady:false,photoAvailable:false,routeBytes:0,photoBytes:0,photoApprovalRequired:false};
 const wanted=new Set(),downloadListeners=new Set();
-let downloading=null;
+let downloading=null,setupGeneration=0;
 function announceDownloads(){const snapshot={...downloads};for(const callback of downloadListeners){try{callback(snapshot);}catch{}}}
 export function subscribeDownloads(callback){downloadListeners.add(callback);callback({...downloads});return ()=>downloadListeners.delete(callback);}
 // The pinned encoder descriptor names every shard with its size. It is fetched only after photo approval:
@@ -342,7 +342,7 @@ async function refreshInventory(){
 let approvalGenerations;
 const grantApprovals=()=>approvalGenerations??=createApprovalGenerations();
 function approve(scope){grantApprovals().approve(scope);}
-async function pushGrants(){
+async function pushGrants({strict=false}={}){
  try{
   const service=await engine();if(!service.plan||!service.setGrants)return;
   for(;;){
@@ -353,53 +353,84 @@ async function pushGrants(){
    const approvals=grantApprovals();
    const snapshot=await approvals.snapshot({manifest:planned.manifest,manifestSha256:runtimeIdentity||'',route:planned.route,engine:planned.engine,cache});
    if(!approvals.current(snapshot.id))continue;
-   if(snapshot.grants.approved?.purpose==='generate-and-encode'){
+   let grants=snapshot.grants;
+   if(strict&&grants.approved?.purpose==='generate-and-encode'){
     await inspectDescriptor(planned.manifest);
-    // If the exact cost exceeds the frozen allowance, the worker refuses it. Its revised dialog must show it.
+    // Discovery can revise the decision, but must not consume a photo's first encode attempt.
     await refreshInventory();
+    if(strict&&descriptorText!==null&&descriptorFor===planned.manifest.encoderStream?.sha256)
+     grants=await resolveDiscoveredGrants(grants,descriptorFor,JSON.parse(descriptorText),cache);
    }
    if(!approvals.current(snapshot.id))continue;
-   service.setGrants(snapshot.grants);return;
+   service.setGrants(grants);return;
   }
- }catch(error){console.warn('Model grants unavailable:',error?.message||error);}
+ }catch(error){if(strict)throw error;console.warn('Model grants unavailable:',error?.message||error);}
 }
 export function downloadModels(includePhoto){
  keepModelsOnDevice();approve(includePhoto?'photo':'route');
  wanted.add('route');if(includePhoto)wanted.add('photo');
- downloads.phase='downloading';announceDownloads();
+ downloads.photoApprovalRequired=false;downloads.phase='downloading';announceDownloads();
  void pumpDownloads();
+}
+export function cancelDownloadSetup(){
+ setupGeneration++;wanted.clear();runtime?.cancelPrefetch?.();
+ Object.assign(downloads,{photoApprovalRequired:false,phase:'idle'});announceDownloads();
 }
 export function consentToDownload(scope){keepModelsOnDevice();approve(scope);void pushGrants();return scope;}
 async function pumpDownloads(){
  if(downloading||active)return;
+ // Keep the lock through settlement: Cancel may be followed by a new approval while an old await is pending.
+ const owner={generation:setupGeneration};downloading=owner;
+ const current=()=>owner.generation===setupGeneration;
+ try{
  // A face made while the download was paused fetches what it needs itself, so re-measure first
  // and skip whatever is already on the device instead of announcing a 1 MB of 1 MB download.
  if(downloads.phase==='waiting')await refreshInventory();
- if(downloading||active)return;
+ if(!current()||active)return;
  for(const scope of ['route','photo']){
   if(!wanted.has(scope))continue;
   if(scope==='route'?downloads.routeReady:downloads.photoReady){wanted.delete(scope);continue;}
-  downloading=scope;Object.assign(downloads,{phase:'downloading',scope,loaded:0,total:scope==='route'?downloads.routeBytes:downloads.photoBytes});announceDownloads();
+  Object.assign(downloads,{phase:'downloading',scope,loaded:0,total:scope==='route'?downloads.routeBytes:downloads.photoBytes});announceDownloads();
   let result={started:false};const began=performance.now(),planned=downloads.total;
-  try{await pushGrants();result=await (await engine()).prefetch(scope,{explicit:true});}catch{}
-  downloading=null;
+  let failure;
+  try{
+   await pushGrants({strict:scope==='photo'});
+   if(current()&&wanted.has(scope)){
+    const service=await engine();
+    if(current()&&wanted.has(scope))result=await service.prefetch(scope,{explicit:true});
+   }
+  }catch(error){failure=error;}
+  if(!current()||!wanted.has(scope))return;
+  if(failure?.name==='GrantRefused'){
+   await refreshInventory();if(!current())return;
+   Object.assign(downloads,{phase:'waiting',scope:'photo',photoApprovalRequired:true});announceDownloads();return;
+  }
   analytics.modelsDownloaded({scope,outcome:result.started&&result.acquired===result.assets?'completed':active?'interrupted':'failed',sizeMb:planned/1048576,durationMs:performance.now()-began});
   if(active){downloads.phase='waiting';announceDownloads();return;}
   if(!result.started||result.acquired!==result.assets){downloads.phase='failed';wanted.clear();announceDownloads();await refreshInventory();return;}
+  await refreshInventory();
+  if(!current())return;
+  if(!(scope==='route'?downloads.routeReady:downloads.photoReady)){downloads.phase='failed';wanted.clear();announceDownloads();return;}
   wanted.delete(scope);
  }
  await refreshInventory();
+ if(!current())return;
  downloads.phase=downloads.routeReady?'done':'idle';announceDownloads();
+ }finally{
+  if(downloading===owner){downloading=null;if(!current()&&wanted.size)void pumpDownloads();}
+ }
 }
 export function subscribe(callback){listeners.add(callback);const report=({detail})=>callback({jobId:currentJob,stage:'diagnostics-'+detail.status,text:detail.reference||'',fraction:0});window.addEventListener('facemorph-report-status',report);diagnostics.restore();warmUp();requestAnimationFrame(()=>analytics.milestone?.('usable-ui'));return()=>{listeners.delete(callback);window.removeEventListener('facemorph-report-status',report);};}
-export async function execute(request){
+export async function execute(request,compute){
  if(active)throw Error('Another job is still stopping.');active=new AbortController();currentJob=request.jobId;closePhotoRun('completed');diagnostics.start(request.action,request.provider);reportStorage();
  const revisions=new Map(request.inputs.map(item=>[item.id,revisionOf(item.id)]));
  const exportOnly=request.action==='morph'&&sameMorphExport(request,retryMorphExport)?retryMorphExport:null;
  analytics.setJobContext(()=>({requested_route:request.provider||'auto',faces:jobCounts.facesTotal,frames:jobCounts.framesTotal,input_kind:analytics.inputKind(request.inputs),morph_kind:request.action==='morph'?project?.morph?.kind:undefined}));
  jobCounts.facesDone=0;jobCounts.facesTotal=request.action==='face'?1:request.inputs.length;jobCounts.framesDone=0;jobCounts.framesTotal=0;jobCounts.videoFramesDone=0;jobCounts.videoFramesTotal=0;
  analytics.jobStarted({action:request.action,provider:request.provider||'auto',warm:downloads.routeReady,target:request.target||'morph'});
+ let computeService;
  try{
+  computeService=await engine();computeService.setComputeAdmission?.(compute);
   // Grants follow the route admission just chose, so a job acquires only for the route it runs (fm-qrfz).
   if(!exportOnly){await admission(request.provider,request.routeSnapshot);await pushGrants();}
   // Morph is admitted on its own (fm-lt2p): faces being admitted says nothing about the video codec.
@@ -415,7 +446,7 @@ export async function execute(request){
    let result;
    if(sameSource(faces.get(item.id),item)){result=faces.get(item.id);}
    else if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
-   else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for this face.');result=await service.encodePhoto(item.file,{signal:active.signal,raw:true});}
+   else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for this face.');await pushGrants({strict:true});result=await service.encodePhoto(item.file,{signal:active.signal,raw:true});}
    else {if(!String(item.value??'').length)throw Error('Type a name or seed first.');result=await generateNameOrSeed(service,item);}
    checked();if(revisionOf(item.id)!==revisions.get(item.id))throw superseded();await register(item.id,result,item.mode==='photo'?'Photo':item.value);
    const current=faces.get(item.id);current.source={mode:item.mode,value:item.value,file:item.file};
@@ -485,7 +516,7 @@ export async function execute(request){
   rememberView(request);retainSession();
   diagnostics.finish('completed');return snapshot();
  }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');if(error.alignmentStats)analytics.operationResult?.('selection',error.alignmentStats.faceCount>1?'shown':'failed',undefined,{face_count:error.alignmentStats.faceCount===0?'zero':error.alignmentStats.faceCount===1?'one':error.alignmentStats.faceCount>1?'multiple':undefined});const choice=error.alignmentStats?.faceBoxes?.length>1&&revisionOf(request.target)===revisions.get(request.target)?await prepareFaceChoices(request.target,error.alignmentStats.faceBoxes,request.inputs.find(item=>item.id===request.target)?.file):null;return {...snapshot(''),errorMessage:choice?'':String(error?.message||'Generation failed. Your completed results are still available.'),refusal:error?.name==='AdmissionRefused'?{reasonKey:error.reasonKey,text:error.message,helpAnchor:error.helpAnchor}:undefined,photoChoices:choice,cropFace:!choice&&request.target&&request.inputs?.find(item=>item.id===request.target)?.file instanceof Blob&&error?.faceDetection===true?request.target:null};}
- finally{writer?.dispose();writer=null;active=null;if(wanted.size)void pumpDownloads();else if(!downloads.routeReady||!downloads.photoReady)void refreshInventory();}
+ finally{computeService?.setComputeAdmission?.(undefined);writer?.dispose();writer=null;active=null;if(wanted.size)void pumpDownloads();else if(!downloads.routeReady||!downloads.photoReady)void refreshInventory();}
 }
 export function cancel(){active?.abort();writer?.dispose();runtime?.cancel();}
 const kindOf=id=>id==='video'?'video':'image';
@@ -544,7 +575,7 @@ export async function exportProject(options){
  const checked=canonicalProject(selected);createLatentPath(checked.morph);
  return reported('project','save',saveFile(new Blob([JSON.stringify(checked)],{type:'application/json'}),'facemorph-project.json'));
 }
-export async function importProject(request){
+export async function importProject(request,compute){
  const {file,jobId}=request;
  if(active)throw Error('Wait for the current job to finish.');if(!(file instanceof Blob)||file.size>16*1024*1024)throw Error('Choose a FaceMorph project smaller than 16 MB.');
  active=new AbortController();currentJob=jobId;
@@ -553,8 +584,9 @@ export async function importProject(request){
  analytics.setJobContext(()=>({action:'import',requested_route:request.provider||'auto',input_kind:'project',faces:jobCounts.facesTotal,frames:0}));
  analytics.jobStarted({action:'import',provider:request.provider||'auto',warm:downloads.routeReady,target:'import'});
  analytics.exported({kind:'project',method:'open',outcome:'ready'});
+ let computeService;
  try{
-  const imported=canonicalProject(await file.text());createLatentPath(imported.morph);const service=await engine();
+  const imported=canonicalProject(await file.text());createLatentPath(imported.morph);const service=await engine();computeService=service;service.setComputeAdmission?.(compute);
   jobCounts.facesTotal=imported.morph.controls.length;
   if(imported.modelSha256!==manifest.modelSourceSha256||imported.noiseSha256!==manifest.noiseSha256)throw Error('This project needs a different model bundle. Its saved file has not been changed.');
   if(imported.morph.controls.some(x=>x.latent.space!=='w-plus'))throw Error('This generation bundle requires a W+ project.');
@@ -562,7 +594,7 @@ export async function importProject(request){
   for(const control of imported.morph.controls){checked();const result=await service.synthesize({...control.latent,shape:[1,...W_SHAPE],values:Float32Array.from(control.latent.values)},{signal:active.signal});next.set(control.visitId,{...result,label:'Project face'});}
   checked();await commit(next,imported,true);diagnostics.finish('completed');analytics.exported({kind:'project',method:'open',outcome:'completed'});return snapshot('Project opened.',true);
  }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});analytics.exported({kind:'project',method:'open',outcome:error?.name==='AbortError'?'cancelled':'failed'});throw error;}
- finally{active=null;if(wanted.size)void pumpDownloads();}
+ finally{computeService?.setComputeAdmission?.(undefined);active=null;if(wanted.size)void pumpDownloads();}
 }
 /** `basis` records how the visitor agreed: checkbox, invite or toast (reporting.mjs CONSENT_BASES). */
 export function setDebug(enabled,basis){diagnostics.enable(enabled,basis||'checkbox');}
@@ -668,8 +700,8 @@ export function cancelPhotoRun(){closePhotoRun('cancelled');}
 // slot with its own Cancel, Retry and Remove and tab-only pixels. face.batch renders tiles over these and never keeps
 // its own slots, attempt IDs or pixel references. Results are W+ latents; slot events carry slot, attempt and batch
 // revision.
-export async function encodeCropBatch(files,options={}){await pushGrants();return (await engine()).encodeConfirmedCrops(files,options);}
-export async function retryCropSlots(slotIds,options={}){await pushGrants();return (await engine()).retryCropSlots(slotIds,options);}
+export async function encodeCropBatch(files,options={}){await pushGrants({strict:true});return (await engine()).encodeConfirmedCrops(files,options);}
+export async function retryCropSlots(slotIds,options={}){await pushGrants({strict:true});return (await engine()).retryCropSlots(slotIds,options);}
 export async function cancelCropSlot(slotId){return (await engine()).cancelCropSlot(slotId);}
 export async function removeCropSlot(slotId){return (await engine()).removeCropSlot(slotId);}
 export async function disposeCropBatch(batchRevision){return (await engine()).disposeCropBatch(batchRevision);}

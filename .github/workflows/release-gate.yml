@@ -57,7 +57,41 @@ permissions:
   contents: read
   actions: read
 jobs:
+  # fm-6fx6/fm-jx26: a green path-filtered push is not release qualification. Before any hosted or device work, the
+  # artifact's own run must hold the all-lanes pre-deploy receipt (pre-deploy.yml) for these exact bytes.
+  receipt:
+    runs-on: [self-hosted, linux-x64]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: ./.github/actions/fetch-artifact
+        id: artifact
+        with:
+          source_repo_id: ${{ inputs.artifact_source_repo_id }}
+          workflow: ${{ inputs.artifact_workflow }}
+          run_id: ${{ inputs.artifact_run }}
+          commit: ${{ inputs.artifact_commit }}
+          artifact_name: ${{ inputs.artifact_name }}
+          out: .cache/receipt-site
+      - name: The exact artifact's run holds a complete all-lanes pre-deploy receipt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IN_REPO: ${{ inputs.artifact_source_repo_id }}
+          ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact_digest }}
+          ARTIFACT_RUN: ${{ inputs.artifact_run }}
+          ARTIFACT_WORKFLOW: ${{ inputs.artifact_workflow }}
+          ARTIFACT_COMMIT: ${{ inputs.artifact_commit }}
+          ARTIFACT_NAME: ${{ inputs.artifact_name }}
+        run: |
+          test "$IN_REPO" = "$GITHUB_REPOSITORY_ID"
+          dir="$RUNNER_TEMP/receipt-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          gh run download "$ARTIFACT_RUN" --repo "$GITHUB_REPOSITORY" --name "pre-deploy-$ARTIFACT_COMMIT" --dir "$dir"
+          node scripts/ci/pre-deploy.ts --receipt "$dir/pre-deploy.json" | tee -a "$GITHUB_STEP_SUMMARY"
   hosted:
+    needs: receipt
     permissions:
       contents: read
       actions: write # dispatch the separately bounded hosted attempt, never cancel it
@@ -93,6 +127,7 @@ jobs:
           path: hosted-evidence/
           if-no-files-found: warn
   device-lab:
+    needs: receipt
     uses: ./.github/workflows/device-lab.yml
     with:
       artifact_source_repo_id: ${{ inputs.artifact_source_repo_id }}
@@ -105,15 +140,16 @@ jobs:
       journey: cold-face,warm-face,morph
       label: gate-${{ inputs.artifact_name }}
   gate:
-    needs: [hosted, device-lab]
+    needs: [receipt, hosted, device-lab]
     if: always()
     runs-on: [self-hosted, linux-x64]
     timeout-minutes: 10
     steps:
-      - name: Available hosted lanes and required local cells qualify
+      - name: The all-lanes receipt, available hosted lanes and required local cells qualify
         env:
+          RECEIPT: ${{ needs.receipt.result }}
           HOSTED: ${{ needs.hosted.result }}
           LAB: ${{ needs.device-lab.result }}
         run: |
-          echo "hosted lanes: $HOSTED; device-lab cells: $LAB" | tee -a "$GITHUB_STEP_SUMMARY"
-          test "$HOSTED" = success && test "$LAB" = success
+          echo "pre-deploy receipt: $RECEIPT; hosted lanes: $HOSTED; device-lab cells: $LAB" | tee -a "$GITHUB_STEP_SUMMARY"
+          test "$RECEIPT" = success && test "$HOSTED" = success && test "$LAB" = success

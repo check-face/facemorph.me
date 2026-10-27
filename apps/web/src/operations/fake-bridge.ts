@@ -78,9 +78,16 @@ export function fakeBridge() {
     cancel: () => void calls.push('cancel'),
     cancelPhotoRun: () => void calls.push('cancelPhotoRun'),
     importProject: () => Promise.reject(Error('importProject is not used by these tests')),
-    execute(request) {
+    async execute(request, compute) {
+      await compute?.acquire();
       calls.push(`execute:${request.action}:${request.target ?? ''}`);
-      return new Promise((resolve, reject) => executions.push({ request, resolve, reject }));
+      try {
+        return await new Promise<Output>((resolve, reject) =>
+          executions.push({ request, resolve, reject }),
+        );
+      } finally {
+        await compute?.release();
+      }
     },
     rememberView: () => {},
     prepareFaceFile(id) {

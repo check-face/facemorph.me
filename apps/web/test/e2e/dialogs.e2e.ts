@@ -170,6 +170,7 @@ for (const [engine, type] of Object.entries(engines).filter(
         await last(page, 'CropPan');
         await operatedClick(page, crop.getByRole('slider', { name: 'Zoom' }), {
           step: 'dialogs/crop/zoom',
+          activation: 'range-input',
           touch,
           settleMs: 100,
           log: new StepLog({ map: bindOrigins(DEFAULT_HOST_MAP, { app: [site.origin] }) }),

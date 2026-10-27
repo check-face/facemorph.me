@@ -116,8 +116,8 @@ async function serviceRoute() {
   } as const;
 }
 
-/** Waits for measured inventory, or the next measurement caused by an explicit approval. */
-function downloadInventory(approve?: () => void): Promise<f.Downloads> {
+/** Waits for measured inventory, or the photo measurement from explicit background preparation. */
+function downloadInventory(prepare?: () => void): Promise<f.Downloads> {
   return new Promise((resolve, reject) => {
     let off = () => {};
     let subscribed = false;
@@ -125,22 +125,34 @@ function downloadInventory(approve?: () => void): Promise<f.Downloads> {
       off();
       reject(
         new Error(
-          approve
+          prepare
             ? 'Photo approval did not produce a measured inventory after descriptor inspection within 30 seconds.'
             : 'The initial download inventory was not known within 30 seconds.',
         ),
       );
     }, 30_000);
     off = f.subscribeDownloads((snapshot) => {
-      // subscribeDownloads immediately reports its current snapshot; a revised decision needs a new one.
-      if (!snapshot.known || (approve && !subscribed)) return;
+      // Consent alone posts bounded grants; it deliberately does not inspect the encoder during
+      // synthesis setup. Explicit preparation reaches the photo stage after generator acquisition.
+      // Descriptor inspection publishes inventory before grant resolution can demand a revised
+      // decision. Wait for that decision or verified readiness, never a notification count.
+      if (!snapshot.known || (prepare && !subscribed)) return;
+      if (prepare && !snapshot.photoReady && !snapshot.photoApprovalRequired) {
+        if (snapshot.phase === 'failed') {
+          clearTimeout(timer);
+          queueMicrotask(() => off());
+          reject(new Error('Background model preparation failed before photo readiness.'));
+          return;
+        }
+        return;
+      }
       clearTimeout(timer);
       queueMicrotask(() => off());
       resolve(snapshot);
     });
     subscribed = true;
     try {
-      approve?.();
+      prepare?.();
     } catch (error) {
       clearTimeout(timer);
       off();
@@ -156,8 +168,29 @@ const harness = {
    */
   async approveDownloads() {
     const initial = await downloadInventory();
-    const revised = await downloadInventory(() => void f.consentToDownload('photo'));
-    const approvedRevisedCost = revised.photoBytes > initial.photoBytes;
+    if (initial.photoReady) {
+      f.consentToDownload('photo');
+      return {
+        scope: 'photo',
+        initialPhotoBytes: initial.photoBytes,
+        revisedPhotoBytes: initial.photoBytes,
+        approvedRevisedCost: false,
+      };
+    }
+    // Use the real public preparation flow to discover the descriptor. No invented grant,
+    // empty encode, or eager descriptor request is substituted for the product's lifecycle.
+    let revised: f.Downloads;
+    try {
+      revised = await downloadInventory(() => f.downloadModels(true));
+    } finally {
+      // Preparation is setup only; retain its verified generator bytes, and let each actual
+      // photo operation own its encoder acquisition, progress, cancellation and attempts.
+      f.cancelDownloadSetup();
+    }
+    // Missing-byte totals can fall while the generator is retained, even when descriptor
+    // discovery increases the encoder scope. Honour the actual revised-decision signal.
+    const approvedRevisedCost =
+      revised.photoApprovalRequired === true || revised.photoBytes > initial.photoBytes;
     if (approvedRevisedCost) f.consentToDownload('photo');
     return {
       scope: 'photo',

@@ -56,7 +56,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
   try{return await attempt;}finally{if(configPending===attempt)configPending=null;}
  }
 
- function stop(reason=abortError()){unmark();worker?.terminate();worker=null;synthesisRuns=0;validated=false;for(const task of pending.values()){clearTimeout(task.timer);task.reject(reason);}pending.clear();}
+ function stop(reason=abortError()){unmark();worker?.terminate();worker=null;synthesisRuns=0;validated=false;for(const task of pending.values()){clearTimeout(task.timer);if(task.computeHeld)void Promise.resolve().then(()=>task.admission?.release()).catch(()=>{});task.reject(reason);}pending.clear();}
  // An operation that may acquire model bytes gets a wider stall window: on phone-class
  // storage the silent tail of a cold acquire (Cache.put commit, sha verify) legitimately
  // runs minutes without emitting a single event, and the inference watchdog must not kill
@@ -77,8 +77,12 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
  // ends. A stall is the worker saying nothing for the stall window, so any message keeps every pending operation
  // alive (fm-5klw: a slow emulator morph was stopped by its preempted canary's own timer).
  function alive(){for(const task of pending.values())task.reset();}
- function send(type,payload={},progress,stall=stallMs,onFrame){return new Promise((resolve,reject)=>{const id=++sequence;if(type!=='initialize'&&!payload.resume)mark(type,id);const task={resolve,reject,progress,operation:type,onFrame};const timeout=()=>{if(hidden()){task.timer=setTimeout(timeout,stall);return;}stop(Error('Generation stopped responding. Your saved work is safe.'));};task.timer=setTimeout(timeout,stall);task.reset=()=>{clearTimeout(task.timer);task.timer=setTimeout(timeout,stall);};pending.set(id,task);try{worker.postMessage({id,type,...payload});}catch(error){clearTimeout(task.timer);pending.delete(id);reject(error);}});}
- async function start(progress){if(worker)return;await config();worker=workerFactory();worker.onmessage=({data})=>{const task=pending.get(data.id);if(!task)return;alive();if(data.type==='frame'){
+ function send(type,payload={},progress,stall=stallMs,onFrame){return new Promise((resolve,reject)=>{const id=++sequence;if(type!=='initialize'&&!payload.resume)mark(type,id);const task={resolve,reject,progress,operation:type,onFrame,admission:computeAdmission,waitingCompute:false};const timeout=()=>{if(hidden()||task.waitingCompute){task.timer=setTimeout(timeout,stall);return;}stop(Error('Generation stopped responding. Your saved work is safe.'));};task.timer=setTimeout(timeout,stall);task.reset=()=>{clearTimeout(task.timer);task.timer=setTimeout(timeout,stall);};pending.set(id,task);try{worker.postMessage({id,type,...payload,computeAdmission:Boolean(task.admission)});}catch(error){clearTimeout(task.timer);pending.delete(id);reject(error);}});}
+ async function start(progress){if(worker)return;await config();worker=workerFactory();worker.onmessage=({data})=>{const task=pending.get(data.id);if(!task)return;alive();if(data.type==='compute-request'){
+  const owner=worker;task.waitingCompute=true;
+  const respond=error=>{task.waitingCompute=false;if(worker!==owner||!pending.has(data.id)){if(!error&&data.phase==='acquire')void Promise.resolve().then(()=>task.admission.release()).catch(()=>{});return;}if(!error)task.computeHeld=data.phase==='acquire';task.reset();try{owner.postMessage({type:'compute-response',token:data.token,...(error?{error:{name:error.name||'Error',message:String(error.message||error)}}:{})});}catch{}};
+  Promise.resolve().then(()=>{if(!['acquire','release'].includes(data.phase)||!task.admission)throw Error('Invalid compute admission request');return task.admission[data.phase]();}).then(()=>respond(),respond);return;
+ }if(data.type==='frame'){
  if(data.rgba){const owner=worker;Promise.resolve().then(()=>task.onFrame?.(data.index,data.blob,data.rgba)).then(()=>owner.postMessage({id:data.id,type:'raw-frame-ack',index:data.index})).catch(error=>stop(error));}
  else task.onFrame?.(data.index,data.blob);return;
 }if(data.type==='progress'){if(data.stage==='synthesis-complete'){synthesisRuns++;if(synthesisRuns>1&&['generate','synthesize'].includes(task.operation)&&Number.isFinite(data.elapsedMs)&&data.elapsedMs>0)task.synthesisMs=data.elapsedMs;}emit(data,task.progress);return;}clearTimeout(task.timer);pending.delete(data.id);unmark();if(data.type==='error'){const refused=data.error.name==='GrantRefused';if(task.operation==='encode-aligned'&&!refused){encoderValidatedSha256=undefined;forgetEncoder();}
@@ -103,7 +107,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
  // reading the page. It runs in a worker of its own: the inference worker's queue is strictly
  // ordered, so warming through it would put a real Generate behind the whole download. Any real
  // operation terminates this worker, and every asset it had already committed stays cached.
- let prefetchWorker=null,prefetchCancel=null;
+ let prefetchWorker=null,prefetchCancel=null,prefetchExplicit=false,computeAdmission;
  // What workers may acquire (fm-qrfz): the app's grants, posted with every initialize and to live workers when an
  // approval changes them. Without any, a worker acquires nothing it does not already hold.
  let grants=null;
@@ -136,7 +140,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
   const mobile=nav?.userAgentData?.mobile||/Android|iPhone|iPad|iPod/.test(nav?.userAgent||'')||(nav?.platform==='MacIntel'&&nav?.maxTouchPoints>1);
   return Number.isFinite(memory)&&memory>=8&&!mobile;
  }
- function stopPrefetch(){const own=prefetchWorker,cancel=prefetchCancel;prefetchWorker=null;prefetchCancel=null;own?.terminate();
+ function stopPrefetch(){const own=prefetchWorker,cancel=prefetchCancel;prefetchWorker=null;prefetchCancel=null;prefetchExplicit=false;own?.terminate();
   // A terminated worker never answers, so the waiting promise is settled here rather than left
   // pending for the lifetime of the page.
   cancel?.();}
@@ -152,7 +156,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
  globalThis.document?.addEventListener?.('visibilitychange',()=>{
   if(!hidden())for(const task of pending.values())task.reset?.();
  });
- async function operation(fn,{signal,onProgress:progress}={}){if(disposed)throw Error('Runtime disposed');if(active)throw Error('Another generation is still running.');stopPrefetch();if(signal?.aborted)throw signal.reason||abortError();const controller=new AbortController();active=controller;const abort=()=>{controller.abort(signal?.reason||abortError());stop(controller.signal.reason);};signal?.addEventListener('abort',abort,{once:true});try{return await fn(progress,controller.signal);}finally{signal?.removeEventListener('abort',abort);active=null;}}
+ async function operation(fn,{signal,onProgress:progress}={}){if(disposed)throw Error('Runtime disposed');if(active)throw Error('Another generation is still running.');if(!prefetchExplicit)stopPrefetch();if(signal?.aborted)throw signal.reason||abortError();const controller=new AbortController();active=controller;const abort=()=>{controller.abort(signal?.reason||abortError());stop(controller.signal.reason);};signal?.addEventListener('abort',abort,{once:true});try{return await fn(progress,controller.signal);}finally{signal?.removeEventListener('abort',abort);active=null;}}
  async function cache(){try{originals ||= await openOriginals();return originals;}catch{return null;}}
  // Tells the product which route was actually admitted, so the interface can say when this
  // device is on the slow path instead of leaving a visitor watching an unexplained wait.
@@ -285,6 +289,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
     announce(progress,'admitted',{...decision.event,provider:route});return;
    }catch(error){
     if(signal.aborted)throw signal.reason;
+    if(error?.name==='GrantRefused')throw error;
     lastError=error;
     // An engine that never started tells us nothing about this route, and trying the next one
     // will meet the same wall. Report it once, honestly, instead of marking every route dead.
@@ -466,7 +471,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
    // during either. `stopPrefetch` only terminates a worker that already exists, so without this
    // re-check the warm-up would create its worker *after* being cancelled and run unsupervised.
    if(busy()||prefetchWorker)return {started:false};
-   own=workerFactory();prefetchWorker=own;
+   own=workerFactory();prefetchWorker=own;prefetchExplicit=explicit;
    const result=await new Promise((resolve,reject)=>{
     prefetchCancel=()=>reject(Error('Warm-up superseded.'));
     own.onerror=()=>reject(Error('The warm-up engine stopped.'));
@@ -477,7 +482,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
       if(explicit){if(data.stage==='asset-acquisition')emit({stage:'models-download',scope,loaded:data.loaded,total:data.total,fetched:data.fetched,fetchedTotal:data.fetchedTotal});return;}
       if(warmingPhoto)emit({...data,stage:data.stage==='asset-acquisition'?'photo-acquisition':data.stage});
       return;}
-     if(data.type==='error')reject(Error(data.error.message));
+     if(data.type==='error')reject(Object.assign(Error(data.error.message),{name:data.error.name}));
      else if(data.id===2)resolve(data.result);
     };
     own.postMessage({id:1,type:'initialize',manifest,grants,provider:target==='webgpu'?'webgpu':'wasm',gpuEngine:gpuEngine(target),manifestSha256:manifestHash});
@@ -488,7 +493,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
    const done=warmingPhoto?'photo-tools-ready':'models-prefetched';
    emit({stage:done,provider:target,...result});
    return {started:true,...result};
-  }catch{return {started:false};}
+  }catch(error){if(error?.name==='GrantRefused')throw error;return {started:false};}
   finally{if(prefetchWorker===own)stopPrefetch();}
  }
  function photoAvailable(){
@@ -524,6 +529,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
  /** The policy's answer for one operation on this browser, with its typed event (fm-lt2p); fetches no model. */
  admission:(operation,requested=preferredRoute)=>admissionFor(operation,requested).then(r=>r.decision),
  setFallbackScope:(scope)=>{if(active)throw Error('Cannot change fallback scope during generation.');if(!['none','cpu-once'].includes(scope))throw Error('Invalid fallback scope');fallbackScope=scope;},
+ setComputeAdmission:next=>{computeAdmission=next;},
  setPreferredRoute:(requested)=>{if(active)throw Error('Cannot change processing mode during generation.');if(requested==='webgl')throw new RemovedRouteError();if(!['auto','cpu','webgpu'].includes(requested))throw Error('Invalid preferred inference route');if(preferredRoute!==requested){stop();preferredRoute=requested;}},
  qualify:(requestedRoute='cpu',options={})=>afterDelivery(operation(async progress=>{if(requestedRoute==='webgl')throw new RemovedRouteError();if(!['cpu','webgpu'].includes(requestedRoute))throw Error('Choose CPU or WebGPU.');if(route!==requestedRoute)stop();route=requestedRoute;await start(progress);const result=await send('qualify',{},progress);acceptQualification(result);return result;},options)),
  generate:(request,options={})=>afterDelivery(operation(async(progress,signal)=>{const {identity}=await inputLatent(request.mode,request.value);return cachedGenerate({kind:'seed',identity},async()=>{await start(progress);return send('generate',{mode:request.mode,value:request.value,raw:options.raw===true},progress,ACQUIRE_STALL);},progress,signal);},{...request,...options})),
@@ -558,6 +564,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
   // Admitted by capability before any detector or model request (fm-lt2p), never by a phone label.
   const {decision}=await admissionFor('photo-encode',preferredRoute,progress);if(decision.status==='refused')throw new AdmissionRefused(decision);});},options)),
  cancel:()=>{active?.abort(abortError());stop();},
+ cancelPrefetch:stopPrefetch,
  // The confirmed-crop queue for several crops (fm-fy2.8): face.batch renders tiles on these and never reimplements
  // slots, attempt identities or pixel ownership. Each call that runs attempts is one runtime operation.
  encodeConfirmedCrops:(files,options={})=>afterDelivery(operation(async(progress,signal)=>{

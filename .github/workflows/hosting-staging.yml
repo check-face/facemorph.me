@@ -6,6 +6,11 @@ name: hosting-staging
 # acquisition step.
 on:
   workflow_call:
+    inputs:
+      shared_build:
+        type: boolean
+        default: false
+        description: Reuse the exact compiled workspace from this main run
   workflow_dispatch:
 jobs:
   staging:
@@ -25,16 +30,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm ci
+      - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - uses: ./.github/actions/setup-runtime
       # The deploy driver's warm and mirror-deploy run the model-host package's CLI (fm-6fx6).
-      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host
       - run: node --test 'scripts/hosting/*.test.mjs'
       - name: Imported files equal the frozen revision
         run: node scripts/hosting/import-hosting.mjs --check --classic .cache/classic
       - name: No .wrangler state, secrets or weights in hosting/
         run: node scripts/hosting/scan-hosting.mjs
+      - uses: ./.github/actions/restore-site
+        if: inputs.shared_build
+      - if: inputs.shared_build
+        run: npm run build:next -- --check
       - name: build:next (monorepo destination)
+        if: ${{ !inputs.shared_build }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run build:next

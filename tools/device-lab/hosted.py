@@ -786,6 +786,19 @@ def github_api(path, payload=None):
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
+# hosted-lanes.yml's workflow_dispatch inputs. A reusable workflow's toJSON(inputs) can carry its caller's
+# dispatch inputs too (next-deploy's `target`), and GitHub refuses a dispatch naming an undeclared input.
+DISPATCH_INPUTS = ('artifact_source_repo_id', 'artifact_workflow', 'artifact_commit', 'artifact_run',
+                   'artifact_name', 'runtime_sha')
+
+
+def dispatch_inputs(inputs):
+    missing = [k for k in DISPATCH_INPUTS if not inputs.get(k)]
+    if missing:
+        raise SystemExit(f'release inputs lack {", ".join(missing)}')
+    return {k: str(inputs[k]) for k in DISPATCH_INPUTS}
+
+
 def release_reports(out):
     # Multi-path desktop uploads preserve lane/ alongside component evidence;
     # mobile uploads have a single root. Search only this attempt's lane artifacts.
@@ -799,7 +812,7 @@ def cmd_release(args):
     successfully; a bounded queue absence is untested, and late work stays linked."""
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    inputs = json.loads(Path(args.inputs).read_text())
+    inputs = dispatch_inputs(json.loads(Path(args.inputs).read_text()))
     inputs['qualification_id'] = 'release-' + uuid.uuid4().hex
     root = f'repos/{args.repository}'
     github_api(root + '/actions/workflows/hosted-lanes.yml/dispatches', {'ref': args.ref, 'inputs': inputs})

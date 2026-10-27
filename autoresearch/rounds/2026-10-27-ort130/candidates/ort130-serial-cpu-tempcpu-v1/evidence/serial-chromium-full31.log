@@ -1,0 +1,45 @@
+(node:1138268) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/fm-qeh-cpu-measure-20261026T2126/packages/stylegan-js/test/full31/full31.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/runner/fm-qeh-cpu-measure-20261026T2126/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ full31 on the CPU route in Playwright chromium (45565.776058ms)
+ℹ cpu-chromium frame-00: maxRgb 1, maxFloat 0.0000029206275939941406
+ℹ cpu-chromium frame-01: maxRgb 1, maxFloat 0.000003814697265625
+ℹ cpu-chromium frame-02: maxRgb 1, maxFloat 0.000006541609764099121
+ℹ cpu-chromium frame-03: maxRgb 1, maxFloat 0.0000032186508178710938
+ℹ cpu-chromium frame-04: maxRgb 1, maxFloat 0.000002384185791015625
+ℹ cpu-chromium frame-05: maxRgb 1, maxFloat 0.000007569789886474609
+ℹ cpu-chromium frame-06: maxRgb 1, maxFloat 0.000002473592758178711
+ℹ cpu-chromium frame-07: maxRgb 1, maxFloat 0.000003993511199951172
+ℹ cpu-chromium frame-08: maxRgb 1, maxFloat 0.000006079673767089844
+ℹ cpu-chromium frame-09: maxRgb 1, maxFloat 0.000004470348358154297
+ℹ cpu-chromium frame-10: maxRgb 1, maxFloat 0.000004231929779052734
+ℹ cpu-chromium frame-11: maxRgb 1, maxFloat 0.000009357929229736328
+ℹ cpu-chromium frame-12: maxRgb 1, maxFloat 0.0000028014183044433594
+ℹ cpu-chromium frame-13: maxRgb 1, maxFloat 0.000006854534149169922
+ℹ cpu-chromium frame-14: maxRgb 1, maxFloat 0.0000020265579223632812
+ℹ cpu-chromium frame-15: maxRgb 1, maxFloat 0.000008016824722290039
+ℹ cpu-chromium frame-16: maxRgb 1, maxFloat 0.000002562999725341797
+ℹ cpu-chromium frame-17: maxRgb 1, maxFloat 0.000003814697265625
+ℹ cpu-chromium frame-18: maxRgb 1, maxFloat 0.000007927417755126953
+ℹ cpu-chromium frame-19: maxRgb 1, maxFloat 0.000003993511199951172
+ℹ cpu-chromium frame-20: maxRgb 1, maxFloat 0.000006258487701416016
+ℹ cpu-chromium frame-21: maxRgb 1, maxFloat 0.000006336718797683716
+ℹ cpu-chromium frame-22: maxRgb 1, maxFloat 0.0000019818544387817383
+ℹ cpu-chromium frame-23: maxRgb 1, maxFloat 0.000008970499038696289
+ℹ cpu-chromium frame-24: maxRgb 1, maxFloat 0.000002950429916381836
+ℹ cpu-chromium frame-25: maxRgb 1, maxFloat 0.000003725290298461914
+ℹ cpu-chromium encoded-synthetic-photo: maxRgb 1, maxFloat 0.00000667572021484375
+ℹ cpu-chromium zero-noise: maxRgb 1, maxFloat 0.000004291534423828125
+ℹ cpu-chromium alternate-noise: maxRgb 1, maxFloat 0.000002682209014892578
+ℹ cpu-chromium trunc-psi-0: maxRgb 1, maxFloat 0.0000044405460357666016
+ℹ cpu-chromium trunc-psi-1: maxRgb 1, maxFloat 0.000002205371856689453
+ℹ cpu-chromium: ort-wasm/cpu/cpu, threads 4, 31/31 checked in 42 s, max RGB 1, max sampled float 0.000009357929229736328
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 46026.184245

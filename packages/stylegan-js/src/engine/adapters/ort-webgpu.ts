@@ -14,12 +14,19 @@
 
 import type { RequestedRoute } from '../../contracts/capability.ts';
 import type { ModelDescriptor } from '../../contracts/descriptor.ts';
-import { floats, readLocal, type EngineAsset, type LocalAssetReader } from '../reader.ts';
+import {
+  floats,
+  readLocal,
+  runCompute,
+  type EngineAsset,
+  type LocalAssetReader,
+} from '../reader.ts';
 import { BufferUsage, MapMode } from './gpu-constants.ts';
 import { ortWebGpuSupported } from '../routes.ts';
 import { createBoundaryPipeline } from './fused-resample.ts';
 import {
   assembleGenerator,
+  submitWithCompute,
   describedGeometry,
   type Generator,
   type GeneratorManifest,
@@ -154,7 +161,9 @@ export async function loadOrtWebGpuGenerator(o: {
         // Each stage is announced once its bytes are in hand, never before.
         const prefixModel = await readLocal(reader, bundle.prefix);
         o.progress?.('gpu-prefix-loading');
-        const prefix = await ort.InferenceSession.create(prefixModel, options);
+        const prefix = await runCompute(reader, () =>
+          ort!.InferenceSession.create(prefixModel, options),
+        );
         sessions.push(prefix);
         device = ort.env.webgpu.device as GPUDevice;
         const d = device;
@@ -168,132 +177,134 @@ export async function loadOrtWebGpuGenerator(o: {
         });
         const suffixModel = await readLocal(reader, bundle.suffix);
         o.progress?.('gpu-suffix-loading');
-        const suffix = await ort.InferenceSession.create(suffixModel, {
-          ...options,
-          executionProviders: [{ name: 'webgpu', device: d }],
-        });
-        sessions.push(suffix);
-        if (ort.env.webgpu.device !== d) throw Error('GPU sessions use different devices.');
-        const O = ort;
-        const tensor = (dims: readonly number[], data?: Float32Array) => {
-          const size = dims.reduce((a, b) => a * b, 4);
-          const buffer = d.createBuffer({
-            size,
-            usage: BufferUsage.STORAGE | BufferUsage.COPY_DST | BufferUsage.COPY_SRC,
+        return await runCompute(reader, async (): Promise<SynthesisBackend> => {
+          const suffix = await ort!.InferenceSession.create(suffixModel, {
+            ...options,
+            executionProviders: [{ name: 'webgpu', device: d }],
           });
-          buffers.add(buffer);
-          if (data) d.queue.writeBuffer(buffer, 0, data as Float32Array<ArrayBuffer>);
-          const t = O.Tensor.fromGpuBuffer?.(buffer, { dataType: 'float32', dims });
-          if (!t) throw Error('The pinned runtime cannot wrap GPU buffers.');
-          return { buffer, tensor: t };
-        };
-        const all: Record<string, { buffer: GPUBuffer; tensor: OrtTensor }> = {
-          w: tensor([1, latent.layers, latent.width]),
-        };
-        for (const n of manifest.noise) all[n.name] = tensor(n.shape);
-        const outputs = Object.fromEntries(
-          Object.entries(split.prefixOutputs).map(([name, dims]) => [name, tensor(dims)]),
-        );
-        // The boundary's 32 channels at full resolution feed the suffix; the suffix writes the image.
-        const external = tensor([1, 32, height, width]);
-        const out = tensor([1, channels, height, width]);
-        const filterBuffer = tensor([16], filter);
-        const biasBuffer = tensor([32], bias);
-        const pick = (name: string) => {
-          const t = outputs[name] ?? all[name];
-          if (!t) throw Error(`Split graph names an unknown tensor: ${name}`);
-          return t;
-        };
-        const feeds = Object.fromEntries(
-          prefix.inputNames.map((name) => [name, pick(name).tensor]),
-        );
-        const preout = Object.fromEntries(
-          Object.entries(outputs).map(([name, item]) => [name, item.tensor]),
-        );
-        const suffixFeeds = Object.fromEntries(
-          split.suffixInputs.map((name) => [
-            name,
-            name === split.external ? external.tensor : pick(name).tensor,
-          ]),
-        );
-        const phase = String(meta['phase']);
-        const fused = (
-          await createBoundaryPipeline(
-            d,
-            meta as unknown as { strength: number; gain: number },
-            true,
-            256,
-            'bounded',
-            width,
-          )
-        ).bind({
-          phase: pick(phase + '__tile0').buffer,
-          phaseB: pick(phase + '__tile1').buffer,
-          demod: outputs[String(meta['demod'])]?.buffer,
-          // The boundary's tail adds the first full-resolution noise plane.
-          noise: all[geometry.noise[geometry.noise.length - 2]!.name]?.buffer,
-          filter: filterBuffer.buffer,
-          bias: biasBuffer.buffer,
-          output: external.buffer,
-        });
-        const spare: GPUBuffer[] = [];
-        const submitRaw = async (values: Float32Array, set: NoiseSet) => {
-          if (failure) throw failure;
-          if (closing) throw Error('GPU session closed.');
-          d.queue.writeBuffer(all['w']!.buffer, 0, values as Float32Array<ArrayBuffer>);
-          for (const n of manifest.noise)
-            d.queue.writeBuffer(all[n.name]!.buffer, 0, set[n.name] as Float32Array<ArrayBuffer>);
-          await prefix.run(feeds, preout);
-          const command = d.createCommandEncoder();
-          fused.encode(command);
-          d.queue.submit([command.finish()]);
-          await suffix.run(suffixFeeds, { image: out.tensor });
-          if (failure) throw failure;
-          let readback = spare.pop();
-          if (!readback) {
-            readback = d.createBuffer({
-              size: out.buffer.size,
-              usage: BufferUsage.MAP_READ | BufferUsage.COPY_DST,
+          sessions.push(suffix);
+          if (ort!.env.webgpu!.device !== d) throw Error('GPU sessions use different devices.');
+          const O = ort!;
+          const tensor = (dims: readonly number[], data?: Float32Array) => {
+            const size = dims.reduce((a, b) => a * b, 4);
+            const buffer = d.createBuffer({
+              size,
+              usage: BufferUsage.STORAGE | BufferUsage.COPY_DST | BufferUsage.COPY_SRC,
             });
-            buffers.add(readback);
-          }
-          const rb = readback;
-          const drop = () => {
-            buffers.delete(rb);
-            rb.destroy();
+            buffers.add(buffer);
+            if (data) d.queue.writeBuffer(buffer, 0, data as Float32Array<ArrayBuffer>);
+            const t = O.Tensor.fromGpuBuffer?.(buffer, { dataType: 'float32', dims });
+            if (!t) throw Error('The pinned runtime cannot wrap GPU buffers.');
+            return { buffer, tensor: t };
           };
-          const copy = d.createCommandEncoder();
-          copy.copyBufferToBuffer(out.buffer, 0, rb, 0, out.buffer.size);
-          d.queue.submit([copy.finish()]);
-          const mapped = rb.mapAsync(MapMode.READ);
-          const done = (async () => {
-            try {
-              await mapped;
-            } catch (error) {
-              drop();
-              throw failure ?? error;
+          const all: Record<string, { buffer: GPUBuffer; tensor: OrtTensor }> = {
+            w: tensor([1, latent.layers, latent.width]),
+          };
+          for (const n of manifest.noise) all[n.name] = tensor(n.shape);
+          const outputs = Object.fromEntries(
+            Object.entries(split.prefixOutputs).map(([name, dims]) => [name, tensor(dims)]),
+          );
+          // The boundary's 32 channels at full resolution feed the suffix; the suffix writes the image.
+          const external = tensor([1, 32, height, width]);
+          const out = tensor([1, channels, height, width]);
+          const filterBuffer = tensor([16], filter);
+          const biasBuffer = tensor([32], bias);
+          const pick = (name: string) => {
+            const t = outputs[name] ?? all[name];
+            if (!t) throw Error(`Split graph names an unknown tensor: ${name}`);
+            return t;
+          };
+          const feeds = Object.fromEntries(
+            prefix.inputNames.map((name) => [name, pick(name).tensor]),
+          );
+          const preout = Object.fromEntries(
+            Object.entries(outputs).map(([name, item]) => [name, item.tensor]),
+          );
+          const suffixFeeds = Object.fromEntries(
+            split.suffixInputs.map((name) => [
+              name,
+              name === split.external ? external.tensor : pick(name).tensor,
+            ]),
+          );
+          const phase = String(meta['phase']);
+          const fused = (
+            await createBoundaryPipeline(
+              d,
+              meta as unknown as { strength: number; gain: number },
+              true,
+              256,
+              'bounded',
+              width,
+            )
+          ).bind({
+            phase: pick(phase + '__tile0').buffer,
+            phaseB: pick(phase + '__tile1').buffer,
+            demod: outputs[String(meta['demod'])]?.buffer,
+            // The boundary's tail adds the first full-resolution noise plane.
+            noise: all[geometry.noise[geometry.noise.length - 2]!.name]?.buffer,
+            filter: filterBuffer.buffer,
+            bias: biasBuffer.buffer,
+            output: external.buffer,
+          });
+          const spare: GPUBuffer[] = [];
+          const submitRaw = async (values: Float32Array, set: NoiseSet) => {
+            if (failure) throw failure;
+            if (closing) throw Error('GPU session closed.');
+            d.queue.writeBuffer(all['w']!.buffer, 0, values as Float32Array<ArrayBuffer>);
+            for (const n of manifest.noise)
+              d.queue.writeBuffer(all[n.name]!.buffer, 0, set[n.name] as Float32Array<ArrayBuffer>);
+            await prefix.run(feeds, preout);
+            const command = d.createCommandEncoder();
+            fused.encode(command);
+            d.queue.submit([command.finish()]);
+            await suffix.run(suffixFeeds, { image: out.tensor });
+            if (failure) throw failure;
+            let readback = spare.pop();
+            if (!readback) {
+              readback = d.createBuffer({
+                size: out.buffer.size,
+                usage: BufferUsage.MAP_READ | BufferUsage.COPY_DST,
+              });
+              buffers.add(readback);
             }
-            const result = new Float32Array(rb.getMappedRange().slice(0));
-            rb.unmap();
-            if (failure) {
-              drop();
-              throw failure;
-            }
-            if (closing || spare.length >= 2) drop();
-            else spare.push(rb);
-            return result;
-          })();
-          return { done };
-        };
-        return {
-          engine: 'ort-webgpu',
-          route: 'webgpu',
-          boundary: 'map-async-complete',
-          submitRaw,
-          onLost: (l) => lost.push(l),
-          liveResources: () => sessions.length + buffers.size,
-          dispose,
-        };
+            const rb = readback;
+            const drop = () => {
+              buffers.delete(rb);
+              rb.destroy();
+            };
+            const copy = d.createCommandEncoder();
+            copy.copyBufferToBuffer(out.buffer, 0, rb, 0, out.buffer.size);
+            d.queue.submit([copy.finish()]);
+            const mapped = rb.mapAsync(MapMode.READ);
+            const done = (async () => {
+              try {
+                await mapped;
+              } catch (error) {
+                drop();
+                throw failure ?? error;
+              }
+              const result = new Float32Array(rb.getMappedRange().slice(0));
+              rb.unmap();
+              if (failure) {
+                drop();
+                throw failure;
+              }
+              if (closing || spare.length >= 2) drop();
+              else spare.push(rb);
+              return result;
+            })();
+            return { done };
+          };
+          return {
+            engine: 'ort-webgpu',
+            route: 'webgpu',
+            boundary: 'map-async-complete',
+            submitRaw: (values, noise) => submitWithCompute(reader, () => submitRaw(values, noise)),
+            onLost: (l) => lost.push(l),
+            liveResources: () => sessions.length + buffers.size,
+            dispose,
+          };
+        });
       } catch (error) {
         await dispose();
         throw error;

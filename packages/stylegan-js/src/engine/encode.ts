@@ -20,7 +20,13 @@ import type { EncodeRequest, EncodeResult, OperationIds } from '../contracts/ope
 import type { E4eTimings, StageTimingHook } from '../contracts/timing.ts';
 import { validateWorkerRequest } from '../contracts/worker-messages.ts';
 import type { ModuleHost } from './adapters/ort.ts';
-import { floats, readLocal, type EngineAsset, type LocalAssetReader } from './reader.ts';
+import {
+  floats,
+  readLocal,
+  runCompute,
+  type EngineAsset,
+  type LocalAssetReader,
+} from './reader.ts';
 
 export const ENCODER_STREAM_KIND = 'e4e-onnx-sequential-shards-v1';
 /** The FFHQ e4e encoder the shards were cut from, as the FFHQ descriptor names it. */
@@ -272,97 +278,99 @@ export function loadStreamedEncoder(o: {
     try {
       for (const step of manifest.steps) {
         check();
-        let session: Awaited<ReturnType<EncoderOrt['InferenceSession']['create']>> | undefined;
-        let outputs: Awaited<ReturnType<NonNullable<typeof session>['run']>> | undefined;
-        const feeds: Record<string, { dispose(): void }> = {};
-        let primary: unknown;
-        try {
-          const readAt = now();
-          let bytes: Uint8Array | null = await readLocal(o.reader, step);
-          check();
-          if (bytes.byteLength !== step.size)
-            throw new EncoderUnavailable(
-              'schedule',
-              `Encoder shard size mismatch at step ${step.id}.`,
-            );
-          timings.verifiedReadMs += now() - readAt;
-          const createAt = now();
-          session = await o.ort.InferenceSession.create(bytes, {
-            executionProviders: ['wasm'],
-            enableCpuMemArena: false,
-            enableMemPattern: false,
-            extra: { session: { disable_prepacking: '1' } },
-          });
-          bytes = null;
-          s.sessionsCreated++;
-          s.liveSessions++;
-          s.maxLiveSessions = Math.max(s.maxLiveSessions, s.liveSessions);
-          if (s.liveSessions > MEMORY_BOUNDS.maxLiveEncoderSessions)
-            throw new EncoderUnavailable('schedule', 'More than one live encoder session.');
-          timings.sessionCreateMs += now() - createAt;
-          stage('encoder-session-create', createAt);
-          timings.wasmHeapBytes = Math.max(timings.wasmHeapBytes, heap());
-          check();
-          for (const spec of step.inputs) {
-            const value = state.get(spec.name);
-            const [type, Ctor] = TYPES[spec.dtype];
+        const readAt = now();
+        let bytes: Uint8Array | null = await readLocal(o.reader, step);
+        check();
+        if (bytes.byteLength !== step.size)
+          throw new EncoderUnavailable(
+            'schedule',
+            `Encoder shard size mismatch at step ${step.id}.`,
+          );
+        timings.verifiedReadMs += now() - readAt;
+        const createAt = now();
+        await runCompute(o.reader, async () => {
+          let session: Awaited<ReturnType<EncoderOrt['InferenceSession']['create']>> | undefined;
+          let outputs: Awaited<ReturnType<NonNullable<typeof session>['run']>> | undefined;
+          const feeds: Record<string, { dispose(): void }> = {};
+          try {
+            check();
+            session = await o.ort.InferenceSession.create(bytes!, {
+              executionProviders: ['wasm'],
+              enableCpuMemArena: false,
+              enableMemPattern: false,
+              extra: { session: { disable_prepacking: '1' } },
+            });
+            bytes = null;
+            s.sessionsCreated++;
+            s.liveSessions++;
+            s.maxLiveSessions = Math.max(s.maxLiveSessions, s.liveSessions);
+            if (s.liveSessions > MEMORY_BOUNDS.maxLiveEncoderSessions)
+              throw new EncoderUnavailable('schedule', 'More than one live encoder session.');
+            timings.sessionCreateMs += now() - createAt;
+            stage('encoder-session-create', createAt);
+            timings.wasmHeapBytes = Math.max(timings.wasmHeapBytes, heap());
+            check();
+            for (const spec of step.inputs) {
+              const value = state.get(spec.name);
+              const [type, Ctor] = TYPES[spec.dtype];
+              if (
+                !value ||
+                value.dtype !== spec.dtype ||
+                !(value.data instanceof Ctor) ||
+                !sameShape(value.shape, spec.shape)
+              )
+                throw new EncoderUnavailable(
+                  'schedule',
+                  `Encoder boundary input mismatch: ${spec.name}`,
+                );
+              feeds[spec.name] = new o.ort.Tensor(type, value.data, spec.shape);
+            }
+            const runAt = now();
+            outputs = await session.run(feeds);
+            timings.runMs += now() - runAt;
+            stage('encoder-run', runAt);
+            timings.wasmHeapBytes = Math.max(timings.wasmHeapBytes, heap());
+            check();
+            for (const spec of step.outputs) {
+              const value = outputs[spec.name];
+              const [type, Ctor] = TYPES[spec.dtype];
+              if (!value || value.type !== type || !sameShape(value.dims, spec.shape))
+                throw new EncoderUnavailable(
+                  'schedule',
+                  `Encoder boundary output mismatch: ${spec.name}`,
+                );
+              const raw = await value.getData();
+              if (!(raw instanceof Ctor))
+                throw new EncoderUnavailable('schedule', 'Encoder output storage mismatch.');
+              const copy = new Ctor(raw);
+              if (copy instanceof Float32Array && !copy.every(Number.isFinite))
+                throw new EncoderUnavailable('schedule', 'Nonfinite encoder output.');
+              state.set(spec.name, { data: copy, shape: spec.shape, dtype: spec.dtype });
+            }
+            let live = 0;
+            for (const v of state.values()) live += v.data.byteLength;
             if (
-              !value ||
-              value.dtype !== spec.dtype ||
-              !(value.data instanceof Ctor) ||
-              !sameShape(value.shape, spec.shape)
+              live !== step.liveBoundaryBytesBeforeRelease ||
+              live > manifest.maxLiveBoundaryBytes
             )
               throw new EncoderUnavailable(
                 'schedule',
-                `Encoder boundary input mismatch: ${spec.name}`,
+                'Encoder boundary allocation schedule mismatch.',
               );
-            feeds[spec.name] = new o.ort.Tensor(type, value.data, spec.shape);
-          }
-          const runAt = now();
-          outputs = await session.run(feeds);
-          timings.runMs += now() - runAt;
-          stage('encoder-run', runAt);
-          timings.wasmHeapBytes = Math.max(timings.wasmHeapBytes, heap());
-          check();
-          for (const spec of step.outputs) {
-            const value = outputs[spec.name];
-            const [type, Ctor] = TYPES[spec.dtype];
-            if (!value || value.type !== type || !sameShape(value.dims, spec.shape))
-              throw new EncoderUnavailable(
-                'schedule',
-                `Encoder boundary output mismatch: ${spec.name}`,
-              );
-            const raw = await value.getData();
-            if (!(raw instanceof Ctor))
-              throw new EncoderUnavailable('schedule', 'Encoder output storage mismatch.');
-            const copy = new Ctor(raw);
-            if (copy instanceof Float32Array && !copy.every(Number.isFinite))
-              throw new EncoderUnavailable('schedule', 'Nonfinite encoder output.');
-            state.set(spec.name, { data: copy, shape: spec.shape, dtype: spec.dtype });
-          }
-          let live = 0;
-          for (const v of state.values()) live += v.data.byteLength;
-          if (live !== step.liveBoundaryBytesBeforeRelease || live > manifest.maxLiveBoundaryBytes)
-            throw new EncoderUnavailable(
-              'schedule',
-              'Encoder boundary allocation schedule mismatch.',
-            );
-          for (const name of step.releaseAfter) state.delete(name);
-        } catch (error) {
-          primary = error;
-        } finally {
-          for (const value of Object.values(outputs ?? {})) value?.dispose();
-          for (const value of Object.values(feeds)) value.dispose();
-          if (session) {
-            try {
-              await session.release();
-            } finally {
-              s.liveSessions--;
-              s.sessionsReleased++;
+            for (const name of step.releaseAfter) state.delete(name);
+          } finally {
+            for (const value of Object.values(outputs ?? {})) value?.dispose();
+            for (const value of Object.values(feeds)) value.dispose();
+            if (session) {
+              try {
+                await session.release();
+              } finally {
+                s.liveSessions--;
+                s.sessionsReleased++;
+              }
             }
           }
-        }
-        if (primary) throw primary;
+        });
       }
       check();
       const w = state.get('w');
@@ -471,13 +479,15 @@ export async function loadEncoderRuntime(
       ),
       'text/javascript',
     );
-    const observer = (await host.import(observerUrl)) as { snapshot(): HeapSnapshot };
-    const ort = (await host.import(moduleUrl)) as EncoderOrt & {
-      env: { wasm: { numThreads?: number; wasmPaths?: unknown } };
-    };
-    ort.env.wasm.numThreads = 1;
-    ort.env.wasm.wasmPaths = { mjs: observerUrl, wasm: wasmUrl };
-    return { ort, snapshotMemory: () => observer.snapshot(), release };
+    return await runCompute(reader, async () => {
+      const observer = (await host.import(observerUrl)) as { snapshot(): HeapSnapshot };
+      const ort = (await host.import(moduleUrl)) as EncoderOrt & {
+        env: { wasm: { numThreads?: number; wasmPaths?: unknown } };
+      };
+      ort.env.wasm.numThreads = 1;
+      ort.env.wasm.wasmPaths = { mjs: observerUrl, wasm: wasmUrl };
+      return { ort, snapshotMemory: () => observer.snapshot(), release };
+    });
   } catch (error) {
     release();
     throw error;

@@ -35,7 +35,13 @@ import { FFHQ_1024_DESCRIPTOR, type ModelDescriptor } from '../../contracts/desc
 import type { NoiseMode } from '../canary.ts';
 import { requireLatent, toRgba8, truncate } from '../identity.ts';
 import { checkManifest, engineGeometry, type EngineGeometry } from '../model.ts';
-import { floats, readLocal, type EngineAsset, type LocalAssetReader } from '../reader.ts';
+import {
+  floats,
+  readLocal,
+  runCompute,
+  type EngineAsset,
+  type LocalAssetReader,
+} from '../reader.ts';
 import type { OrtModule, OrtSession, OrtTensor } from './ort.ts';
 
 export type AdapterEngine = 'ort-wasm' | 'ort-webgpu' | 'direct-webgpu';
@@ -61,6 +67,27 @@ export type NoiseSet = Readonly<Record<string, Float32Array>>;
 /** One queued face: `done` settles when its output is on the CPU. */
 export interface Submitted<T> {
   readonly done: Promise<T>;
+}
+
+/** Keeps the permit through readback, while exposing the original safe-to-queue-next-face boundary. */
+export function submitWithCompute<T>(
+  reader: LocalAssetReader,
+  submit: () => Promise<Submitted<T>>,
+): Promise<Submitted<T>> {
+  if (!reader.compute) return submit();
+  let queued!: (value: Submitted<T>) => void;
+  let failed!: (error: unknown) => void;
+  const submission = new Promise<Submitted<T>>((resolve, reject) => {
+    queued = resolve;
+    failed = reject;
+  });
+  const done = runCompute(reader, async () => {
+    const result = await submit();
+    queued({ done });
+    return result.done;
+  });
+  void done.catch(failed);
+  return submission;
 }
 
 /** What each synthesis engine supplies to the shared generator. */
@@ -205,6 +232,9 @@ export async function assembleGenerator(o: {
   // Reads during the load are timed; later ones (mapping on first use, canaries) are not load time.
   const reader: LocalAssetReader = {
     allowRepair: false,
+    ...(o.reader.compute
+      ? { compute: <T>(work: () => T | Promise<T>) => runCompute(o.reader, work) }
+      : {}),
     async read(asset) {
       if (!timing) return o.reader.read(asset);
       const t = now();
@@ -275,7 +305,10 @@ export async function assembleGenerator(o: {
       assertLive();
       const bytes = await readLocal(o.reader, manifest.mapping);
       assertLive();
-      const session = await ort.InferenceSession.create(bytes, { executionProviders: ['wasm'] });
+      const session = await runCompute(reader, () => {
+        assertLive();
+        return ort.InferenceSession.create(bytes, { executionProviders: ['wasm'] });
+      });
       if (disposed || lost) {
         // Disposed while the session was being created: release it, so nothing outlives dispose().
         await session.release();
@@ -380,40 +413,44 @@ export async function assembleGenerator(o: {
           throw new TypeError(`Expected finite float32 z [1,${schema.zLength}].`);
         await loadMapping();
         aborted(signal);
-        const ort = mappingOrt as OrtModule;
-        const startedAtMs = now();
-        const input = new ort.Tensor('float32', request.z, [1, schema.zLength]);
-        let out: OrtTensor | undefined;
-        try {
-          out = (await (mapping as OrtSession).run({ z: input }))['w'];
-          if (!out) throw Error('Mapping produced no w output');
-          const w = new Float32Array((await out.getData()) as Float32Array);
-          onTiming?.({
-            ids: request.ids,
-            operation: 'map',
-            stage: 'mapping',
-            route: 'cpu',
-            startedAtMs,
-            completedAtMs: now(),
-            boundary: 'readback-complete',
-          });
-          const values = truncate(
-            w,
-            average as Float32Array,
-            request.truncation.psi,
-            request.truncation.cutoff,
-            schema,
-          );
-          // Mapping is ORT WASM on every route; the result records where it actually ran.
-          return {
-            ids: request.ids,
-            wPlus: { space: 'w-plus', shape: [schema.layers, schema.width], values },
-            provider: 'cpu',
-          };
-        } finally {
-          input.dispose();
-          out?.dispose();
-        }
+        return runCompute(reader, async () => {
+          aborted(signal);
+          assertLive();
+          const ort = mappingOrt as OrtModule;
+          const startedAtMs = now();
+          const input = new ort.Tensor('float32', request.z, [1, schema.zLength]);
+          let out: OrtTensor | undefined;
+          try {
+            out = (await (mapping as OrtSession).run({ z: input }))['w'];
+            if (!out) throw Error('Mapping produced no w output');
+            const w = new Float32Array((await out.getData()) as Float32Array);
+            onTiming?.({
+              ids: request.ids,
+              operation: 'map',
+              stage: 'mapping',
+              route: 'cpu',
+              startedAtMs,
+              completedAtMs: now(),
+              boundary: 'readback-complete',
+            });
+            const values = truncate(
+              w,
+              average as Float32Array,
+              request.truncation.psi,
+              request.truncation.cutoff,
+              schema,
+            );
+            // Mapping is ORT WASM on every route; the result records where it actually ran.
+            return {
+              ids: request.ids,
+              wPlus: { space: 'w-plus', shape: [schema.layers, schema.width], values },
+              provider: 'cpu',
+            };
+          } finally {
+            input.dispose();
+            out?.dispose();
+          }
+        });
       });
     },
 

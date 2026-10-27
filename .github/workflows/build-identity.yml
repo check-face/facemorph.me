@@ -6,10 +6,14 @@ name: build-identity
 on:
   workflow_call:
     inputs:
+      shared_build:
+        type: boolean
+        default: false
+        description: Reuse the exact compiled workspace from this main run
       base:
         type: string
         required: false
-        description: The last green main.yml head (scripts/ci/changes.ts); empty without one
+        description: The previous started main.yml head (scripts/ci/changes.ts); empty without one
   workflow_dispatch:
 jobs:
   check:
@@ -22,6 +26,8 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - uses: ./.github/actions/setup-runtime
       - name: Unit tests of the checks
         run: >-
@@ -32,7 +38,7 @@ jobs:
           BEFORE: ${{ github.event.before }}
           BASE: ${{ inputs.base }}
         run: |
-          base="${BASE:-$BEFORE}" # a stacked main.yml run covers every commit since the last green one
+          base="${BASE:-$BEFORE}" # a stacked main.yml run covers every commit since the previous started run
           if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then base=HEAD~1; fi
           node scripts/build/check-tests-listed.mjs --base "$base"
       - run: node scripts/build/check-no-disabled-tests.mjs
@@ -48,13 +54,21 @@ jobs:
           git diff --name-only "$base" HEAD | xargs node scripts/build/identity.mjs --changed
       - name: Every path an identity maps is selected by the shared path filters
         run: node scripts/build/identity.mjs --coverage
-      - run: npm run build
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build
       - name: Worker graphs against their pins and the qualified runtime
         run: node scripts/build/identity.mjs --workers apps/web/dist --hosted "$FACEMORPH_RUNTIME_DIR"
+      - uses: ./.github/actions/restore-site
+        if: inputs.shared_build
+      - if: inputs.shared_build
+        run: npm run build:next -- --check
       - name: Artifact identity of the control
+        if: ${{ !inputs.shared_build }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run build:next && node scripts/build/identity.mjs --artifact . | tee artifact-identity.json
+      - if: inputs.shared_build
+        run: node scripts/build/identity.mjs --artifact . | tee artifact-identity.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

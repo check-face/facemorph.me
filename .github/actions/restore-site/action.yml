@@ -1,0 +1,16 @@
+name: restore-site
+description: Restore the exact canonical site already built in this main run, with all provenance and byte checks
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/fetch-artifact
+      with:
+        source_repo_id: ${{ github.repository_id }}
+        workflow: .github/workflows/main.yml
+        run_id: ${{ github.run_id }}
+        commit: ${{ github.sha }}
+        artifact_name: next-site-${{ github.sha }}
+        out: .cache/shared-canonical-site
+    - shell: bash
+      working-directory: ${{ github.workspace }}
+      run: cp -R .cache/shared-canonical-site/. .

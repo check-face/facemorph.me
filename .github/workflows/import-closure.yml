@@ -2,10 +2,16 @@ name: import-closure
 # Import behavior checks: exclusion safety, module resolution and retained control verification.
 on:
   workflow_call:
+    inputs:
+      shared_build:
+        type: boolean
+        default: false
+        description: Reuse the exact compiled workspace from this main run
   workflow_dispatch:
 jobs:
   checks:
-    runs-on: [self-hosted, linux-x64]
+    # Browser-free commands qualified on Triton; leave portable slots for browser/workerd lanes (fm-jx26).
+    runs-on: [self-hosted, triton]
     timeout-minutes: 30
     permissions:
       contents: read
@@ -13,9 +19,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - run: npm ci
+          node-version: '24'
+      - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - name: Build the package files mounted by the mobile browser suite
+        if: ${{ !inputs.shared_build }}
         run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - run: node --test scripts/import/control.test.mjs scripts/import/closure.test.mjs scripts/runtime/runtime.test.mjs
         env:

@@ -1,0 +1,60 @@
+# fm-jx26/fm-fy2.11: manual main is the all-lanes gate; no second build or changed artifact.
+name: Pre-deploy all-lanes receipt
+on:
+  workflow_call:
+    inputs:
+      results:
+        type: string
+        required: true
+        description: Complete main all-lanes needs results
+      artifact_run:
+        type: string
+        required: true
+      artifact_workflow:
+        type: string
+        required: true
+      artifact_commit:
+        type: string
+        required: true
+      artifact_name:
+        type: string
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  receipt:
+    runs-on:
+      - self-hosted
+      - linux-x64
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify the exact release artifact
+        id: artifact
+        uses: ./.github/actions/fetch-artifact
+        with:
+          source_repo_id: ${{ github.repository_id }}
+          workflow: ${{ inputs.artifact_workflow }}
+          run_id: ${{ inputs.artifact_run }}
+          commit: ${{ inputs.artifact_commit }}
+          artifact_name: ${{ inputs.artifact_name }}
+          out: .cache/pre-deploy-site
+      - name: Require every lane and bind its result to one artifact
+        env:
+          LANE_RESULTS: ${{ inputs.results }}
+          ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact_digest }}
+          ARTIFACT_RUN: ${{ inputs.artifact_run }}
+          ARTIFACT_WORKFLOW: ${{ inputs.artifact_workflow }}
+          ARTIFACT_COMMIT: ${{ inputs.artifact_commit }}
+          ARTIFACT_NAME: ${{ inputs.artifact_name }}
+        run: node scripts/ci/pre-deploy.ts --out pre-deploy.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pre-deploy-${{ inputs.artifact_commit }}
+          path: pre-deploy.json
+          retention-days: 14
+          if-no-files-found: error

@@ -4,10 +4,15 @@ name: names-generator
 # triton's Ubuntu 20.04, and the runner reads the pinned classic commit from the local classic checkout.
 on:
   workflow_call:
+    inputs:
+      full:
+        type: boolean
+        default: true
+        description: Include real catalogue inference and kill/resume in mandatory pre-deploy qualification
   workflow_dispatch:
 jobs:
   test:
-    runs-on: [self-hosted, eris]
+    runs-on: ${{ (github.event_name == 'workflow_dispatch' || inputs.full) && fromJSON('["self-hosted","eris"]') || fromJSON('["self-hosted","linux-x64"]') }}
     timeout-minutes: 90
     defaults:
       run:
@@ -23,5 +28,9 @@ jobs:
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
         with:
           directory: tools/names-generator
+      - name: Pure catalogue identity, recovery, resume and numerical verdict checks
+        if: ${{ github.event_name != 'workflow_dispatch' && !inputs.full }}
+        run: node --test lib.test.mjs
       - name: Tests, the real runs with a bounded runner (a full catalogue run may hold it in chunks)
+        if: github.event_name == 'workflow_dispatch' || inputs.full
         run: python3 ../../autoresearch/run.py --timeout 1800 -- npm test

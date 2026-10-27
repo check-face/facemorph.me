@@ -3,7 +3,7 @@
 // second, unchecked request), and in Node the caller hands the npm module in. This file is the one place
 // a later ORT runtime change touches.
 
-import { readLocal, type EngineAsset, type LocalAssetReader } from '../reader.ts';
+import { readLocal, runCompute, type EngineAsset, type LocalAssetReader } from '../reader.ts';
 
 export interface OrtTensor {
   getData(): Promise<unknown>;
@@ -103,10 +103,12 @@ export async function loadOrtRuntime(
     const moduleUrl = await url(assets.module, 'text/javascript');
     const factoryUrl = await url(assets.factory, 'text/javascript');
     const wasmUrl = await url(assets.wasm, 'application/wasm');
-    const ort = (await host.import(moduleUrl)) as OrtModule;
-    ort.env.wasm.numThreads = threads;
-    ort.env.wasm.wasmPaths = { mjs: factoryUrl, wasm: wasmUrl };
-    return { ort, release };
+    return await runCompute(reader, async () => {
+      const ort = (await host.import(moduleUrl)) as OrtModule;
+      ort.env.wasm.numThreads = threads;
+      ort.env.wasm.wasmPaths = { mjs: factoryUrl, wasm: wasmUrl };
+      return { ort, release };
+    });
   } catch (error) {
     release();
     throw error;

@@ -31,8 +31,10 @@ test('the wrapper builds once then qualifies, while child workflows leave queue 
   assert.deepEqual(artifact.jobs.artifact['runs-on'], ['self-hosted', 'facemorph-artifact']);
   const steps = artifact.jobs.artifact.steps;
   assert.equal(steps.filter((s: any) => s.run?.includes('npm run build:next &&')).length, 1);
-  assert.equal(steps.filter((s: any) => s.uses === 'actions/upload-artifact@v4').length, 1);
-  assert.equal(steps.at(-1).with.name, 'next-site-${{ github.sha }}');
+  assert.deepEqual(
+    steps.filter((s: any) => s.uses === 'actions/upload-artifact@v4').map((s: any) => s.with.name),
+    ['next-site-${{ github.sha }}', 'workspace-build-${{ github.sha }}'],
+  );
   assert.equal(artifact.env.BUILD_WORKFLOW, '${{ inputs.artifact_workflow }}');
   assert.equal(
     wrapper.jobs.artifact.with.artifact_workflow,
@@ -135,14 +137,22 @@ test('the executed CPU provenance gate rejects workflow and commit mismatches be
   }
 });
 
-test('main artifact consumers do not wait on CPU or compiled UI qualification', () => {
+test('main artifact consumers do not wait on CPU or compiled UI qualification; a deploy does', () => {
   assert.equal(main.jobs['next-site-artifact'].uses, './.github/workflows/next-site-artifact.yml');
   assert.equal(main.jobs['next-site'].uses, './.github/workflows/next-site-qualify.yml');
   assert.deepEqual(main.jobs['next-site'].needs, ['changes', 'next-site-artifact']);
   for (const id of ['web-shell', 'mobile-browser', 'next-deploy']) {
-    assert.deepEqual(main.jobs[id].needs, ['changes', 'next-site-artifact']);
+    assert.deepEqual(
+      main.jobs[id].needs,
+      id === 'next-deploy'
+        ? ['changes', 'next-site-artifact', 'next-site', 'pre-deploy']
+        : ['changes', 'next-site-artifact'],
+    );
     for (const pin of provenance)
       assert.equal(main.jobs[id].with[pin], main.jobs['next-site'].with[pin]);
   }
-  assert.match(main.jobs['next-site-artifact'].if, /FACEMORPH_DEPLOY_TARGET/);
+  // Publication is manual after all lanes qualify; a configured target must not rebuild docs-only pushes.
+  for (const id of ['next-site-artifact', 'next-site'])
+    assert.doesNotMatch(main.jobs[id].if, /FACEMORPH_DEPLOY_TARGET/);
+  assert.match(main.jobs['next-deploy'].if, /needs\.pre-deploy\.result == 'success'/);
 });

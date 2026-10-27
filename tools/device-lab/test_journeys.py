@@ -5,7 +5,10 @@ import tempfile
 import subprocess
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
+from types import SimpleNamespace
+import threading
 
 import lab
 
@@ -34,6 +37,145 @@ class Journeys(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('repeat must be at least 1', result.stderr)
         self.assertNotIn('cell_start', result.stdout)
+
+
+class MorphAction(unittest.TestCase):
+    def test_real_mouse_keeps_morph_target_when_result_buttons_change(self):
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            self.skipTest('real-browser regression requires uv run --with playwright')
+
+        class ReachedVideoWait(Exception):
+            """Stop after the real click; this fixture does not pretend to produce a morph."""
+
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            try:
+                # Exercise Desktop.tap itself without a device, lab lease or inference runtime.
+                dev = lab.Desktop.__new__(lab.Desktop)
+                dev.page = browser.new_page()
+                dev.page.set_content('''<div style="height:1200px"></div>
+                  <button id="result">Save image</button>
+                  <button class="next-primary-action" onclick="window.clicked='morph';window.trusted=event.isTrusted">Create morph</button>
+                  <button onclick="window.clicked='more'">More options</button>
+                  <script>window.clicked=null;window.reordered=false;
+                  addEventListener('scroll',()=>{document.querySelector('#result').remove();window.reordered=true;},{once:true});</script>''')
+                # The real scroll delivers an asynchronous result-control update before tap's
+                # hit probe. Stop at the video wait, preserving its real 1800-second deadline.
+                with patch.object(dev, 'wait', side_effect=ReachedVideoWait) as video_wait:
+                    with self.assertRaises(ReachedVideoWait):
+                        lab.journey_morph(dev)
+                self.assertTrue(dev.js('window.reordered'))
+                self.assertEqual(dev.js('window.clicked'), 'morph')
+                self.assertTrue(dev.js('window.trusted'))
+                self.assertTrue(dev.js('window.__labHit.inside'))
+                self.assertIn('next-primary-action', dev.js('window.__labHit.what'))
+                self.assertEqual(video_wait.call_args.args[1], 1800)
+                self.assertIn(lab.S['video'], video_wait.call_args.args[0])
+            finally:
+                browser.close()
+
+
+class BudgetDiagnostics(unittest.TestCase):
+    """Simulated journey durations exercise actual retention paths without device/browser I/O."""
+
+    def run_timed(self, seconds, cell='eris-webgpu', error=None):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        out = Path(temporary.name)
+
+        class TraceSink:
+            def start(self, **options):
+                self.options = options
+
+            def stop(self, path=None):
+                self.path = path
+                if path:
+                    Path(path).write_bytes(b'simulated trace sink')
+
+        class FrameSink:
+            def __init__(self):
+                self.stop = threading.Event()
+                self.started, self.joined = False, False
+
+            def start(self):
+                self.started = True
+
+            def join(self, timeout):
+                self.joined = True
+
+            def dump(self, folder):
+                folder.mkdir()
+                (folder / 'last.png').write_bytes(b'simulated buffered frame')
+                return str(folder)
+
+        trace, frames, screenshots = TraceSink(), FrameSink(), []
+
+        def screenshot(path):
+            screenshots.append(path)
+            path.write_bytes(b'simulated screenshot sink')
+
+        dev = SimpleNamespace(ctx=SimpleNamespace(tracing=trace),
+                              page=SimpleNamespace(url='https://next.facemorph.me/'),
+                              capabilities={'adapter': True}, screenshot=screenshot)
+        report = {**Evidence.report(self), 'cell': cell, 'runs': []}
+        warm = {'route': 'Ready · this device’s GPU (webgpu).' if cell == 'eris-webgpu'
+                else 'Ready · this device’s CPU.', 'url': dev.page.url,
+                'documentSha256': 'b' * 64, 'faceS': 3.0}
+        args = SimpleNamespace(repeat=1, journey='warm-face', url=dev.page.url)
+        with patch.object(lab.time, 'monotonic', side_effect=[100, 100 + seconds]), \
+                patch.object(lab, 'journey_face', return_value=warm, side_effect=error), \
+                patch.object(lab, 'ScreenBuffer', return_value=frames), \
+                patch.object(lab, 'cool_down', return_value=30), \
+                patch.object(lab, 'device_facts', return_value={'batteryTempC': 31}), \
+                patch.object(lab, 'chrome_front'):
+            lab.run_journeys(dev, args, cell, cell == 'eris-webgpu', out, report)
+        return out, report, trace, frames, screenshots
+
+    def test_budget_breach_retains_trace_and_screenshot_without_relabelling_action(self):
+        out, report, trace, _, screenshots = self.run_timed(11)
+        run = report['runs'][0]
+        self.assertTrue(run['ok'], 'the real action-completion field remains distinct from budget verdict')
+        self.assertEqual(run['warm']['faceS'], 3.0)
+        self.assertNotIn('error', run)
+        self.assertNotIn('status', run)
+        self.assertEqual(lab.report_findings(report, ['warm-face'], 'a' * 64),
+                         ['warm-face took 11.0s on eris-webgpu, over its 10s budget'])
+        self.assertEqual(trace.path, str(out / 'eris-webgpu-trace-1.zip'))
+        self.assertTrue(Path(trace.path).is_file())
+        self.assertEqual(screenshots, [out / 'eris-webgpu-fail-1.png'])
+        self.assertTrue(screenshots[0].is_file())
+
+    def test_exact_budget_pass_discards_trace_and_takes_no_failure_screenshot(self):
+        out, report, trace, _, screenshots = self.run_timed(10)
+        self.assertTrue(report['runs'][0]['ok'])
+        self.assertEqual(lab.report_findings(report, ['warm-face'], 'a' * 64), [])
+        self.assertIsNone(trace.path)
+        self.assertFalse(list(out.glob('*.zip')))
+        self.assertEqual(screenshots, [])
+
+    def test_phone_budget_breach_retains_buffered_frames_and_stops_sampler(self):
+        out, report, _, frames, screenshots = self.run_timed(46, 'phone-cpu')
+        run = report['runs'][0]
+        self.assertTrue(run['ok'])
+        self.assertEqual(run['startTempC'], 30)
+        self.assertEqual(run['batteryTempC'], 31)
+        self.assertTrue(frames.started and frames.joined and frames.stop.is_set())
+        self.assertEqual(run['frames'], str(out / 'phone-cpu-fail-1-frames'))
+        self.assertTrue((Path(run['frames']) / 'last.png').is_file())
+        self.assertEqual(screenshots, [out / 'phone-cpu-fail-1.png'])
+        self.assertEqual(lab.budget_findings('phone-cpu', [run]),
+                         ['warm-face took 46.0s on phone-cpu, over its 45s budget'])
+
+    def test_action_failure_still_retains_existing_diagnostics(self):
+        out, report, trace, _, screenshots = self.run_timed(0, error=RuntimeError('actual action failed'))
+        run = report['runs'][0]
+        self.assertFalse(run['ok'])
+        self.assertEqual(run['status'], 'fail')
+        self.assertIn('actual action failed', run['error'])
+        self.assertEqual(trace.path, str(out / 'eris-webgpu-trace-1.zip'))
+        self.assertEqual(screenshots, [out / 'eris-webgpu-fail-1.png'])
 
 
 class Evidence(unittest.TestCase):

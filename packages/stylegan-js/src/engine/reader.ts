@@ -23,6 +23,8 @@ export interface LocalReadError {
 
 export interface LocalAssetReader {
   readonly allowRepair: false;
+  /** Runs heavyweight work separately from local reads/acquisition when the host supplies a gate. */
+  compute?<T>(work: () => T | Promise<T>): Promise<T>;
   read(
     asset: EngineAsset,
   ): Promise<
@@ -46,6 +48,14 @@ export async function readLocal(reader: LocalAssetReader, asset: EngineAsset): P
   const r = await reader.read(asset);
   if (!r.ok) throw new LocalAssetUnavailable(r.error);
   return r.value;
+}
+
+/** Runs compute under the host's optional permit; callbacks must not read from the reader. */
+export async function runCompute<T>(
+  reader: LocalAssetReader,
+  work: () => T | Promise<T>,
+): Promise<T> {
+  return reader.compute ? reader.compute(work) : work();
 }
 
 /** A little-endian float32 view of verified bytes (copied when unaligned). */

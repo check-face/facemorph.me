@@ -1,0 +1,102 @@
+{
+  "cell": "phone-webgpu",
+  "runs": [
+    {
+      "iteration": 1,
+      "startTempC": 30.0,
+      "cold": {
+        "usableS": 3.92,
+        "faceS": 31.66,
+        "route": "Ready \u00b7 this device\u2019s GPU (webgpu).",
+        "url": "https://next.facemorph.me/",
+        "documentSha256": "b81a9a0608d6c69aa4debdd39b5c74d939f6be3ee2ca97a515249167800110ef",
+        "typed": "lab0cold",
+        "fieldValue": "Lab0cold",
+        "typedExactly": false
+      },
+      "durationsS": {
+        "cold-face": 42.1,
+        "warm-face": 33.1
+      },
+      "warm": {
+        "usableS": 3.63,
+        "faceS": 22.8,
+        "route": "Ready \u00b7 this device\u2019s GPU (webgpu).",
+        "url": "https://next.facemorph.me/",
+        "documentSha256": "b81a9a0608d6c69aa4debdd39b5c74d939f6be3ee2ca97a515249167800110ef",
+        "typed": "lab0warm",
+        "fieldValue": "Lab0warm",
+        "typedExactly": false
+      },
+      "ok": true,
+      "peakChromePssMb": 6891,
+      "batteryTempC": 31.0
+    }
+  ],
+  "label": "fm-qeh-ort130-phone-gpu-verified",
+  "url": "https://next.facemorph.me/",
+  "requestedUrl": "https://next.facemorph.me/",
+  "local": true,
+  "journeys": [
+    "cold-face",
+    "warm-face"
+  ],
+  "artifact": {
+    "digest": "d10d38fa69a586c9ef68aa545e353d3f861958776958f2d06af6572a46fb91da",
+    "kind": "destination",
+    "source": {
+      "repository": "facemorph-me/facemorph.me",
+      "commit": "1e700ab3029c029699ed47bc7629d12cc96d9bec",
+      "buildId": "1e700ab3029c029699ed47bc7629d12cc96d9bec-dirty",
+      "sourceTreeClean": false,
+      "sourceTreeSha256": "a15174df654ec9ce1ca8ffe168168618c9c47e0ee8d650811577e4cbf6ab4133"
+    },
+    "directory": "/tmp/fm-qeh-phone-source-u1yas_ik/artifact/deploy-next"
+  },
+  "requestedRoute": "webgpu",
+  "device": {
+    "model": "VOG-L29",
+    "android": "10",
+    "build": "VOG-L29 10.1.0.148(C636E11R1P3)",
+    "chrome": "150.0.7871.128",
+    "batteryPct": 100,
+    "batteryTempC": 30.0,
+    "acPowered": true
+  },
+  "cameraBefore": {
+    "streaming": false,
+    "webcamPid": "",
+    "watchdogPid": "",
+    "recoveryServiceBound": false
+  },
+  "browser": {
+    "family": "chrome",
+    "executable": "package:/data/app/com.android.chrome-6k2eXofWxXOj4lMnUJbEjw==/base.apk\npackage:/data/app/com.android.chrome-6k2eXofWxXOj4lMnUJbEjw==/split_chrome.apk\npackage:/data/app/com.android.chrome-6k2eXofWxXOj4lMnUJbEjw==/split_config.en.apk\npackage:/data/app/com.android.chrome-6k2eXofWxXOj4lMnUJbEjw==/split_dev_ui.apk\npackage:/data/app/com.android.chrome-6k2eXofWxXOj4lMnUJbEjw==/split_on_demand.apk\npackage:/data/app/com.android.chrome-6k2eXofWxXOj4lMnUJbEjw==/split_stack_unwinder.apk",
+    "version": "150.0.7871.128",
+    "package": "com.android.chrome",
+    "flags": [
+      "--enable-unsafe-webgpu",
+      "--ignore-gpu-blocklist",
+      "--host-resolver-rules=MAP next.facemorph.me:443 127.0.0.1:8443",
+      "--ignore-certificate-errors"
+    ],
+    "commandLine": "_ --enable-unsafe-webgpu --ignore-gpu-blocklist '--host-resolver-rules=MAP next.facemorph.me:443 127.0.0.1:8443' --ignore-certificate-errors"
+  },
+  "startTempC": 30.0,
+  "capabilities": {
+    "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Mobile Safari/537.36",
+    "secureContext": true,
+    "webgpu": true,
+    "adapter": true,
+    "url": "https://next.facemorph.me/",
+    "adapterInfo": {
+      "vendor": "arm",
+      "architecture": "bifrost",
+      "device": "",
+      "description": ""
+    }
+  },
+  "evidenceErrors": [],
+  "ok": true,
+  "status": "pass"
+}

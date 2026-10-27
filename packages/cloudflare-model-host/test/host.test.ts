@@ -11,13 +11,14 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { test } from 'node:test';
+import { after, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   CHUNK_BYTES,
@@ -43,7 +44,15 @@ const PKG = fileURLToPath(new URL('..', import.meta.url));
 const REPO = join(PKG, '../..');
 const CLI = join(PKG, 'src/cli.ts');
 const BASE = 'https://models.example.test/runtime';
-const tmp = (p: string) => mkdtempSync(join(tmpdir(), `model-host-${p}-`));
+const scratch = new Set<string>();
+const tmp = (p: string) => {
+  const root = mkdtempSync(join(tmpdir(), `model-host-${p}-`));
+  scratch.add(root);
+  return root;
+};
+after(() => {
+  for (const root of scratch) rmSync(root, { recursive: true, force: true });
+});
 const sha = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
 
 /** Deterministic bytes: a counter through SHA-256, so planted inputs are reproducible and incompressible. */

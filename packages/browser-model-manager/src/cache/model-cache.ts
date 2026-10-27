@@ -11,7 +11,8 @@ import {
   type AcquisitionSlots,
   type SlotLocks,
 } from '../acquisition/slots.ts';
-import { acquisitionMemoryClass } from '../contracts/budgets.ts';
+import { acquisitionPhase } from '../acquisition/phases.ts';
+import { ACQUISITION_CHUNK_MAX_BYTES, acquisitionMemoryClass } from '../contracts/budgets.ts';
 import type { ManagerError, Result } from '../contracts/errors.ts';
 import type { AcquisitionGrant, AcquisitionPriority, GrantOwnerId } from '../contracts/grant.ts';
 import type { AssetDescriptor } from '../contracts/manifest.ts';
@@ -161,9 +162,32 @@ export function validateAsset(asset: AssetInput): Asset {
 }
 
 const PIECE_BYTES = 256 * 1024;
-const SHARD_UNIT_LIMIT = 64 * 1024 * 1024; // unchunked assets above this stay in Cache Storage
+const SHARD_UNIT_LIMIT = ACQUISITION_CHUNK_MAX_BYTES; // larger unchunked assets stream through Cache Storage
 const hex = (buffer: ArrayBuffer) =>
   Array.from(new Uint8Array(buffer), (x) => x.toString(16).padStart(2, '0')).join('');
+/** Incremental inputs also share the hash phase; never hand it an oversized view. */
+async function updateHash(hash: Sha256, bytes: Uint8Array, signal?: AbortSignal): Promise<void> {
+  for (let at = 0; at < bytes.byteLength; at += ACQUISITION_CHUNK_MAX_BYTES) {
+    const piece = bytes.subarray(at, at + ACQUISITION_CHUNK_MAX_BYTES);
+    await acquisitionPhase('hash', () => hash.update(piece), signal);
+  }
+}
+const finishHash = (hash: Sha256, signal?: AbortSignal) =>
+  acquisitionPhase('hash', () => hash.hex(), signal);
+
+/** Platform SHA-256 copies its input. Larger unchunked assets keep the existing incremental
+ * whole-asset digest instead of creating a native workspace larger than the frozen ceiling. */
+async function digestHex(bytes: Uint8Array<ArrayBuffer>, signal?: AbortSignal): Promise<string> {
+  if (bytes.byteLength <= ACQUISITION_CHUNK_MAX_BYTES && globalThis.crypto?.subtle)
+    return acquisitionPhase(
+      'hash',
+      async () => hex(await globalThis.crypto.subtle.digest('SHA-256', bytes)),
+      signal,
+    );
+  const hash = new Sha256();
+  await updateHash(hash, bytes, signal);
+  return finishHash(hash, signal);
+}
 /** A non-200 answer; `transient` marks the statuses worth asking again (server faults, rate limits).
  * The message is shown to the visitor as it is, so it says what happened and what to do. Model files are immutable
  * and named by digest, so one that is gone (404, 410) belongs to a version the site no longer serves: an open tab
@@ -402,7 +426,7 @@ async function fetchChunkOnce(
     charge.settle();
   }
   if (at !== part.size) throw new Error('Asset integrity mismatch');
-  const digest = hex(await globalThis.crypto.subtle.digest('SHA-256', out));
+  const digest = await digestHex(out, signal);
   check(signal);
   if (digest !== part.sha256) throw new Error('Asset integrity mismatch');
   return out;
@@ -589,7 +613,7 @@ export async function acquireUncachedBytes(
           return bytes;
         }
         out.set(bytes, completed);
-        parentHash!.update(bytes);
+        await updateHash(parentHash!, bytes, controller.signal);
         completed += bytes.byteLength;
         emit({ status: 'progress', sha256: asset.sha256, loaded: completed, bytes: asset.size });
       } finally {
@@ -597,7 +621,11 @@ export async function acquireUncachedBytes(
       }
     }
     check(controller.signal);
-    if (!out || completed !== asset.size || parentHash!.hex() !== asset.sha256)
+    if (
+      !out ||
+      completed !== asset.size ||
+      (await finishHash(parentHash!, controller.signal)) !== asset.sha256
+    )
       throw new Error('Asset integrity mismatch');
     check(controller.signal);
     emit({ status: 'verified', sha256: asset.sha256, bytes: asset.size });
@@ -643,7 +671,7 @@ function verifiedStream(
         const { value, done } = await reader.read();
         check(signal);
         if (done) {
-          if (size !== asset.size || hash.hex() !== asset.sha256)
+          if (size !== asset.size || (await finishHash(hash, signal)) !== asset.sha256)
             throw new Error('Asset integrity mismatch');
           cleanup();
           controller.close();
@@ -651,7 +679,7 @@ function verifiedStream(
         }
         size += value.byteLength;
         if (size > asset.size) throw new Error('Asset exceeds declared size');
-        hash.update(value);
+        await updateHash(hash, value, signal);
         controller.enqueue(value);
       } catch (error) {
         if (!terminal) {
@@ -867,16 +895,31 @@ export function createModelCache({
   // a JS hash of the whole asset plus a second full read; a bad unit costs one unit's re-fetch.
   // The whole-asset digest is not recomputed: the chunk list comes from the same pinned manifest
   // as the whole digest, so every byte is already bound to it through its chunk.
+  // Older caches admitted unchunked OPFS units up to 64 MiB. Keep reading those verified
+  // bytes offline, but never create/repair another oversized shard under the 16 MiB write ceiling.
+  const legacyLargeShards = new Set<string>();
   const usesShards = (asset: Asset) =>
-    Boolean(shards) && Boolean(asset.chunks || asset.size <= SHARD_UNIT_LIMIT);
+    Boolean(shards) &&
+    Boolean(asset.chunks || asset.size <= SHARD_UNIT_LIMIT || legacyLargeShards.has(asset.sha256));
+  const discoverLegacyShard = async (asset: Asset) => {
+    if (
+      shards &&
+      !asset.chunks &&
+      asset.size > SHARD_UNIT_LIMIT &&
+      asset.size <= 64 * 1024 * 1024
+    ) {
+      if (await shards.has(asset.sha256, asset.size).catch(() => false))
+        legacyLargeShards.add(asset.sha256);
+      else legacyLargeShards.delete(asset.sha256);
+    }
+  };
   const unitsOf = (asset: Asset): readonly Asset[] => asset.chunks || [asset];
-  const platformHex = async (bytes: Uint8Array<ArrayBuffer>) =>
-    hex(await globalThis.crypto.subtle.digest('SHA-256', bytes));
+  const platformHex = digestHex;
   const underLock = <T>(name: string, run: () => Promise<T>): Promise<T> =>
     locks?.request ? locks.request(`${MODEL_CACHE_NAME}:${name}`, run) : run();
-  async function commitUnit(asset: Asset, unit: Asset, bytes: Uint8Array) {
+  async function commitUnit(asset: Asset, unit: Asset, bytes: Uint8Array, signal?: AbortSignal) {
     try {
-      await shards!.write(unit.sha256, bytes);
+      await acquisitionPhase('write', () => shards!.write(unit.sha256, bytes), signal);
     } catch (error) {
       const quota = (error as Err | null)?.name === 'QuotaExceededError';
       emit({
@@ -937,8 +980,8 @@ export function createModelCache({
           at += take;
           offset += take;
           if (at === unit.size) {
-            if (wanted.has(unit.sha256) && (await platformHex(buffer!)) === unit.sha256) {
-              await commitUnit(asset, unit, buffer!);
+            if (wanted.has(unit.sha256) && (await platformHex(buffer!, signal)) === unit.sha256) {
+              await commitUnit(asset, unit, buffer!, signal);
               moved++;
             }
             unit = unitsOf(asset)[++index];
@@ -966,6 +1009,10 @@ export function createModelCache({
   async function ensureShards(asset: Asset, signal: AbortSignal, transfer: Transfer) {
     let missing = await missingUnits(asset);
     check(signal);
+    if (!asset.chunks && asset.size > SHARD_UNIT_LIMIT && missing.length) {
+      legacyLargeShards.delete(asset.sha256);
+      return ensure(asset, signal, transfer);
+    }
     if (!missing.length) {
       emit({ status: 'retained', sha256: asset.sha256, bytes: asset.size });
       return;
@@ -991,7 +1038,7 @@ export function createModelCache({
         try {
           // The slot spans fetch, digest and write: the chunk's bytes are in memory for all three.
           await inSlot(transfer, stop.signal, async () =>
-            commitUnit(asset, unit, await chunk(unit, stop.signal, transfer)),
+            commitUnit(asset, unit, await chunk(unit, stop.signal, transfer), stop.signal),
           );
         } catch (error) {
           stop.abort(error);
@@ -1013,6 +1060,24 @@ export function createModelCache({
     asset: Asset,
     { allowRepair, transfer }: { allowRepair: boolean; transfer?: Transfer },
   ): Promise<Uint8Array<ArrayBuffer>> {
+    if (!asset.chunks && asset.size > SHARD_UNIT_LIMIT) {
+      const bytes = await shards!.read(asset.sha256, asset.size);
+      if (bytes && (await platformHex(bytes)) === asset.sha256) return bytes;
+      emit({ status: bytes ? 'corrupt-removed' : 'missing-after-acquire', sha256: asset.sha256 });
+      if (!allowRepair || !transfer)
+        throw bytes
+          ? localError('Asset integrity mismatch', 'corrupt')
+          : localError('Stored asset disappeared; acquire again', 'absent');
+      emit({ status: 'repairing', sha256: asset.sha256 });
+      return underLock(asset.sha256, async () => {
+        const again = await shards!.read(asset.sha256, asset.size);
+        if (again && (await platformHex(again)) === asset.sha256) return again;
+        await shards!.remove(asset.sha256);
+        legacyLargeShards.delete(asset.sha256);
+        await ensure(asset, new AbortController().signal, transfer);
+        return readVerified(asset, transfer);
+      });
+    }
     const units = unitsOf(asset);
     const out = units.length === 1 ? null : new Uint8Array(asset.size);
     const offsets: number[] = [];
@@ -1097,6 +1162,8 @@ export function createModelCache({
       pump();
     });
   async function ensure(asset: Asset, signal: AbortSignal, transfer: Transfer): Promise<void> {
+    check(signal);
+    await discoverLegacyShard(asset);
     check(signal);
     if (usesShards(asset)) return ensureShards(asset, signal, transfer);
     let cached: Response | undefined;
@@ -1302,8 +1369,8 @@ export function createModelCache({
   // (a stale marker served corrupt bytes on iOS 27 Safari and Android Chrome 124; see the
   // mobile suite's corrupt-cache-repair check). A first-open mismatch, or a vanished entry,
   // is repaired once: the bad identity is removed and re-acquired before bytes are handed
-  // back. Model bytes never buffer whole in JS: pass 1 hashes the stored stream, pass 2
-  // returns a fresh store read.
+  // back. open() stays streaming: pass 1 hashes the stored stream, pass 2 returns a fresh
+  // store read. bytes() instead verifies while filling its one required execution buffer.
   async function digestFailure(
     body: ReadableStream<Uint8Array> | null,
     asset: Asset,
@@ -1320,9 +1387,9 @@ export function createModelCache({
         void reader.cancel(new Error('Asset exceeds declared size')).catch(() => {});
         return new Error('Asset exceeds declared size');
       }
-      hash.update(value);
+      await updateHash(hash, value);
     }
-    if (size !== asset.size || hash.hex() !== asset.sha256)
+    if (size !== asset.size || (await finishHash(hash)) !== asset.sha256)
       return new Error('Asset integrity mismatch');
     return null;
   }
@@ -1364,24 +1431,72 @@ export function createModelCache({
     await ensure(asset, new AbortController().signal, transfer);
     return openVerified(asset, { allowRepair: false });
   }
-  // Bytes verified earlier this session are handed back without a second digest, so a file that
-  // became unreadable since is only found here: drop the identity and repair it once.
+  // Return the same bytes we verified, rather than hashing one stored stream then reopening
+  // another. The output is the execution buffer bytes() already requires; incoming pieces use
+  // the unchanged bounded hash phase. Never allocate from the untrusted response's length.
+  // A file that becomes unreadable after verification is still dropped and repaired once.
   async function readVerified(asset: Asset, transfer: Transfer): Promise<Uint8Array<ArrayBuffer>> {
-    try {
-      return new Uint8Array(
-        await (await openVerified(asset, { allowRepair: true, transfer })).arrayBuffer(),
-      );
-    } catch (error) {
-      if ((error as Err | null)?.name !== 'NotReadableError') throw error;
+    for (const allowRepair of [true, false]) {
+      let response: Response | undefined;
+      try {
+        response = await store.get(asset.sha256);
+      } catch (error) {
+        emit({ status: 'storage-unavailable', sha256: asset.sha256 });
+        throw error;
+      }
+      let failure: unknown;
+      if (response) {
+        // Allocation failure is memory pressure, not evidence that the stored model is corrupt.
+        // Keep it outside the repair catch so it cannot evict good bytes or spend another grant.
+        let output: Uint8Array<ArrayBuffer>;
+        try {
+          output = new Uint8Array(asset.size);
+        } catch (error) {
+          void response.body?.cancel(error).catch(() => {});
+          throw error;
+        }
+        let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+        try {
+          const needsVerification = !verifiedAssets.has(asset.sha256);
+          const body = needsVerification
+            ? verifiedStream(response.body, asset, new AbortController().signal)
+            : response.body;
+          if (!body) throw new Error('Asset response has no readable body');
+          reader = body.getReader();
+          let size = 0;
+          for (;;) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            if (value.byteLength > output.byteLength - size)
+              throw new Error('Asset exceeds declared size');
+            output.set(value, size);
+            size += value.byteLength;
+          }
+          if (size !== asset.size) throw new Error('Asset integrity mismatch');
+          if (needsVerification) {
+            markVerified(asset.sha256);
+            emit({ status: 'verified', sha256: asset.sha256, bytes: asset.size });
+          }
+          return output;
+        } catch (error) {
+          failure = error;
+          await reader?.cancel(error).catch(() => {});
+        } finally {
+          reader?.releaseLock();
+        }
+        await Promise.resolve(store.remove(asset.sha256)).catch(() => {});
+        await records.remove(VERIFIED_MARKER + asset.sha256).catch(() => {});
+        emit({ status: 'corrupt-removed', sha256: asset.sha256 });
+      } else {
+        failure = localError('Stored asset disappeared; acquire again', 'absent');
+        emit({ status: 'missing-after-acquire', sha256: asset.sha256 });
+      }
       verifiedAssets.delete(asset.sha256);
-      await Promise.resolve(store.remove(asset.sha256)).catch(() => {});
-      emit({ status: 'corrupt-removed', sha256: asset.sha256 });
+      if (!allowRepair) throw failure;
       emit({ status: 'repairing', sha256: asset.sha256 });
       await ensure(asset, new AbortController().signal, transfer);
-      return new Uint8Array(
-        await (await openVerified(asset, { allowRepair: false })).arrayBuffer(),
-      );
     }
+    throw new Error('Stored asset could not be read');
   }
   function acquire(input: AssetInput, options: AcquireOptions): Promise<AssetHandle> {
     const { grant, owner, signal } = options ?? ({} as Partial<AcquireOptions>);
@@ -1507,6 +1622,7 @@ export function createModelCache({
   async function has(input: AssetInput | string): Promise<boolean> {
     const asset = typeof input === 'string' ? null : (input as Asset);
     const sha256 = asset ? asset.sha256 : (input as string);
+    if (asset) await discoverLegacyShard(asset);
     if (asset && usesShards(asset) && !(await missingUnits(asset).catch(() => [asset])).length)
       return true;
     try {
@@ -1518,6 +1634,7 @@ export function createModelCache({
   async function peek(input: AssetInput | string): Promise<Response | null> {
     const asset = typeof input === 'string' ? null : (input as Asset);
     const sha256 = asset ? asset.sha256 : (input as string);
+    if (asset) await discoverLegacyShard(asset);
     if (asset && usesShards(asset)) {
       try {
         return new Response(await readShards(asset, { allowRepair: false }));
@@ -1549,6 +1666,7 @@ export function createModelCache({
     const asset = validateAsset(input as AssetInput);
     const fail = (error: ManagerError) => ({ ok: false as const, error });
     try {
+      await discoverLegacyShard(asset);
       let bytes: Uint8Array<ArrayBuffer>;
       const legacy = async () => {
         const body = new Uint8Array(

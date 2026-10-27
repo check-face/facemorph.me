@@ -64,7 +64,7 @@ export function scheduled(state: State, index: number): Transition {
   if (!job) throw new RangeError('Scheduler selected an absent job');
   return {
     state: { ...state, PendingJobs: state.PendingJobs.filter((_, i) => i !== index) },
-    effects: [{ type: 'dispatch', message: job }],
+    effects: [{ type: 'dispatch', message: job, continuation: true }],
   };
 }
 export const settingsKey = (state: State): string =>

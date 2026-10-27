@@ -1,5 +1,6 @@
 // fm-qrfz: the grants the app hands its workers (src/Next/browser/bridge-grant.mjs), on the pinned runtime manifest.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
@@ -15,6 +16,7 @@ import {
   chooseGrant,
   createApprovalGenerations,
   mergeGrants,
+  resolveDiscoveredGrants,
   widenWithin,
 } from '../Next/browser/bridge-grant.mjs';
 import { CHUNK_RETRY_DELAYS_MS } from '../Next/Assets/model-cache.mjs';
@@ -40,6 +42,15 @@ const cacheOf = (present: readonly string[] = [], descriptor: unknown = null) =>
 const sum = (xs: readonly { bytes: number }[]) => xs.reduce((n, a) => n + a.bytes, 0);
 const cpu = routeAssets(manifest, 'cpu', 'ort') as Asset[];
 const stream = manifest['encoderStream'] as Asset;
+const descriptorBytes = readFileSync(
+  new URL(
+    '../../../../import/runtime-manifests/encoder-stream/417811d879ac9ef5a8714f38a453571d86e7168047e3d22b7d809b74905bf468/manifest.json',
+    import.meta.url,
+  ),
+);
+const pinnedDescriptor = JSON.parse(descriptorBytes.toString('utf8')) as {
+  steps: Asset[];
+};
 
 test('nothing approved and nothing cached: no grant, so every acquisition is refused before a request', async () => {
   const grants = await appGrants({ manifest, manifestSha256: SHA, cache: cacheOf() });
@@ -207,6 +218,262 @@ test('descriptor discovery cannot inflate a frozen approval; only a new decision
     revised.grants.approved!.allowances,
     [],
     'the revised decision knows the exact shards',
+  );
+});
+
+test('actual crop-batch entry refuses the pinned descriptor overage before starting the runtime or encoder', async () => {
+  assert.equal(createHash('sha256').update(descriptorBytes).digest('hex'), stream.sha256);
+  assert.equal(descriptorBytes.byteLength, stream.size);
+  const approvals = createApprovalGenerations();
+  approvals.approve('photo');
+  const first = await approvals.snapshot({ manifest, manifestSha256: SHA, cache: cacheOf() });
+  const frozen = first.grants.approved;
+  const before = structuredClone(frozen);
+  const bounded = widenWithin(frozen, stream.sha256, pinnedDescriptor);
+  const uncovered = (collectAssets(pinnedDescriptor) as Asset[]).find(
+    (asset) => !chooseGrant({ approved: bounded, local: first.grants.local }, asset),
+  );
+  assert.ok(uncovered, 'the real pinned descriptor exceeds the advertised encoder allowance');
+
+  const source = readFileSync(new URL('../Next/product-bridge.mjs', import.meta.url), 'utf8');
+  const entry = source
+    .slice(
+      source.indexOf('export async function encodeCropBatch('),
+      source.indexOf('export async function retryCropSlots('),
+    )
+    .replace('export ', '');
+  let runtimeStarts = 0;
+  let encoderCalls = 0;
+  const context = vm.createContext({
+    pushGrants: async (options: { strict?: boolean }) => {
+      assert.equal(options.strict, true, 'foreground encoding requests strict preflight');
+      return resolveDiscoveredGrants(first.grants, stream.sha256, pinnedDescriptor, cacheOf());
+    },
+    engine: async () => {
+      runtimeStarts++;
+      return {
+        encodeConfirmedCrops: () => {
+          encoderCalls++;
+        },
+      };
+    },
+  });
+  const encode = vm.runInContext(`${entry}\nencodeCropBatch`, context) as (
+    files: unknown[],
+  ) => Promise<unknown>;
+  await assert.rejects(
+    encode([]),
+    (error: unknown) =>
+      error instanceof GrantRefused &&
+      error.refusal === 'revision-required' &&
+      error.sha256 === uncovered.sha256,
+  );
+  assert.deepEqual([runtimeStarts, encoderCalls], [0, 0]);
+  assert.equal(approvals.current(first.id), true, 'discovery cannot create a new decision');
+  assert.equal((await approvals.snapshot({ manifest, cache: cacheOf() })).grants, first.grants);
+  assert.deepEqual(frozen, before, 'a refused discovery cannot alter the frozen approval');
+});
+
+test('actual inputs preflights only a new photo, preserving synthesis and cached photos under an underestimated photo approval', async () => {
+  const approvals = createApprovalGenerations();
+  approvals.approve('photo');
+  const { grants } = await approvals.snapshot({ manifest, manifestSha256: SHA, cache: cacheOf() });
+  await assert.rejects(
+    resolveDiscoveredGrants(grants, stream.sha256, pinnedDescriptor, cacheOf()),
+    GrantRefused,
+  );
+  const source = readFileSync(new URL('../Next/product-bridge.mjs', import.meta.url), 'utf8');
+  const entry = source.slice(
+    source.indexOf('async function inputs('),
+    source.indexOf('async function commit('),
+  );
+  const reuse = source.slice(
+    source.indexOf('function sameSource('),
+    source.indexOf('function superseded('),
+  );
+  for (const mode of ['seed', 'text', 'cached-photo', 'new-photo'] as const) {
+    const file = new Blob(['photo']);
+    const item = {
+      id: 'face-1',
+      mode: mode.includes('photo') ? 'photo' : mode,
+      value: '32',
+      file: mode.includes('photo') ? file : null,
+    };
+    const result = {
+      latent: { space: 'w-plus', shape: [1, 1], values: new Float32Array([1]) },
+      provenance: {
+        bundleVersion: 'test',
+        manifestSha256: SHA,
+        modelSha256: manifest['modelSourceSha256'],
+        noiseSha256: manifest['noiseSha256'],
+      },
+      source: { mode: 'photo', value: item.value, file },
+    };
+    const faces = new Map(mode === 'cached-photo' ? [[item.id, result]] : []);
+    let strictCalls = 0,
+      encoded = 0,
+      generated = 0,
+      committed = 0;
+    const service = {
+      encodePhoto: async () => {
+        encoded++;
+        return result;
+      },
+    };
+    const context = vm.createContext({
+      Blob,
+      Float32Array,
+      Array,
+      Map,
+      faces,
+      engine: async () => service,
+      checked() {},
+      progress() {},
+      revisionOf: () => 1,
+      active: { signal: new AbortController().signal },
+      jobCounts: {},
+      pushGrants: async (options: { strict?: boolean }) => {
+        assert.equal(options.strict, true);
+        strictCalls++;
+        return resolveDiscoveredGrants(grants, stream.sha256, pinnedDescriptor, cacheOf());
+      },
+      generateNameOrSeed: async (_service: unknown, input: { mode: string }) => {
+        assert.equal(input.mode, mode);
+        generated++;
+        return result;
+      },
+      canonicalProject: (project: unknown) => project,
+      GEOMETRY_VERSION: 'test',
+      rememberLast: undefined,
+      commit: async (next: Map<string, unknown>) => {
+        assert.ok(next.has(item.id));
+        committed++;
+      },
+    });
+    const run = vm.runInContext(`${reuse}\n${entry}\ninputs`, context) as (
+      request: object,
+      revisions: Map<string, number>,
+    ) => Promise<unknown>;
+    const running = run({ inputs: [item] }, new Map([[item.id, 1]]));
+    if (mode === 'new-photo') await assert.rejects(running, GrantRefused);
+    else await running;
+    assert.equal(strictCalls, mode === 'new-photo' ? 1 : 0, mode);
+    assert.equal(encoded, 0, 'no new encoder starts without its exact approved scope');
+    assert.equal(generated, mode === 'seed' || mode === 'text' ? 1 : 0, mode);
+    assert.equal(committed, mode === 'new-photo' ? 0 : 1, mode);
+  }
+});
+
+test('an explicit revised decision admits every pinned descriptor asset without another cache or approval change', async () => {
+  const approvals = createApprovalGenerations();
+  const options = { manifest, manifestSha256: SHA, cache: cacheOf() };
+  approvals.approve('photo');
+  const first = await approvals.snapshot(options);
+  await assert.rejects(
+    resolveDiscoveredGrants(first.grants, stream.sha256, pinnedDescriptor, cacheOf()),
+    GrantRefused,
+  );
+  approvals.approve('photo');
+  const revised = await approvals.snapshot({ ...options, cache: cacheOf([], pinnedDescriptor) });
+  const resolved = await resolveDiscoveredGrants(revised.grants, stream.sha256, pinnedDescriptor, {
+    has: async () => assert.fail('the exact approved scope needs no local-cache admission'),
+  });
+  assert.equal(resolved.approved, revised.grants.approved);
+  assert.equal(resolved.local, revised.grants.local);
+  assert.notEqual(resolved.approved.approvalId, first.grants.approved!.approvalId);
+  assert.deepEqual(resolved.approved.allowances, []);
+  for (const asset of collectAssets(pinnedDescriptor) as Asset[])
+    assert.equal(chooseGrant(resolved, asset), revised.grants.approved);
+  assert.equal(approvals.current(first.id), false);
+  assert.equal(approvals.current(revised.id), true);
+});
+
+test('verified cached descriptor overage is local-only and never renews or spends the approved transfer budget', async () => {
+  const approvals = createApprovalGenerations();
+  approvals.approve('photo');
+  const { id, grants } = await approvals.snapshot({
+    manifest,
+    manifestSha256: SHA,
+    cache: cacheOf(),
+  });
+  const bounded = widenWithin(grants.approved, stream.sha256, pinnedDescriptor);
+  const uncovered = (collectAssets(pinnedDescriptor) as Asset[]).filter(
+    (asset) => !chooseGrant({ approved: bounded, local: grants.local }, asset),
+  );
+  assert.ok(uncovered.length);
+  const checked: Asset[] = [];
+  const remaining = grantRemaining(grants.approved!);
+  const resolved = await resolveDiscoveredGrants(grants, stream.sha256, pinnedDescriptor, {
+    has: async (asset: Asset) => {
+      checked.push(asset);
+      return uncovered.some(
+        (cached) => cached.sha256 === asset.sha256 && cached.size === asset.size,
+      );
+    },
+  });
+  assert.deepEqual(checked, uncovered, 'only assets absent from the exact grants need cache proof');
+  assert.equal(resolved.local.remainingBytes, 0);
+  assert.equal(grantRemaining(resolved.local), 0);
+  assert.equal(grantRemaining(resolved.approved), remaining);
+  assert.equal(resolved.approved.approvalId, grants.approved!.approvalId);
+  assert.equal(approvals.current(id), true, 'verified local bytes need no revised decision');
+  for (const asset of collectAssets(pinnedDescriptor) as Asset[])
+    assert.ok(chooseGrant(resolved, asset));
+  for (const asset of uncovered) {
+    assert.equal(chooseGrant(resolved, asset), resolved.local);
+    assert.throws(
+      () => chargeGrant(resolved.local, asset.sha256, 1),
+      (error: unknown) => error instanceof GrantRefused && error.refusal === 'revision-required',
+    );
+  }
+});
+
+test('descriptor preflight carries spent bytes through widening and requires exact digest and size coverage', async () => {
+  const { approved } = await appGrants({
+    manifest,
+    manifestSha256: SHA,
+    approved: new Set(['photo']),
+    cache: cacheOf(),
+  });
+  const charge = chargeGrant(approved, stream.sha256, stream.size);
+  charge.received(stream.size);
+  charge.settle();
+  const remaining = grantRemaining(approved);
+  const originalAssets = [...approved.assets];
+  const descriptor = { steps: pinnedDescriptor.steps.slice(0, 2) };
+  const resolved = await resolveDiscoveredGrants(
+    { approved, local: null },
+    stream.sha256,
+    descriptor,
+    { has: async () => assert.fail('the frozen allowance covers these first pinned shards') },
+  );
+  assert.notEqual(resolved.approved, approved);
+  assert.equal(grantRemaining(resolved.approved), remaining);
+  assert.equal(grantRemaining(approved), remaining);
+  assert.deepEqual(approved.assets, originalAssets);
+  for (const asset of descriptor.steps)
+    assert.equal(chooseGrant(resolved, asset), resolved.approved);
+  const again = await resolveDiscoveredGrants(resolved, stream.sha256, descriptor, cacheOf());
+  assert.equal(again.approved, resolved.approved, 'repeated discovery changes no grant or ledger');
+  assert.equal(again.local, resolved.local);
+
+  const asset = descriptor.steps[0]!;
+  const wrongSize = {
+    ...resolved.approved,
+    allowances: [],
+    assets: [{ sha256: asset.sha256, bytes: asset.size + 1 }],
+  };
+  await assert.rejects(
+    resolveDiscoveredGrants(
+      { approved: wrongSize, local: wrongSize },
+      stream.sha256,
+      { steps: [asset] },
+      cacheOf(),
+    ),
+    (error: unknown) =>
+      error instanceof GrantRefused &&
+      error.refusal === 'revision-required' &&
+      error.sha256 === asset.sha256,
   );
 });
 
@@ -382,6 +649,31 @@ test('the actual worker preflights the complete encoder scope before downloading
   );
 });
 
+test('the actual uncached encoder reader preserves a mid-step grant refusal as a consent decision', async () => {
+  const source = readFileSync(new URL('../Next/browser/ort-worker.mjs', import.meta.url), 'utf8');
+  const readerSource = source.slice(
+    source.indexOf(' const local=asset=>'),
+    source.indexOf(' // The runtime is the small half:'),
+  );
+  assert.ok(readerSource.includes('const reader='));
+  const refused = new GrantRefused('revision-required', 'a'.repeat(64));
+  const context = vm.createContext({
+    cache: { uncached: true },
+    bytes: async () => {
+      throw refused;
+    },
+    compute: async (work: () => unknown) => work(),
+    id: 1,
+  });
+  const reader = vm.runInContext(`${readerSource}\nreader`, context) as {
+    read(asset: Asset): Promise<unknown>;
+  };
+  await assert.rejects(
+    reader.read({ sha256: 'a'.repeat(64), size: 1, url: '/shard' }),
+    (error: unknown) => error === refused,
+  );
+});
+
 test('actual photo-selection wrapper reads no descriptor for unreadable, cancelled or recovered input', async () => {
   const source = readFileSync(new URL('../Next/product-bridge.mjs', import.meta.url), 'utf8');
   const wrapper = source
@@ -433,3 +725,212 @@ test('actual photo-selection wrapper reads no descriptor for unreadable, cancell
     assert.equal(selections, outcome === 'recovered' ? 0 : 1, outcome);
   }
 });
+
+test('actual grant posting freezes photo authority without fetching its descriptor during synthesis setup', async () => {
+  const source = readFileSync(new URL('../Next/product-bridge.mjs', import.meta.url), 'utf8');
+  const entry = source
+    .slice(
+      source.indexOf('async function pushGrants('),
+      source.indexOf('export function downloadModels('),
+    )
+    .replace(
+      "const {createBrowserModelCache}=await import('./Assets/model-cache.mjs');",
+      'const {createBrowserModelCache}=testCacheModule;',
+    );
+  const approvals = createApprovalGenerations();
+  approvals.approve('photo');
+  let inspections = 0,
+    posts = 0;
+  const context = vm.createContext({
+    engine: async () => ({
+      plan: async () => ({ manifest, route: 'cpu', engine: 'ort' }),
+      setGrants: () => {
+        posts++;
+      },
+    }),
+    grantApprovals: () => approvals,
+    runtimeIdentity: SHA,
+    testCacheModule: { createBrowserModelCache: async () => cacheOf() },
+    inspectionCache: (_planned: unknown, cache: unknown) => cache,
+    inspectDescriptor: async () => {
+      inspections++;
+    },
+    refreshInventory: async () => {},
+    descriptorText: JSON.stringify(pinnedDescriptor),
+    descriptorFor: stream.sha256,
+    resolveDiscoveredGrants,
+  });
+  const push = vm.runInContext(`${entry}\npushGrants`, context) as (options?: {
+    strict: boolean;
+  }) => Promise<unknown>;
+  await push();
+  assert.equal(inspections, 0);
+  assert.equal(posts, 1, 'route preparation can start using the original bounded scope');
+  await assert.rejects(push({ strict: true }), GrantRefused);
+  assert.equal(inspections, 1);
+  assert.equal(posts, 1, 'larger photo scope is refused before a photo worker gets it');
+});
+
+test('actual photo preparation propagates descriptor refusals instead of pretending an omitted encoder schedule completed', async () => {
+  const source = readFileSync(new URL('../Next/browser/ort-worker.mjs', import.meta.url), 'utf8');
+  const entry = source.slice(
+    source.indexOf('async function photoAssets('),
+    source.indexOf('// The encoder is read one shard'),
+  );
+  // Stop at the function boundary, independent of the following worker helpers.
+  const functionSource = entry.slice(
+    0,
+    entry.indexOf('\n return ordered;\n}') + '\n return ordered;\n}'.length,
+  );
+  assert.ok(functionSource.includes('return ordered'));
+  const refused = new GrantRefused('revision-required', stream.sha256);
+  const context = vm.createContext({
+    manifest,
+    collectAssets,
+    TextDecoder,
+    currentId: 1,
+    bytes: async () => new TextEncoder().encode(JSON.stringify(pinnedDescriptor)),
+    admitDescriptor: () => {
+      throw refused;
+    },
+  });
+  const run = vm.runInContext(`${functionSource}\nphotoAssets`, context) as () => Promise<unknown>;
+  await assert.rejects(run(), (error: unknown) => error === refused);
+});
+
+test('actual setup pump asks for a revised decision before photo transfer, retains its owner and resumes only after approval', async () => {
+  const source = readFileSync(new URL('../Next/product-bridge.mjs', import.meta.url), 'utf8');
+  const entry = source.slice(
+    source.indexOf('async function pumpDownloads('),
+    source.indexOf('export function subscribe('),
+  );
+  const downloads = {
+    phase: 'idle',
+    routeReady: false,
+    photoReady: false,
+    routeBytes: 100,
+    photoBytes: 200,
+    photoApprovalRequired: false,
+  };
+  const wanted = new Set(['route', 'photo']),
+    transfers: string[] = [],
+    decisions: unknown[] = [];
+  let renewed = false;
+  const context = vm.createContext({
+    wanted,
+    downloads,
+    setupGeneration: 0,
+    downloading: null,
+    active: null,
+    performance,
+    announceDownloads: () => decisions.push({ ...downloads }),
+    pushGrants: async ({ strict }: { strict: boolean }) => {
+      if (strict && !renewed) throw new GrantRefused('revision-required', stream.sha256);
+    },
+    refreshInventory: async () => {
+      downloads.routeReady = transfers.includes('route');
+      downloads.photoReady = transfers.includes('photo');
+      downloads.photoBytes = 220;
+    },
+    engine: async () => ({
+      prefetch: async (scope: string) => {
+        transfers.push(scope);
+        return { started: true, assets: 1, acquired: 1 };
+      },
+    }),
+    analytics: { modelsDownloaded() {} },
+  });
+  const run = vm.runInContext(`${entry}\npumpDownloads`, context) as () => Promise<unknown>;
+  await run();
+  assert.deepEqual(transfers, ['route']);
+  assert.equal(downloads.phase, 'waiting');
+  assert.equal(downloads.photoApprovalRequired, true);
+  assert.equal(downloads.photoBytes, 220);
+  assert.equal(wanted.has('photo'), true);
+  await run();
+  assert.deepEqual(transfers, ['route'], 'no silent restart under the old approval');
+  renewed = true;
+  downloads.photoApprovalRequired = false;
+  await run();
+  assert.deepEqual(transfers, ['route', 'photo']);
+  assert.equal(downloads.photoReady, true);
+  assert.equal(wanted.size, 0);
+  assert.equal(downloads.phase, 'done');
+  assert.ok(decisions.some((value) => (value as typeof downloads).photoApprovalRequired));
+});
+
+for (const pause of ['grant', 'engine', 'prefetch'] as const)
+  test(`actual setup pump rejects a cancelled ${pause} continuation without losing immediate reapproval`, async () => {
+    const source = readFileSync(new URL('../Next/product-bridge.mjs', import.meta.url), 'utf8');
+    const entry = source
+      .slice(
+        source.indexOf('export function downloadModels('),
+        source.indexOf('export function subscribe('),
+      )
+      .replaceAll('export function', 'function');
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const downloads = {
+      phase: 'idle',
+      routeReady: false,
+      photoReady: false,
+      routeBytes: 100,
+      photoBytes: 200,
+    };
+    const wanted = new Set<string>(),
+      transfers: string[] = [];
+    let pushes = 0,
+      engines = 0,
+      prefetches = 0,
+      cancellations = 0;
+    const service = {
+      prefetch: async (scope: string) => {
+        if (++prefetches === 1 && pause === 'prefetch') {
+          await pending;
+          return { started: false };
+        }
+        transfers.push(scope);
+        if (scope === 'route') downloads.routeReady = true;
+        else downloads.photoReady = true;
+        return { started: true, assets: 1, acquired: 1 };
+      },
+    };
+    const context = vm.createContext({
+      wanted,
+      downloads,
+      setupGeneration: 0,
+      downloading: null,
+      active: null,
+      performance,
+      keepModelsOnDevice() {},
+      approve() {},
+      announceDownloads() {},
+      refreshInventory: async () => {},
+      pushGrants: async () => {
+        if (++pushes === 1 && pause === 'grant') await pending;
+      },
+      runtime: { cancelPrefetch: () => cancellations++ },
+      engine: async () => {
+        if (++engines === 1 && pause === 'engine') await pending;
+        return service;
+      },
+      analytics: { modelsDownloaded() {} },
+    });
+    const api = vm.runInContext(`${entry}\n({downloadModels,cancelDownloadSetup})`, context) as {
+      downloadModels(photo: boolean): void;
+      cancelDownloadSetup(): void;
+    };
+    api.downloadModels(false);
+    await new Promise(setImmediate);
+    api.cancelDownloadSetup();
+    api.downloadModels(true);
+    release();
+    await new Promise(setImmediate);
+    assert.equal(cancellations, 1);
+    assert.deepEqual(transfers, ['route', 'photo']);
+    assert.equal(pushes, 3, 'the replacement intent posts its own route and photo grants');
+    assert.equal(downloads.phase, 'done');
+    assert.equal(wanted.size, 0);
+  });
