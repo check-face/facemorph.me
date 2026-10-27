@@ -86,7 +86,7 @@ jobs:
           python-version: '3.12'
       - run: |
           python -m pip install --quiet --upgrade playwright
-          python -m playwright install --with-deps chromium
+          python -m playwright install chromium
       - name: cold-face, warm-face, morph and operated
         working-directory: tools/device-lab
         run: |
