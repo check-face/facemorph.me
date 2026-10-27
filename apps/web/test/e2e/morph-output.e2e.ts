@@ -296,6 +296,27 @@ async function operateNativePlayer(page: Page, video: Locator, touch: boolean) {
   const box = await video.boundingBox();
   assert.ok(box);
   await input('show native controls', { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+  // Chromium's click-to-play starts playback about 300 ms after a click on the video (it waits out a double-click),
+  // so an immediate paused check races it and the native Play press then pauses the video (full run 40443468068).
+  // Give that click its settle time before deciding whether Play still needs pressing.
+  await video
+    .evaluate(
+      (element) =>
+        new Promise<void>((done) => {
+          const v = element as HTMLVideoElement;
+          if (!v.paused) return done();
+          const timer = setTimeout(done, 1000);
+          v.addEventListener(
+            'play',
+            () => {
+              clearTimeout(timer);
+              done();
+            },
+            { once: true },
+          );
+        }),
+    )
+    .catch(() => {});
   if (await video.evaluate((element) => (element as HTMLVideoElement).paused)) {
     const cdp = await page.context().newCDPSession(page);
     try {
