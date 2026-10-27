@@ -52,7 +52,8 @@ jobs:
         run: node scripts/ci/changes.ts --previous-main-run --head "$GITHUB_SHA"
   dependency-policy:
     name: ${{ inputs.dependency_group != '' && 'dependency-currency' || 'dependency-policy' }}
-    runs-on: [self-hosted, linux-x64]
+    # Ordinary freeze is qualified on Triton; candidate runtime acquisition keeps its portable pool.
+    runs-on: [self-hosted, "${{ inputs.dependency_group != '' && 'linux-x64' || 'triton' }}"]
     timeout-minutes: 15
     permissions:
       contents: read

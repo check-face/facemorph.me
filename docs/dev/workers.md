@@ -42,8 +42,9 @@ Operator policy on 25 October allowed compatible work on Triton while available.
 The 27 October fm-kfs5 correction removed it from ordinary portable CPU scheduling.
 The subsequent fm-jx26 qualification assigns the six scaffold check groups,
 the dependency-free change selector and the browser-free checks listed below to
-its specific `triton` label. Dependency policy and all browser/workerd jobs retain
-the qualified portable pool.
+its specific `triton` label. Ordinary frozen-policy checks also use Triton;
+dependency-currency qualification and all browser/workerd jobs retain the
+qualified portable pool.
 Triton does not regain `linux-x64`.
 
 Observed pool on 27 October after the operator-directed label changes:
@@ -69,9 +70,12 @@ passed: format 0.9s, lint 0.5s, typecheck 9.9s, seeded violations 15.3s,
 format stability 2.5s and package checks/packs 3.0s. The prerequisite workspace
 build took 12.1s; the final source diff was empty. The real same-dataset cache
 restore was a hardlink hit in 24.9s. A scratch checkout outside the
-`/mnt/unit/gh-runners` dataset fell back to a 44.5s copy. Dependency policy stays
-on the faster portable cache to keep pipeline startup short. These are standalone
-qualification timings, not measured main-pipeline improvement or browser support.
+`/mnt/unit/gh-runners` dataset fell back to a 44.5s copy. After the reflink-probe
+repair, the same current-lockfile cache restores by hardlink in 1.0–1.1s. The ordinary frozen-policy command passed on immutable
+`4fad472` in 0.9s, so that ordinary job now also uses Triton. Conditional dependency
+updates retain the portable pool for runtime acquisition and currency checks.
+These are standalone qualification timings, not measured main-pipeline improvement
+or browser support.
 Additional browser-free commands were qualified on immutable source `e082c1d`
 (`import-inventory` used `4bf1987`) before moving their jobs to Triton:
 
