@@ -103,10 +103,10 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: Record the failure
-        if: failure()
+        if: failure() || cancelled()
         run: node scripts/ci/failures.mjs add --dir failures --check build --repro "npm run release:local -- --only journeys:chromium:operated"
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() || cancelled()
         with:
           name: failure-build
           path: failures/
@@ -156,24 +156,27 @@ jobs:
       # The runner image has Chromium's libraries; the apt step once took 11-16 min on a slow mirror (run 40520706989),
       # so the browser installs without it and Firefox's extra libraries get a bounded apt attempt.
       - run: python -m playwright install ${{ matrix.browser }}
+      # Firefox needs its media libraries for the morph video (without them morph hangs: run 40583631410). Bounded, and a
+      # failure fails here, visibly, instead of in the journey.
       - if: matrix.browser == 'firefox'
-        run: sudo timeout 150 python -m playwright install-deps firefox || echo "::warning::firefox install-deps did not finish; using the image's libraries"
+        run: sudo timeout 300 "$(command -v python)" -m playwright install-deps firefox
       - name: ${{ env.LIST }} on CPU
+        timeout-minutes: 20 # a hang fails this step, so the failure is recorded
         working-directory: tools/device-lab
         run: python hosted.py browser --lane linux-${{ matrix.browser }} --browser ${{ matrix.browser }} --journey "$LIST" --artifact ../../artifact/deploy-next --runtime-sha ${{ needs.build.outputs.runtime_sha }} --out ../../lane
       - name: Record the failure
-        if: failure()
+        if: failure() || cancelled()
         run: |
           ls lane/*.json >/dev/null 2>&1 && cat lane/*.json > lane-reports.txt || true
           node scripts/ci/failures.mjs add --dir failures --check "$CHECK" --bundle "bundle-journeys-${{ matrix.browser }}-${{ matrix.set }}" --numbers lane-reports.txt \
             --repro "$FETCH && npm run release:local -- --artifact /tmp/next-site-${{ github.run_id }} --only $CHECK"
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() || cancelled()
         with:
           name: failure-journeys-${{ matrix.browser }}-${{ matrix.set }}
           path: failures/
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() || cancelled()
         with:
           name: bundle-journeys-${{ matrix.browser }}-${{ matrix.set }}
           path: lane/
@@ -203,18 +206,18 @@ jobs:
           export FACEMORPH_RUNTIME_SHA256="$(sha256sum "$FACEMORPH_RUNTIME_DIR/manifest.json" | cut -c1-64)"
           node scripts/ci/scaffold-test-shards.mjs --workspace packages/stylegan-js 2>&1 | tee engine.log
       - name: Record the failure
-        if: failure()
+        if: failure() || cancelled()
         run: |
           grep -E '^(not ok|✖)|# (pass|fail)|Error' engine.log | tail -40 > engine-failures.txt || true
           node scripts/ci/failures.mjs add --dir failures --check engine --bundle bundle-engine --numbers engine-failures.txt \
             --repro "npm run release:local -- --only engine"
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() || cancelled()
         with:
           name: failure-engine
           path: failures/
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() || cancelled()
         with:
           name: bundle-engine
           path: engine.log
@@ -222,23 +225,17 @@ jobs:
 
   timing:
     needs: build
-    name: timing ${{ matrix.segment }} pair ${{ matrix.pair }}
-    # One segment and one pair per job, both apps on the same machine (scripts/verify/not-worse, median-check's stop
-    # rule merges the pairs). Spread across the eris and triton build runners.
-    runs-on: ${{ fromJSON(matrix.runner) }}
-    timeout-minutes: 30
+    name: timing ${{ matrix.segment }}
+    # One job per segment: three alternating pairs, control and build back to back on the same machine, then more pairs
+    # until the stop rule decides (scripts/verify/not-worse). One timing job per machine at a time (operator, 28 October
+    # 2026): the machine-wide timing lock makes a second job on eris wait. Triton's Ubuntu 20.04 has no Playwright
+    # Chromium (run 40583631410), so eris is the timing machine.
+    runs-on: [self-hosted, eris-build]
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         segment: [face, morph, photo]
-        pair: [0, 1, 2]
-        include:
-          - segment: face
-            runner: '["self-hosted","eris-build"]'
-          - segment: morph
-            runner: '["self-hosted","triton","cpu-20"]'
-          - segment: photo
-            runner: '["self-hosted","triton","cpu-20"]'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -257,23 +254,25 @@ jobs:
           got=$(node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; console.log(treeDigest('artifact/deploy-next'))")
           test "$got" = "$DIGEST"
       - uses: ./.github/actions/setup-runtime
-      - name: Pair ${{ matrix.pair }} of ${{ matrix.segment }}, control and build
+      - name: ${{ matrix.segment }}, control and build, three pairs then the stop rule
         env:
           GITHUB_TOKEN: ${{ github.token }}
           DIGEST: ${{ needs.build.outputs.digest }}
         run: |
+          # The segment's own verdict line is informational here; timing-gate merges every segment and decides.
           node --input-type=module -e "
             import { timingCommands } from './scripts/ci/release-checks.mjs';
-            console.log(timingCommands({ segment: '${{ matrix.segment }}', pair: ${{ matrix.pair }}, build: 'artifact/deploy-next',
+            const [fetch, run] = timingCommands({ segment: '${{ matrix.segment }}', pair: null, build: 'artifact/deploy-next',
               digest: process.env.DIGEST, source: 'run:${{ github.run_id }}', runtimeDir: process.env.FACEMORPH_RUNTIME_DIR,
-              out: process.env.RUNNER_TEMP + '/timing', label: 'release-${{ github.run_id }}-${{ matrix.segment }}-p${{ matrix.pair }}' }).join(' && '))
+              out: process.env.RUNNER_TEMP + '/timing', label: 'release-${{ github.run_id }}-${{ matrix.segment }}' });
+            console.log([fetch, run].join(' && '))
           " > timing.sh
           cat timing.sh
           bash -eo pipefail timing.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: timing-${{ matrix.segment }}-p${{ matrix.pair }}
+          name: timing-${{ matrix.segment }}
           path: ${{ runner.temp }}/timing/
           retention-days: 14
 
@@ -304,15 +303,15 @@ jobs:
           set -e
           # The second wave's matrix: every segment's next pair indexes, each on its segment's runners.
           node -e '
-            const v = require("./timing-verdict.json"), runner = { face: ["self-hosted","eris-build"], morph: ["self-hosted","triton","cpu-20"], photo: ["self-hosted","triton","cpu-20"] };
+            const v = require("./timing-verdict.json"), runner = { face: ["self-hosted","eris-build"], morph: ["self-hosted","eris-build"], photo: ["self-hosted","eris-build"] };
             const include = Object.entries(v.segments ?? {}).flatMap(([segment, s]) => (s.nextPairs ?? []).map((pair) => ({ segment, pair, runner: JSON.stringify(runner[segment]) })));
             require("fs").appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${JSON.stringify({ include })}\n`);'
           test "$code" != 1
       - name: Record the failure
-        if: failure()
+        if: failure() || cancelled()
         run: node scripts/ci/failures.mjs add --dir failures --check timing --bundle bundle-timing --numbers timing-table.txt --repro "$FETCH && npm run release:local -- --artifact /tmp/next-site-${{ github.run_id }} --only timing"
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() || cancelled()
         with:
           name: failure-timing
           path: failures/
@@ -386,10 +385,10 @@ jobs:
           node scripts/verify/not-worse/median-check.mjs timing --expect face,morph,photo --threshold 0.15 --json timing-verdict.json \
             | tee -a "$GITHUB_STEP_SUMMARY" timing-table.txt
       - name: Record the failure
-        if: failure()
+        if: failure() || cancelled()
         run: node scripts/ci/failures.mjs add --dir failures --check timing --bundle bundle-timing-final --numbers timing-table.txt --repro "$FETCH && npm run release:local -- --artifact /tmp/next-site-${{ github.run_id }} --only timing"
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() || cancelled()
         with:
           name: failure-timing-final
           path: failures/
@@ -500,10 +499,10 @@ jobs:
         if: inputs.publish
         run: node scripts/hosting/deploy.mjs live --target "$TARGET" --public "$RUNNER_TEMP/public" --artifact web | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Record the failure
-        if: failure()
+        if: failure() || cancelled()
         run: node scripts/ci/failures.mjs add --dir failures --check "deploy ($TARGET)" --repro "node scripts/hosting/deploy.mjs all --target $TARGET --artifact <artifact> --runtime .cache/ci-runtime --public /tmp/public (dry run)"
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() || cancelled()
         with:
           name: failure-deploy
           path: failures/
@@ -561,7 +560,7 @@ jobs:
             --control-url "$CONTROL" --cells phone-cpu,phone-webgpu --journey cold-face,warm-face \
             --label "live-pairs-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Record the failure (P0 on fm-jzuq; fix and roll forward)
-        if: failure()
+        if: failure() || cancelled()
         run: |
           adb logcat -d -t 5000 > logcat.txt 2>/dev/null || true
           cat tools/device-lab/out/*live-*"$GITHUB_RUN_ID"/summary.md > verify-summary.txt 2>/dev/null || cp post-delivery.txt verify-summary.txt
@@ -571,12 +570,12 @@ jobs:
             --bundle bundle-verify --numbers verify-summary.txt \
             --repro "$gh_fetch && npm run release:local -- --artifact /tmp/next-site-$RUN --url $ORIGIN --only live"
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() || cancelled()
         with:
           name: failure-verify
           path: failures/
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() || cancelled()
         with:
           name: bundle-verify
           path: |

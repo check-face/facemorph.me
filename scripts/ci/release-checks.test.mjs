@@ -32,3 +32,18 @@ test('local timing runs three pairs then the stop rule and its verdict; CI runs 
   assert.deepEqual(TIMING_SEGMENTS, ['face', 'morph', 'photo']);
   assert.throws(() => timingCommands({ segment: 'all', build: 'b', runtimeDir: 'r', out: 'o' }));
 });
+
+test('a CI segment job without a pair index runs three pairs and the stop rule, and waits for the machine lock', () => {
+  const ci = timingCommands({
+    segment: 'morph',
+    build: 'b',
+    runtimeDir: 'r',
+    out: 'o',
+    pair: null,
+    digest: 'd',
+    label: 'L',
+  });
+  assert.match(ci[1], /--exclusive gpu-timing --wait 3600 /);
+  assert.match(ci[1], /--segment morph --pairs 3 --max-pairs 7 /);
+  assert.equal(ci[2], 'node scripts/verify/not-worse/median-check.mjs o/L --expect morph');
+});

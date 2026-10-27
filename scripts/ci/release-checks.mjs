@@ -21,19 +21,24 @@ export function timingCommands({
   digest,
   source,
   label,
+  wait = 3600,
 }) {
   if (!TIMING_SEGMENTS.includes(segment)) throw new Error(`unknown timing segment ${segment}`);
-  const name = label ?? (local ? `release-local-${segment}` : `release-${segment}-p${pair}`);
+  // pair null: the whole segment in one job, three pairs then the stop rule, with its verdict.
+  const whole = local || pair == null;
+  const name = label ?? (whole ? `release-local-${segment}` : `release-${segment}-p${pair}`);
   const run = [
-    'python3 autoresearch/run.py --exclusive gpu-timing --wait 0 --timeout 3600 --',
+    // The machine-wide timing lock is how a machine runs one timing job at a time (operator, 28 October 2026): a
+    // second job waits for it rather than failing.
+    `python3 autoresearch/run.py --exclusive gpu-timing --wait ${wait} --timeout 3600 --`,
     `node scripts/verify/not-worse/run.ts --control ${CONTROL} --control-digest ${controlDigest}`,
     `--build ${build} --build-digest ${digest ?? treeDigest(build)} --build-source ${source ?? 'local'}`,
     `--segment ${segment}`,
-    local ? '--pairs 3 --max-pairs 7' : `--pairs 1 --pair-index ${pair}`,
+    whole ? '--pairs 3 --max-pairs 7' : `--pairs 1 --pair-index ${pair}`,
     `--provider cpu --browser chromium --runtime ${runtimeDir} --label ${name} --out ${out}`,
   ].join(' ');
   const cmds = ['node scripts/import/fetch-control.mjs --dest .cache/control', run];
-  if (local)
+  if (whole)
     cmds.push(`node scripts/verify/not-worse/median-check.mjs ${out}/${name} --expect ${segment}`);
   return cmds;
 }
