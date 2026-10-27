@@ -203,7 +203,7 @@ jobs:
         run: node scripts/import/fetch-control.mjs --dest .cache/control
       - name: Three ABBA pairs, control against this build
         run: |
-          python3 autoresearch/run.py --exclusive gpu-timing --wait 0 --timeout 9000 -- \
+          python3 autoresearch/run.py --exclusive gpu-timing --wait 0 --timeout 3600 -- \
             node scripts/verify/not-worse/run.ts --control .cache/control/tree/deploy-next \
               --build artifact/deploy-next --build-digest "${{ needs.build.outputs.digest }}" --build-source "run:$GITHUB_RUN_ID" \
               --pairs 3 --provider cpu --browser chromium --runtime "$FACEMORPH_RUNTIME_DIR" \
