@@ -72,6 +72,23 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual([c['step'] for c in result['calls']], [c[0] for c in calls])
         self.assertEqual(sleeps, [10, 10])
 
+    def test_a_timed_out_openurl_that_reached_the_server_is_not_repeated(self):
+        calls = []
+        def run(*args, timeout):
+            calls.append(args[0])
+            return {'returncode': 0} if args[0] == 'launch' else {'timedOut': True}
+        result = open_safari('UDID', 'https://127.0.0.1:1/x', run=run, sleep=lambda s: None,
+                             delivered=lambda: True)
+        self.assertEqual(calls, ['launch', 'openurl'])
+        self.assertEqual((result['returncode'], result['delivered']), (0, True))
+        self.assertEqual([c['step'] for c in result['calls']], ['launch', 'openurl', 'delivered'])
+        # Not delivered: the open is retried as before.
+        calls.clear()
+        result = open_safari('UDID', 'https://127.0.0.1:1/x', run=run, sleep=lambda s: None,
+                             delivered=lambda: False)
+        self.assertEqual(calls.count('openurl'), 4)
+        self.assertTrue(result['timedOut'])
+
     def test_safari_open_is_bounded_and_reports_the_last_failure(self):
         calls = []
         def run(*args, timeout):

@@ -201,12 +201,15 @@ def simctl(*args, timeout):
         return {'timedOut': True}
 
 
-def open_safari(udid, url, run=simctl, sleep=time.sleep, attempts=4):
+def open_safari(udid, url, run=simctl, sleep=time.sleep, attempts=4, delivered=None):
     # A freshly booted Simulator accepts `openurl` only once Safari and its URL handlers are up;
     # before that it fails with NSPOSIXErrorDomain 60 (main run 40372947913: two openurl exits 60,
     # SpringBoard on screen, zero cases). Launch Safari first and retry, as next-ios-sim.py does for
     # the product lane. Bounded to about six minutes inside the job's 20. Every call is recorded;
     # only the subsequent browser report may establish success.
+    # An openurl that times out can still have opened the page (main run 40433665126: attempt 1
+    # timed out, the retry loaded the cross-tab primary a second time). `delivered()` says whether
+    # the server already saw this URL; when it did, the open is not repeated.
     calls = [dict(step='launch', **run('launch', udid, 'com.apple.mobilesafari', timeout=120))]
     for attempt in range(1, attempts+1):
         result = run('openurl', udid, url, timeout=60)
@@ -215,10 +218,16 @@ def open_safari(udid, url, run=simctl, sleep=time.sleep, attempts=4):
             break
         if attempt < attempts:
             sleep(10)
+            if delivered is not None and delivered():
+                calls.append(dict(step='delivered', attempt=attempt))
+                break
             calls.append(dict(step='launch', **run('launch', udid, 'com.apple.mobilesafari', timeout=60)))
-    last = calls[-1]  # the loop always ends on an openurl
-    return {'returncode': last.get('returncode'), 'timedOut': last.get('timedOut', False),
-            'stdout': last.get('stdout', ''), 'stderr': last.get('stderr', ''), 'calls': calls}
+    opened = [c for c in calls if c['step'] == 'openurl'][-1]
+    if calls[-1]['step'] == 'delivered':
+        return {'returncode': 0, 'timedOut': False, 'delivered': True, 'stdout': opened.get('stdout', ''),
+                'stderr': opened.get('stderr', ''), 'calls': calls}
+    return {'returncode': opened.get('returncode'), 'timedOut': opened.get('timedOut', False),
+            'stdout': opened.get('stdout', ''), 'stderr': opened.get('stderr', ''), 'calls': calls}
 
 
 def simulator_certificate(udid, certificate, attempts):
@@ -261,7 +270,7 @@ def simulator_certificate(udid, certificate, attempts):
 def ios_tab_controller(origin, run_id, udid, state, fixture_ledger, navigations, output, lock):
     before = fixture_ledger()
     primary_url = origin+'/tests/mobile/manager-tab.html?'+urlencode({'run': run_id, 'role': 'primary'})
-    launches = [open_safari(udid, primary_url)]
+    launches = [open_safari(udid, primary_url, delivered=lambda: primary_url in navigations)]
     seen = 0
     opened = {}
     deadline = time.monotonic()+150
@@ -280,7 +289,8 @@ def ios_tab_controller(origin, run_id, udid, state, fixture_ledger, navigations,
                 opened[backend] = event
                 query = {'run': run_id, 'role': 'helper', 'backend': backend,
                          'name': event['name'], 'primaryIdentity': event['primaryIdentity']}
-                launches.append(open_safari(udid, origin+'/tests/mobile/manager-tab.html?'+urlencode(query)))
+                helper_url = origin+'/tests/mobile/manager-tab.html?'+urlencode(query)
+                launches.append(open_safari(udid, helper_url, delivered=lambda u=helper_url: u in navigations))
         seen = len(events)
         if report:
             rows = report.get('rows', [])
