@@ -53,25 +53,42 @@ def dump(name):
                       'stages': (state or {}).get('stages')})[:1500])
 
 
+# Polls the page could not answer within the harness's five-second IPC deadline, by wait target.
+# Main run 40458102995: the control page held its main thread through the first cold face and one
+# such poll ended the run with no timings, although the face would have arrived. A stall is a fact
+# about the page, recorded here; only the wait's own deadline is a verdict.
+STALLS = []
+
+
 def wait(check, seconds, what):
     deadline = time.time() + seconds
     while time.time() < deadline:
-        # An error on the surface is an answer, not something to keep waiting through. The route
-        # has failed on this runner since at least 21 September with "[Invalid CommandBuffer] is
-        # invalid" out of Queue.Submit, and every run spent its full deadline before reporting a
-        # timeout — which reads like a hang and named nothing. The product already puts the GPU's
-        # own words on screen; the lane repeats them and stops.
-        failure = q("document.querySelector('.next-error')?.innerText||''")
-        if failure:
-            dump('failure-state.json')
-            raise AssertionError('The product reported an error while waiting for %s: %s'
-                                 % (what, ' '.join(failure.split())[:300]))
-        value = check()
-        if value:
-            return value
+        try:
+            done = poll(check, what)
+        except RuntimeError as error:
+            if 'Runtime.evaluate timed out' not in str(error):
+                raise
+            STALLS.append({'waitingFor': what, 'at': time.time()})
+            continue
+        if done:
+            return done
         time.sleep(1)
     dump('failure-state.json')
     raise AssertionError('Timed out waiting for ' + what)
+
+
+def poll(check, what):
+    # An error on the surface is an answer, not something to keep waiting through. The route
+    # has failed on this runner since at least 21 September with "[Invalid CommandBuffer] is
+    # invalid" out of Queue.Submit, and every run spent its full deadline before reporting a
+    # timeout — which reads like a hang and named nothing. The product already puts the GPU's
+    # own words on screen; the lane repeats them and stops.
+    failure = q("document.querySelector('.next-error')?.innerText||''")
+    if failure:
+        dump('failure-state.json')
+        raise AssertionError('The product reported an error while waiting for %s: %s'
+                             % (what, ' '.join(failure.split())[:300]))
+    return check()
 
 
 origin = os.environ.get('GPU_BENCH_URL', 'https://next.facemorph.me/')
@@ -182,6 +199,7 @@ report = {
     'webdriver':q('navigator.webdriver'),
     'admissionPolicy':'actual automated policy; ordinary-user startup not inferred',
     'stages': q('window.__bench'),
+    'mainThreadStalls': STALLS,
     # The browser's adapter block is deliberately vague (Chrome redacts vendor and device on
     # many platforms), so the host's own view of the GPU travels with the row. A ledger entry
     # that cannot name the hardware is not comparable to anything.
