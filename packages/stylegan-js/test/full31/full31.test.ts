@@ -488,6 +488,8 @@ for (const scope of ['ort', 'direct'] as const)
       const identity =
         NUMERICS_OUT === undefined ? null : browserIdentity(browser, executablePath, before);
       const probe = await (await browser.newContext({ ignoreHTTPSErrors: true })).newPage();
+      // Like the run page: a loaded machine can take over Playwright's 30 s default to open it (run 40602031941).
+      probe.setDefaultTimeout(300_000);
       await probe.goto(`${origin}/`);
       await probe.waitForFunction(() => (window as unknown as { ready?: boolean }).ready === true);
       const adapter = await call<Adapter | null>(probe, 'adapter');
