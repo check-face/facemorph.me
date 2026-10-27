@@ -11,6 +11,7 @@ import { readIdentity } from '../../../../scripts/import/build-next.mjs';
 import { press } from '../support/operate.ts';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
+const artifactRoot = resolve(process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO);
 const results = join(REPO, 'apps/web/test-results/legacy-links');
 const KEYS = ['from_value', 'to_value', 'from_seed', 'to_seed', 'from_guid', 'to_guid'];
 const LEGACY = `/?${KEYS.map((k) => `${k}=legacy-${k.replace('_', '-')}`).join('&')}`;
@@ -26,12 +27,12 @@ test(
       t.skip(reason);
       return;
     }
-    const artifact = readIdentity(REPO);
+    const artifact = readIdentity(artifactRoot);
     assert.deepEqual(artifact.findings, []);
     assert.equal(artifact.identity?.label, 'destination');
     const site = await startControl({
       runtime,
-      artifact: resolve(REPO, 'deploy-next'),
+      artifact: resolve(artifactRoot, 'deploy-next'),
       source: artifact.identity.deploySource.buildId,
     });
     const browser = await chromium.launch({ args: [...chromiumArgs, '--disable-features=WebGPU'] });
@@ -59,6 +60,11 @@ test(
           await page.goto(`${ORIGIN}${path}`);
           await page.locator('section.next-face').nth(1).waitFor();
           await page.waitForLoadState('networkidle');
+          assert.equal(
+            await page.locator('.next-model-toast').count(),
+            0,
+            `${name}: arrival has no proactive model download offer`,
+          );
           const view = await page.evaluate(() => ({
             fields: [
               ...document.querySelectorAll<HTMLInputElement>('section.next-face .next-field input'),

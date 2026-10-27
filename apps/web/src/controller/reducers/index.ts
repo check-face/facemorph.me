@@ -89,6 +89,8 @@ export const CASES = {
   Import: jobs,
   Notice: jobs,
   DownloadsChanged: gate,
+  PrepareEncoder: gate,
+  CancelEncoderSetup: gate,
   DownloadNow: gate,
   HideModelToast: gate,
   GateAccept: gate,

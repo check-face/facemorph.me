@@ -105,6 +105,12 @@ export function Product({ store }: { store: Store }) {
         provider={s.Provider}
         busy={s.Busy}
         onProvider={(provider) => dispatch(msg('Provider', provider))}
+        encoderSetup={{
+          available: s.Downloads.known && s.Downloads.photoAvailable && !s.Downloads.photoReady,
+          active: s.EncoderSetup === 'active',
+          onPrepare: () => dispatch(msg('PrepareEncoder')),
+          onCancel: () => dispatch(msg('CancelEncoderSetup')),
+        }}
       />
       <FacesLayout
         inputs={s.Inputs}

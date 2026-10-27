@@ -8,7 +8,8 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'rea
 import { msg } from '../../src/controller/msg.ts';
 import type { State } from '../../src/controller/state.ts';
 import { testingInvited } from '../../src/controller/init.ts';
-import { megabytes, type Dispatch } from './Dialogs.tsx';
+import type { Dispatch } from './Dialogs.tsx';
+import { downloadMegabytes as megabytes } from '../../src/controller/derived.ts';
 import { Explain } from './Explain.tsx';
 import { refusalForText } from '../../src/admission/route-admission.ts';
 import { setUsageStats, switchState } from '../facade/usage-stats.ts';
@@ -230,8 +231,7 @@ export function Toasts({ state, dispatch, report }: Pick<Props, 'state' | 'dispa
   const model =
     !state.ModelToastHidden &&
     downloads.known &&
-    ((downloads.phase === 'idle' && !downloads.routeReady) ||
-      ['downloading', 'waiting', 'failed', 'done'].includes(downloads.phase));
+    ['downloading', 'waiting', 'failed', 'done'].includes(downloads.phase);
   const failure = failureToastShown(state, report);
   let content: ReactNode = null;
   let actions: ReactNode = null;

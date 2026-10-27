@@ -13,6 +13,9 @@ import { Support, TestingInvite } from './Support.tsx';
 const image = '/preview/hello-1024.webp';
 const query = new URLSearchParams(location.search);
 const n = Math.max(1, Number(query.get('faces') ?? 2));
+// Rendering inputs only: exercise a package larger than the browser's reported quota
+// without replacing Storage APIs or allocating model bytes.
+const downloadBytes = Number(query.get('downloadBytes'));
 const names = ['Charlotte', 'Olivia', 'Amelia', 'Isla', 'Mia', 'Ava', 'Grace', 'Willow'];
 function initial(): State {
   const state = init({
@@ -39,7 +42,10 @@ function initial(): State {
           : query.get('phase') === 'failed'
             ? 'failed'
             : 'idle',
-      routeBytes: phoneCpuCheck.cpuPackageBytes,
+      routeBytes:
+        Number.isSafeInteger(downloadBytes) && downloadBytes > 0
+          ? downloadBytes
+          : phoneCpuCheck.cpuPackageBytes,
       photoBytes: 1024 * 1024 * 1024,
       photoAvailable: true,
     },

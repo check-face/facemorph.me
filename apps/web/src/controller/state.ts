@@ -89,6 +89,8 @@ export interface State {
   readonly Remaining: string;
   readonly ConsentPrompt: boolean;
   readonly Downloads: Downloads;
+  /** Independent page preparation; cancelled suppresses late setup-only revision notices. */
+  readonly EncoderSetup?: 'requested' | 'active' | 'cancelled';
   readonly ModelToastHidden: boolean;
   readonly DownloadConsent: ReadonlySet<string>;
   readonly Gate: readonly [string, Msg] | null;

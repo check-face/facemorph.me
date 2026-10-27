@@ -15,8 +15,14 @@ import { msg, type Msg } from '../../src/controller/msg.ts';
 import type { CropChoice, State } from '../../src/controller/state.ts';
 
 export type Dispatch = (message: Msg) => void;
-export { megabytes } from '../../src/controller/derived.ts';
-import { megabytes } from '../../src/controller/derived.ts';
+export { downloadMegabytes as megabytes } from '../../src/controller/derived.ts';
+import { downloadMegabytes as megabytes } from '../../src/controller/derived.ts';
+import {
+  cannotKeepDownload,
+  downloadStorageWarning,
+  readDownloadStorage,
+  type DownloadStorage,
+} from '../../src/controller/download-storage.ts';
 import { NOTICES_HREF } from './help.ts';
 
 // A programmatic close traverses history asynchronously. A subsequent modal must not treat that traversal
@@ -540,11 +546,32 @@ function CropPreview({ crop }: { crop: CropChoice }) {
 }
 
 export function DownloadDialog({ state, dispatch }: { state: State; dispatch: Dispatch }) {
-  if (!state.Gate) return null;
-  const photo = state.Gate[0] === 'photo';
+  const gate = state.Gate;
+  const photo = gate?.[0] === 'photo';
   const size = photo
     ? state.Downloads.photoBytes + (state.Downloads.routeReady ? 0 : state.Downloads.routeBytes)
     : state.Downloads.routeBytes;
+  const known = state.Downloads.known;
+  const [storageCheck, setStorageCheck] = useState<{
+    gate: typeof gate;
+    size: number;
+    storage: DownloadStorage | null;
+  } | null>(null);
+  useEffect(() => {
+    if (!gate || !known) return;
+    let abandoned = false;
+    void readDownloadStorage(navigator.storage).then((storage) => {
+      if (!abandoned) setStorageCheck({ gate, size, storage });
+    });
+    return () => {
+      abandoned = true;
+    };
+  }, [gate, size, known]);
+  if (!gate) return null;
+  const cannotKeep =
+    storageCheck?.gate === gate &&
+    storageCheck.size === size &&
+    cannotKeepDownload(storageCheck.storage, size);
   // Until the device has checked which model files it already holds, no size is shown rather than a guessed one.
   const amount = state.Downloads.known
     ? `: ${megabytes(size)}`
@@ -559,13 +586,16 @@ export function DownloadDialog({ state, dispatch }: { state: State; dispatch: Di
         <h2>{photo ? 'Download the photo encoder?' : 'Download the face model?'}</h2>
         <p>
           {photo
-            ? `Photos are turned into faces on this device, so it needs the photo encoder once${amount}. Your photo never leaves your device.`
-            : `Faces are made on this device, so it needs the face model once${amount}.`}
+            ? `Photos are turned into faces on this device, so it needs the photo encoder${amount}. Your photo never leaves your device.`
+            : `Faces are made on this device, so it needs the face model${amount}.`}
         </p>
         <p>
-          It’s saved for next time. Your browser may ask whether this site can keep it; saying yes
-          stops it being cleared when space runs low.
+          Model files are saved on this device where storage is available. Your browser may ask
+          whether this site can keep them; saying yes helps keep them when space runs low.
         </p>
+        {cannotKeep && (
+          <p className="next-download-storage">{downloadStorageWarning(megabytes(size))}</p>
+        )}
         <p className="next-download-licences">
           <a href={NOTICES_HREF} target="_blank" rel="noopener">
             Model licences

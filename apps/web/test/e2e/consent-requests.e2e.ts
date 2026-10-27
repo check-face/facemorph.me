@@ -484,7 +484,7 @@ test(
           if (!event.isTrusted || !(event.target instanceof Element)) return;
           const button = event.target.closest('button');
           const label = button?.textContent?.trim() ?? '';
-          if (button?.closest('.next-model-toast') && /^Plus photo encoder/i.test(label))
+          if (button?.closest('.next-download-dialog') && /^Download and continue$/i.test(label))
             state.approvedAt ||= event.timeStamp;
           if (button?.closest('.next-crop-dialog') && label === 'OK')
             state.cropOKAt = event.timeStamp;
@@ -755,12 +755,12 @@ test(
           throw Error('Software/fallback adapter cannot qualify desktop WebGPU');
         return report;
       }, measuredRoute === 'webgpu');
-      // Inventory replaces the initial unknown-size toast. Wait for its real bounded offer;
-      // the transient Ask me later control can disappear before a pointer reaches it.
-      await page
-        .locator('.next-model-toast')
-        .getByRole('button', { name: /^Plus photo encoder/ })
-        .waitFor();
+      // Optional preparation becomes available after real inventory inspection, beside Processing.
+      const prepare = page.locator('.next-provider-row').getByRole('button', {
+        name: 'Prepare encoder',
+        exact: true,
+      });
+      await prepare.waitFor();
       await chooseCpu(page, measuredRoute);
       await page.waitForTimeout(2000);
       assert.deepEqual(modelRequests(), [], 'cold arrival has no model-host request');
@@ -781,13 +781,12 @@ test(
       assert.deepEqual(modelRequests(), [], 'Cancel leaves zero model-host requests');
       assert.deepEqual(observedModels(), [], 'Cancel leaves zero worker or mirror model requests');
 
-      // The current shipped entry is operated as rendered. fm-9kr8 owns its replacement beside Processing mode.
-      const prepare = page
-        .locator('.next-model-toast')
-        .getByRole('button', { name: /^Plus photo encoder/ });
       await prepare.waitFor();
       times['approvalOperationStarted'] = performance.now();
       await operate(prepare);
+      await dialog.waitFor();
+      assert.deepEqual(modelRequests(), [], 'opening optional setup grants no transfer');
+      await operate(dialog.getByRole('button', { name: 'Download and continue', exact: true }));
       const approvalObservation = await readObservation();
       assert.ok(
         approvalObservation.approvedAt > 0,
@@ -795,9 +794,6 @@ test(
       );
       times['approved'] =
         approvalObservation.timeOrigin + approvalObservation.approvedAt - performance.timeOrigin;
-      await page.waitForFunction(() => !!document.querySelector('.next-model-toast'), null, {
-        timeout: 30_000,
-      });
       const waitTransfer = async () => {
         const end = performance.now() + 180_000;
         let revised = 0;
@@ -820,6 +816,11 @@ test(
         }
       };
       await waitTransfer();
+      // The discovered descriptor can require another explicit decision before transfer starts.
+      // Observe active transfer UI only after that decision; the same status assertion and bound apply.
+      await page.waitForFunction(() => !!document.querySelector('.next-model-toast'), null, {
+        timeout: 30_000,
+      });
       times['encoderFirstByte'] = server.log.find(
         (row) => encoder.has(row.path) && row.bytes > 0,
       )!.firstByte;

@@ -100,6 +100,9 @@ export const megabytes = (bytes: number): string =>
   bytes >= 1024 ** 3
     ? `${(bytes / 1024 ** 3).toFixed(1)} GB`
     : `${Math.max(1, bytes / 1024 ** 2).toFixed(0)} MB`;
+/** Acquisition figures keep one unit across consent, transfer progress and status. */
+export const downloadMegabytes = (bytes: number): string =>
+  `${Math.max(1, Math.round(bytes / 1024 ** 2)).toLocaleString('en-US')} MB`;
 export const estimate = (_state: State, facts: Measurements): readonly [number, number] | null =>
   facts.faceMs === null ? null : [facts.faceMs, facts.plannedFrames ?? 0];
 export const failureToastVisible = (state: State, modelToast: boolean): boolean =>
