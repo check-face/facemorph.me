@@ -1369,8 +1369,8 @@ export function createModelCache({
   // (a stale marker served corrupt bytes on iOS 27 Safari and Android Chrome 124; see the
   // mobile suite's corrupt-cache-repair check). A first-open mismatch, or a vanished entry,
   // is repaired once: the bad identity is removed and re-acquired before bytes are handed
-  // back. Model bytes never buffer whole in JS: pass 1 hashes the stored stream, pass 2
-  // returns a fresh store read.
+  // back. open() stays streaming: pass 1 hashes the stored stream, pass 2 returns a fresh
+  // store read. bytes() instead verifies while filling its one required execution buffer.
   async function digestFailure(
     body: ReadableStream<Uint8Array> | null,
     asset: Asset,
@@ -1431,24 +1431,72 @@ export function createModelCache({
     await ensure(asset, new AbortController().signal, transfer);
     return openVerified(asset, { allowRepair: false });
   }
-  // Bytes verified earlier this session are handed back without a second digest, so a file that
-  // became unreadable since is only found here: drop the identity and repair it once.
+  // Return the same bytes we verified, rather than hashing one stored stream then reopening
+  // another. The output is the execution buffer bytes() already requires; incoming pieces use
+  // the unchanged bounded hash phase. Never allocate from the untrusted response's length.
+  // A file that becomes unreadable after verification is still dropped and repaired once.
   async function readVerified(asset: Asset, transfer: Transfer): Promise<Uint8Array<ArrayBuffer>> {
-    try {
-      return new Uint8Array(
-        await (await openVerified(asset, { allowRepair: true, transfer })).arrayBuffer(),
-      );
-    } catch (error) {
-      if ((error as Err | null)?.name !== 'NotReadableError') throw error;
+    for (const allowRepair of [true, false]) {
+      let response: Response | undefined;
+      try {
+        response = await store.get(asset.sha256);
+      } catch (error) {
+        emit({ status: 'storage-unavailable', sha256: asset.sha256 });
+        throw error;
+      }
+      let failure: unknown;
+      if (response) {
+        // Allocation failure is memory pressure, not evidence that the stored model is corrupt.
+        // Keep it outside the repair catch so it cannot evict good bytes or spend another grant.
+        let output: Uint8Array<ArrayBuffer>;
+        try {
+          output = new Uint8Array(asset.size);
+        } catch (error) {
+          void response.body?.cancel(error).catch(() => {});
+          throw error;
+        }
+        let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+        try {
+          const needsVerification = !verifiedAssets.has(asset.sha256);
+          const body = needsVerification
+            ? verifiedStream(response.body, asset, new AbortController().signal)
+            : response.body;
+          if (!body) throw new Error('Asset response has no readable body');
+          reader = body.getReader();
+          let size = 0;
+          for (;;) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            if (value.byteLength > output.byteLength - size)
+              throw new Error('Asset exceeds declared size');
+            output.set(value, size);
+            size += value.byteLength;
+          }
+          if (size !== asset.size) throw new Error('Asset integrity mismatch');
+          if (needsVerification) {
+            markVerified(asset.sha256);
+            emit({ status: 'verified', sha256: asset.sha256, bytes: asset.size });
+          }
+          return output;
+        } catch (error) {
+          failure = error;
+          await reader?.cancel(error).catch(() => {});
+        } finally {
+          reader?.releaseLock();
+        }
+        await Promise.resolve(store.remove(asset.sha256)).catch(() => {});
+        await records.remove(VERIFIED_MARKER + asset.sha256).catch(() => {});
+        emit({ status: 'corrupt-removed', sha256: asset.sha256 });
+      } else {
+        failure = localError('Stored asset disappeared; acquire again', 'absent');
+        emit({ status: 'missing-after-acquire', sha256: asset.sha256 });
+      }
       verifiedAssets.delete(asset.sha256);
-      await Promise.resolve(store.remove(asset.sha256)).catch(() => {});
-      emit({ status: 'corrupt-removed', sha256: asset.sha256 });
+      if (!allowRepair) throw failure;
       emit({ status: 'repairing', sha256: asset.sha256 });
       await ensure(asset, new AbortController().signal, transfer);
-      return new Uint8Array(
-        await (await openVerified(asset, { allowRepair: false })).arrayBuffer(),
-      );
     }
+    throw new Error('Stored asset could not be read');
   }
   function acquire(input: AssetInput, options: AcquireOptions): Promise<AssetHandle> {
     const { grant, owner, signal } = options ?? ({} as Partial<AcquireOptions>);

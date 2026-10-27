@@ -66,12 +66,17 @@ function bytes(n: number, seed: number): Uint8Array {
 const parts = [bytes(70_000, 1), bytes(70_000, 2), bytes(70_000, 3)];
 const whole = Buffer.concat(parts);
 const plain = bytes(50_000, 9);
+// Above the16MiB shard ceiling: first retained bytes() must use native Cache Storage.
+const large = bytes(16 * 1024 * 1024 + 4097, 41);
+const LARGE_SHA256 = '0556216a9073688438378bcfc6f147cf8b9b8a1cc07cf143ef0da9858a19bc92';
+assert.equal(sha(large), LARGE_SHA256, 'the deterministic large fixture keeps its independent pin');
 const files: Record<string, Uint8Array> = {
   '/part-0': parts[0]!,
   '/part-1': parts[1]!,
   '/part-2': parts[2]!,
   '/chunked.bin': whole,
   '/plain.bin': plain,
+  '/large.bin': large,
 };
 
 const work = mkdtempSync(join(tmpdir(), 'manager-local-'));
@@ -208,6 +213,7 @@ const ASSETS = {
     chunks: parts.map(unit),
   },
   plain: { sha256: sha(plain), size: plain.byteLength, url: `${MODEL}/plain.bin` },
+  large: { sha256: LARGE_SHA256, size: large.byteLength, url: `${MODEL}/large.bin` },
   never: { sha256: sha('never stored'), size: 12, url: `${MODEL}/never.bin` },
 };
 
@@ -343,6 +349,151 @@ const tamper = (
     },
     { backend, what, target, whole },
   );
+
+test(
+  `${engine} Cache Storage first retained bytes reads one large native payload and repairs corruption once`,
+  { skip: NO_BROWSER },
+  async () => {
+    const name = 'first-retained-large-bytes';
+    const s = await session(name);
+    try {
+      await acquireIn(s.page, 'cache-storage', [ASSETS.large]); // Real network/native Cache.put setup.
+      await s.settled();
+      const freshPage = async () => {
+        await s.page.reload(); // A new execution context must verify retained storage again.
+        await s.page.evaluate(() => import(String('/pkg/index.js')));
+        await s.settled();
+      };
+      const readRetained = (remainingBytes: number) =>
+        s.page.evaluate(
+          async ({ asset, remainingBytes }) => {
+            const m = await import(String('/pkg/index.js'));
+            const native = await caches.open(m.MODEL_CACHE_NAME);
+            const key = (hash: string) =>
+              new URL(`/__checkface_model_blobs__/sha256/${hash}`, location.origin).href;
+            let reads = 0,
+              payloads = 0;
+            const events: string[] = [];
+            // Only instrumentation: every get/put/remove delegates unchanged to real Cache Storage.
+            const cache = m.createModelCache({
+              shards: null,
+              slots: null,
+              retryDelaysMs: [],
+              report: (event: { status: string }) => events.push(event.status),
+              store: {
+                async get(hash: string) {
+                  const response = await native.match(key(hash));
+                  if (hash === asset.sha256) {
+                    reads++;
+                    if (response) payloads++;
+                  }
+                  return response;
+                },
+                put: (hash: string, response: Response) => native.put(key(hash), response),
+                remove: (hash: string) => native.delete(key(hash)),
+              },
+            });
+            const handle = await cache.acquire(asset, {
+              owner: 'face:retained',
+              grant: {
+                manifestSha256: 'first-retained-large',
+                route: 'cpu',
+                purpose: 'generate',
+                owners: ['face:retained'],
+                remainingBytes,
+                assets: [
+                  { sha256: asset.sha256, bytes: asset.size, priority: 'foreground-required' },
+                ],
+              },
+            });
+            reads = 0;
+            payloads = 0; // Exclude acquire's presence check; count the first bytes() consumption.
+            const value = await handle.bytes();
+            return {
+              reads,
+              payloads,
+              size: value.byteLength,
+              events,
+              sha256: Array.from(
+                new Uint8Array(await crypto.subtle.digest('SHA-256', value)),
+                (x) => x.toString(16).padStart(2, '0'),
+              ).join(''),
+            };
+          },
+          { asset: ASSETS.large, remainingBytes },
+        );
+      await freshPage();
+      const firstResponses = modelResponses.length;
+      record.step(s.rec, 'retained:first-bytes');
+      const first = await readRetained(0); // A hidden transfer has no budget.
+      assert.equal(
+        first.sha256,
+        LARGE_SHA256,
+        'the consumed native payload matches the independent fixture pin',
+      );
+      assert.equal(first.size, large.byteLength);
+      assert.equal(first.reads, 1, 'first bytes() verifies and consumes one native cache read');
+      assert.equal(first.payloads, 1, 'no second retained payload is reopened');
+      assert.equal(first.events.filter((event) => event === 'verified').length, 1);
+      assert.equal(first.events.includes('repairing'), false);
+      await s.settled();
+      quiet(s.rec, 'retained:first-bytes');
+      assert.equal(
+        modelResponses.length,
+        firstResponses,
+        'the model server saw no local-hit request',
+      );
+
+      await tamper(s.page, 'cache-storage', 'corrupt', ASSETS.large, ASSETS.large.sha256);
+      await freshPage(); // No previous in-memory verification may vouch for the replaced native entry.
+      const repairResponses = modelResponses.length;
+      record.step(s.rec, 'retained:repair');
+      const repaired = await readRetained(ASSETS.large.size);
+      assert.equal(repaired.sha256, LARGE_SHA256);
+      assert.equal(repaired.size, large.byteLength);
+      assert.equal(repaired.events.filter((event) => event === 'corrupt-removed').length, 1);
+      assert.equal(repaired.events.filter((event) => event === 'repairing').length, 1);
+      assert.equal(repaired.events.filter((event) => event === 'saved').length, 1);
+      await s.settled();
+      const requests = s.rec.requests.filter(
+        (request) =>
+          request.hostClass === 'model-host' &&
+          s.rec.steps[request.step]?.name === 'retained:repair',
+      );
+      assert.equal(requests.length, 1, 'corruption causes exactly one real model request');
+      assert.equal(requests[0]!.url, ASSETS.large.url);
+      assert.equal(requests[0]!.status, 200);
+      assert.equal(requests[0]!.bytes, large.byteLength);
+      assert.equal(requests[0]!.failed, false);
+      assert.deepEqual(modelResponses.slice(repairResponses), [
+        { path: '/large.bin', bytes: large.byteLength, finished: true, aborted: false },
+      ]);
+      const dir = join(REPO, 'test-results/manager-cache', engine);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(
+        join(dir, `${name}.json`),
+        JSON.stringify(
+          {
+            engine,
+            fixture: { size: large.byteLength, sha256: LARGE_SHA256 },
+            first,
+            repaired,
+            repairRequests: requests,
+            repairResponses: modelResponses.slice(repairResponses),
+          },
+          null,
+          2,
+        ),
+      );
+      await s.capture();
+    } catch (error) {
+      await s.capture();
+      throw error;
+    } finally {
+      await s.context.close();
+    }
+  },
+);
 
 for (const backend of ['opfs', 'cache-storage'] as const) {
   const name = backend === 'opfs' ? 'readShards (OPFS)' : 'openVerified (Cache Storage)';
