@@ -251,6 +251,15 @@ buildId:'test-input',sourceTreeSha256:'b'.repeat(64),sourceTreeClean:true}});"""
                     for p in (artifact / 'deploy-next').rglob('*') if p.is_file()}
             served = lab.deployed_evidence(artifact, 'https://x.test', evidence['digest'], site.__getitem__)
             self.assertEqual((served['digest'], served['kind']), (evidence['digest'], 'deployed'))
+            # The zone's edge injects its analytics beacon into HTML: removed once, the page still matches.
+            page = site['https://x.test/index.html']
+            beacon = (b'<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v1" '
+                      b'integrity="sha512-x" data-cf-beacon=\'{}\' crossorigin="anonymous"></script>\n')
+            site['https://x.test/index.html'] = page.replace(b'</title>', b'</title>' + beacon)
+            self.assertEqual(lab.deployed_evidence(artifact, 'https://x.test', None, site.__getitem__)['platformBeaconPages'], 1)
+            site['https://x.test/index.html'] = page.replace(b'</title>', b'</title>' + beacon + beacon)
+            with self.assertRaisesRegex(ValueError, 'index.html'):
+                lab.deployed_evidence(artifact, 'https://x.test', None, site.__getitem__)
             site['https://x.test/index.html'] = b'the previous build'
             with self.assertRaisesRegex(ValueError, '1 files differ, e.g. index.html'):
                 lab.deployed_evidence(artifact, 'https://x.test', None, site.__getitem__)

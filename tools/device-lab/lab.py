@@ -96,23 +96,40 @@ def fetch_bytes(url):
         return r.read()
 
 
+# Cloudflare's zone Web Analytics beacon, injected into served HTML at the edge on the facemorph.me zone, outside the
+# artifact (scripts/delivery/post-delivery-check.mjs PLATFORM_BEACON). It is removed, at most once per page, before
+# the bytes are compared; everything else must match exactly.
+# The edge inserts `<script …></script>\n` right before `</body>`, after the page's own indentation, which stays.
+PLATFORM_BEACON = re.compile(rb'<script[^>]*\bsrc="https://static\.cloudflareinsights\.com/beacon\.min\.js[^"]*"[^>]*></script>\n?')
+
+
+def without_platform_beacon(rel, body):
+    """The served bytes as built: an HTML page loses the edge's one beacon element; a second one is not removed. Pure."""
+    if not rel.endswith('.html'):
+        return body, 0
+    stripped, n = PLATFORM_BEACON.subn(b'', body, count=1)
+    return stripped, n
+
+
 def deployed_evidence(artifact, url, expected=None, fetch=fetch_bytes):
-    """The artifact's digest, bound to a live URL only when that URL serves every one of its files byte for byte."""
+    """The artifact's digest, bound to a live URL only when that URL serves every one of its files byte for byte
+    (apart from the zone's platform beacon in HTML pages)."""
     evidence = artifact_evidence(artifact, expected)
-    base, differ = url.rstrip('/') + '/', []
+    base, differ, beacons = url.rstrip('/') + '/', [], 0
     for f in evidence['files']:
         rel = f['path'].removeprefix('deploy-next/')
         if rel == f['path'] or rel in HOSTING_CONFIG:
             continue
         try:
-            served = hashlib.sha256(fetch(base + rel)).hexdigest()
+            body, n = without_platform_beacon(rel, fetch(base + rel))
+            served, beacons = hashlib.sha256(body).hexdigest(), beacons + n
         except Exception as e:
             served = str(e)
         if served != f['sha256']:
             differ.append(rel)
     if differ:
         raise ValueError(f'{url} does not serve this artifact: {len(differ)} files differ, e.g. {", ".join(differ[:5])}')
-    return {**evidence, 'kind': 'deployed', 'url': url}
+    return {**evidence, 'kind': 'deployed', 'url': url, 'platformBeaconPages': beacons}
 
 
 def validate_journeys(value):
