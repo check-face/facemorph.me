@@ -174,5 +174,42 @@ for (const [engine, type] of Object.entries(ENGINES)) {
       }),
       /not the control but <button id="mode-menu"/,
     );
+    // Native touch ranges produce trusted input without a compatibility click in all three engines.
+    const rangePage =
+      '<meta name="viewport" content="width=device-width,initial-scale=1"><input id="range" type="range" min="1" max="8" step="0.1" value="1" style="width:265px;margin:50px">';
+    await page.setContent(rangePage);
+    const range = page.locator('#range');
+    await range.evaluate((el) =>
+      el.addEventListener('input', (event) => {
+        (el as HTMLInputElement).dataset['trustedInput'] = String(event.isTrusted);
+      }),
+    );
+    const changed = await operatedTap(page, range, {
+      log,
+      step: 'verify.harness/tap/native-range',
+      activation: 'range-input',
+    });
+    assert.equal(changed.activation, 'range-input');
+    assert.match(changed.hit ?? '', /^<input/);
+    assert.notEqual(await range.inputValue(), '1');
+    assert.equal(await range.getAttribute('data-trusted-input'), 'true');
+    // An untrusted input emitted while the real pointer removes its target cannot replace native activation.
+    await page.setContent(rangePage);
+    await range.evaluate((el) =>
+      el.addEventListener('pointerdown', () => {
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.remove();
+      }),
+    );
+    await assert.rejects(
+      operatedTap(page, range, {
+        log,
+        step: 'verify.harness/tap/untrusted-range',
+        activation: 'range-input',
+        settleMs: 100,
+      }),
+      /no trusted range-input/,
+    );
+    assert.equal(log.entries.at(-1)?.ok, false);
   });
 }

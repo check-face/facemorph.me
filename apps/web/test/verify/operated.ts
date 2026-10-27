@@ -51,6 +51,8 @@ export interface StepRecord {
   readonly step: string;
   readonly control: string;
   readonly input: 'mouse' | 'touch' | 'keyboard';
+  /** Native range controls may emit input without a compatibility click after a touch. */
+  readonly activation?: 'click' | 'range-input';
   readonly point: { readonly x: number; readonly y: number } | null;
   readonly hit: string | null;
   readonly ok: boolean;
@@ -153,6 +155,8 @@ export interface OperateOptions {
   readonly log: StepLog;
   readonly region?: Region;
   readonly touch?: boolean;
+  /** Native range input requires both trusted pointerdown and trusted input on this control. */
+  readonly activation?: 'click' | 'range-input';
   /** What the press should do; awaited inside the step so its requests count to it. */
   readonly effect?: () => Promise<unknown>;
   /** A covering overlay that is fading (a closing menu, a toast) gets this long to clear, as a person waits. */
@@ -214,15 +218,16 @@ async function locate(page: Page, control: Locator, region: Region | undefined) 
 }
 
 let inputSerial = 0;
-/** Observe the trusted click itself: geometry can change after the pre-input hit check. Console delivery
+/** Observe the trusted activation itself: geometry can change after the pre-input hit check. Console delivery
  * preserves the observation even if the click navigates away from its original document. */
-async function actualClick(
+async function actualActivation(
   page: Page,
   control: Locator,
   point: { x: number; y: number },
   touch: boolean,
   timeout: number,
   effect: OperateOptions['effect'],
+  activation: 'click' | 'range-input',
 ) {
   const marker = `[verify-operated-${++inputSerial}]`;
   type Actual = { inside: boolean; hit: string | null };
@@ -235,23 +240,41 @@ async function actualClick(
   });
   page.on('console', listener);
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const cleanup = await control.evaluateHandle((el, prefix) => {
-    const doc = el.ownerDocument;
-    const clicked = (event: MouseEvent) => {
-      if (!event.isTrusted) return;
-      const hit = event.target instanceof Element ? event.target : null;
-      console.debug(
-        prefix +
-          JSON.stringify({
-            inside: !!hit && (el === hit || el.contains(hit)),
-            hit: hit?.outerHTML.slice(0, 160) ?? null,
-          }),
-      );
-      doc.removeEventListener('click', clicked, true);
-    };
-    doc.addEventListener('click', clicked, true);
-    return () => doc.removeEventListener('click', clicked, true);
-  }, marker);
+  const cleanup = await control.evaluateHandle(
+    (el, { prefix, activation }) => {
+      if (activation === 'range-input' && !(el instanceof HTMLInputElement && el.type === 'range'))
+        throw new Error('range-input activation requires a native input[type=range]');
+      const doc = el.ownerDocument;
+      let pointerInside = false;
+      const pointerdown = (event: PointerEvent) => {
+        if (!event.isTrusted) return;
+        const hit = event.target instanceof Element ? event.target : null;
+        pointerInside = !!hit && (el === hit || el.contains(hit));
+      };
+      const activated = (event: Event) => {
+        if (!event.isTrusted) return;
+        const hit = event.target instanceof Element ? event.target : null;
+        console.debug(
+          prefix +
+            JSON.stringify({
+              inside:
+                !!hit &&
+                (el === hit || el.contains(hit)) &&
+                (activation === 'click' || pointerInside),
+              hit: hit?.outerHTML.slice(0, 160) ?? null,
+            }),
+        );
+        doc.removeEventListener(activation === 'click' ? 'click' : 'input', activated, true);
+      };
+      doc.addEventListener('pointerdown', pointerdown, true);
+      doc.addEventListener(activation === 'click' ? 'click' : 'input', activated, true);
+      return () => {
+        doc.removeEventListener('pointerdown', pointerdown, true);
+        doc.removeEventListener(activation === 'click' ? 'click' : 'input', activated, true);
+      };
+    },
+    { prefix: marker, activation },
+  );
   try {
     if (touch) await page.touchscreen.tap(point.x, point.y);
     else await page.mouse.click(point.x, point.y);
@@ -275,7 +298,15 @@ async function actualClick(
 export async function operatedClick(
   page: Page,
   control: Locator,
-  { step, log, region, touch = false, effect, settleMs = 3000 }: OperateOptions,
+  {
+    step,
+    log,
+    region,
+    touch = false,
+    effect,
+    settleMs = 3000,
+    activation = 'click',
+  }: OperateOptions,
 ): Promise<StepRecord> {
   const { value: record, requests } = await watchRequests(page, log, step, async () => {
     const ok = (f: Awaited<ReturnType<typeof locate>>) => 'hit' in f && !!f.hit?.ok;
@@ -290,6 +321,7 @@ export async function operatedClick(
       step,
       control: String(control),
       input: touch ? ('touch' as const) : ('mouse' as const),
+      activation,
       point:
         'point' in found && found.point
           ? { x: Math.round(found.point.x), y: Math.round(found.point.y) }
@@ -306,15 +338,23 @@ export async function operatedClick(
         ok: false,
         problem: `${base.control}: elementFromPoint at its centre is not the control but ${found.hit.at}`,
       };
-    const landed = await actualClick(page, control, found.point, touch, settleMs, effect);
+    const landed = await actualActivation(
+      page,
+      control,
+      found.point,
+      touch,
+      settleMs,
+      effect,
+      activation,
+    );
     if (!landed?.inside)
       return {
         ...base,
         hit: landed?.hit ?? null,
         ok: false,
         problem: landed
-          ? `${base.control}: trusted click landed outside the control on ${landed.hit}`
-          : `${base.control}: real input produced no trusted click`,
+          ? `${base.control}: trusted ${activation} landed outside the control on ${landed.hit}`
+          : `${base.control}: real input produced no trusted ${activation}`,
       };
     return { ...base, hit: landed.hit, ok: true };
   });
