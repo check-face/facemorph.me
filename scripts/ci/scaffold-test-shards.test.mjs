@@ -93,30 +93,6 @@ test('contracts reuse the live engine workspace inventory and the same exact inf
   assert.deepEqual([...run[0].files, ...deferred[0].files].sort(), [...selected[0].files].sort());
   for (const cwd of ['', 'packages/missing', '../stylegan-js', undefined])
     assert.throws(() => workspaceInventory(suites, cwd), /known npm-test workspace/);
-
-  const read = (name) =>
-    parse(readFileSync(new URL(`../../.github/workflows/${name}.yml`, import.meta.url), 'utf8'));
-  const contracts = read('contracts-m1');
-  const command = contracts.jobs.check.steps.find((s) => s.name?.startsWith('Engine contract'));
-  assert.match(command.run, /args=\(--workspace packages\/stylegan-js\)/);
-  assert.match(command.run, /if \[ "\$FULL" != true \]; then args\+=\(--quick\); fi/);
-  assert.equal(command.env.FULL, "${{ github.event_name == 'workflow_dispatch' || inputs.full }}");
-  assert.equal(contracts.on.workflow_call.inputs.full.default, true);
-  const main = read('main');
-  assert.equal(
-    main.jobs['contracts-m1'].with.full,
-    "${{ github.event_name == 'workflow_dispatch' }}",
-  );
-  assert.equal(main.jobs['names-generator'].with.full, main.jobs['contracts-m1'].with.full);
-  const names = read('names-generator');
-  assert.equal(names.on.workflow_call.inputs.full.default, true);
-  const steps = names.jobs.test.steps;
-  const full = steps.find((step) => step.run?.includes('-- npm test'));
-  assert.equal(full.if, "github.event_name == 'workflow_dispatch' || inputs.full");
-  assert.equal(
-    steps.find((step) => step.run === 'node --test lib.test.mjs').if,
-    "${{ github.event_name != 'workflow_dispatch' && !inputs.full }}",
-  );
 });
 
 test('the adapter refuses shell operations and preserves quoted globs', () => {
@@ -155,46 +131,26 @@ test('changed npm-test runners, hooks and empty globs require an explicit adapte
   }
 });
 
-test('the workflow schedules every shard and keeps network isolation on the real wrapper', () => {
-  const workflow = parse(
-    readFileSync(new URL('../../.github/workflows/scaffold.yml', import.meta.url), 'utf8'),
-  );
-  const job = workflow.jobs.tests;
+test('check.yml schedules every shard in quick mode; release.yml runs the deferred engine files in full', () => {
+  const read = (name) =>
+    parse(readFileSync(new URL(`../../.github/workflows/${name}.yml`, import.meta.url), 'utf8'));
+  const unit = read('check').jobs.unit;
   assert.deepEqual(
-    job.strategy.matrix.shard,
+    unit.strategy.matrix.shard,
     Array.from({ length: SHARDS }, (_, i) => i + 1),
   );
-  assert.equal(job.strategy['fail-fast'], false);
-  assert.equal(job.env.FACEMORPH_ISOLATE_TEST_NETWORK, '1');
-  const run = job.steps.find((step) => step.run?.includes('scaffold-test-shards.mjs'));
-  assert.match(run.run, /args=\(--shard "\$SHARD"\)/);
-  assert.match(run.run, /if \[ "\$FULL" != true \]; then args\+=\(--quick\); fi/);
-  assert.match(run.run, /node scripts\/ci\/scaffold-test-shards\.mjs "\$\{args\[@\]\}"/);
-  assert.equal(run.env.FULL, "${{ github.event_name == 'workflow_dispatch' || inputs.full }}");
-  assert.equal(workflow.on.workflow_call.inputs.full.default, true);
-  assert.equal(run.env.SHARD, '${{ matrix.shard }}');
-});
-
-test('the required scaffold/gates context aggregates every matrix and refuses failed or skipped dependencies', () => {
-  const workflow = parse(
-    readFileSync(new URL('../../.github/workflows/scaffold.yml', import.meta.url), 'utf8'),
+  assert.equal(unit.strategy['fail-fast'], false);
+  assert.ok(
+    unit.steps.some(
+      (s) =>
+        s.run === 'node scripts/ci/scaffold-test-shards.mjs --shard ${{ matrix.shard }} --quick',
+    ),
   );
-  assert.deepEqual(workflow.jobs.gates.needs, ['checks', 'tests']);
-  assert.equal(workflow.jobs.gates.if, 'always()');
-  const step = workflow.jobs.gates.steps[0];
-  assert.deepEqual(step.env, {
-    CHECKS: '${{ needs.checks.result }}',
-    TESTS: '${{ needs.tests.result }}',
-  });
-  assert.equal(step.run, 'test "$CHECKS" = success && test "$TESTS" = success');
-  assert.equal(workflow.on.workflow_call.inputs.shared_build.default, false);
-  const restore = workflow.jobs.tests.steps.find((s) =>
-    s.uses?.endsWith('/restore-workspace-build'),
-  );
-  assert.equal(restore.if, 'inputs.shared_build');
-  assert.equal(
-    workflow.jobs.tests.steps.find((s) => s.run === 'npm run build').if,
-    '!inputs.shared_build',
+  const engine = read('release').jobs.engine;
+  assert.ok(
+    engine.steps.some(
+      (s) => s.run === 'node scripts/ci/scaffold-test-shards.mjs --workspace packages/stylegan-js',
+    ),
   );
 });
 

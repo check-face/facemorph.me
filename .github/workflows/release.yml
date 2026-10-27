@@ -1,0 +1,298 @@
+name: release
+# On demand (the release manager starts it). One build; every later job downloads that artifact and checks its digest
+# before using it. Journeys in Chromium and Firefox on CPU, the six local lab cells on eris, a paired timing check
+# against the pinned control, then the deploy to the chosen target and the same lab journeys against the live site.
+# The run's own log is the record (fm-fy2.11). device.yml covers the hosted devices and never blocks this workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Target in hosting/publish-targets.json (staging is the test target)
+        type: choice
+        options: [staging, next]
+        default: staging
+      publish:
+        description: Publish; unticked is the deploy dry run (every step, nothing published)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+env:
+  ARTIFACT: next-site-${{ github.sha }}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      digest: ${{ steps.digest.outputs.digest }}
+      runtime_sha: ${{ steps.runtime.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Runtime pin from reviewed source
+        id: runtime
+        run: |
+          node --input-type=module <<'JS'
+          import { appendFileSync } from 'node:fs';
+          import { loadCandidateRuntime } from './scripts/ci/candidate-runtime.ts';
+          appendFileSync(process.env.GITHUB_OUTPUT, `sha256=${loadCandidateRuntime(process.cwd()).manifestSha256}\n`);
+          JS
+      - name: Build the site artifact
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build:next && npm run build:next -- --check
+      - name: No third-party runtime dependencies and no retired hosts
+        run: |
+          node apps/web/scripts/check-no-third-party.mjs deploy-next
+          node scripts/ci/site/retired-hosts.mjs deploy-next --summary "$GITHUB_STEP_SUMMARY"
+      - name: Record the artifact digest
+        id: digest
+        run: |
+          set -euo pipefail
+          find deploy-next -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > next-site-SHA256SUMS
+          printf '%s\n' "$GITHUB_SHA" > next-site-source.txt
+          node -e 'console.log(JSON.stringify({sourceRepoId: Number(process.argv[1]), repository: process.argv[2], workflow: ".github/workflows/release.yml", runId: Number(process.argv[3]), commit: process.argv[4]}))' \
+            '${{ github.repository_id }}' '${{ github.repository }}' '${{ github.run_id }}' "$GITHUB_SHA" > next-site-provenance.json
+          digest=$(node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; console.log(treeDigest('deploy-next'))")
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "Artifact $ARTIFACT digest $digest" | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: |
+            deploy-next/
+            next-site-SHA256SUMS
+            next-site-source.txt
+            next-site-provenance.json
+            next-site-identity.json
+          if-no-files-found: error
+          retention-days: 30
+
+  journeys:
+    needs: build
+    name: journeys (${{ matrix.browser }}, CPU)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: artifact
+      - name: The artifact is the one built in this run
+        env:
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: |
+          got=$(node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; console.log(treeDigest('artifact/deploy-next'))")
+          echo "artifact digest $got (built: $DIGEST)"
+          test "$got" = "$DIGEST"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          python -m pip install --quiet --upgrade playwright
+          python -m playwright install --with-deps ${{ matrix.browser }}
+      - name: cold-face, warm-face, morph and operated on CPU
+        working-directory: tools/device-lab
+        run: python hosted.py browser --lane linux-${{ matrix.browser }} --browser ${{ matrix.browser }} --journey cold-face,warm-face,morph,operated --artifact ../../artifact/deploy-next --runtime-sha ${{ needs.build.outputs.runtime_sha }} --out ../../lane
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: journeys-${{ matrix.browser }}
+          path: lane/
+          retention-days: 14
+
+  engine:
+    name: engine numerics on the verified runtime (full31, CPU and browser routes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci && npm run build
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - uses: ./.github/actions/setup-runtime
+      - name: The stylegan-js suite in full, including the measured inference files check.yml defers
+        run: |
+          echo "FACEMORPH_RUNTIME_CACHE=$FACEMORPH_RUNTIME_DIR" >> "$GITHUB_ENV"
+          echo "FACEMORPH_RUNTIME_SHA256=$(sha256sum "$FACEMORPH_RUNTIME_DIR/manifest.json" | cut -c1-64)" >> "$GITHUB_ENV"
+      - env:
+          FACEMORPH_FULL_QUALIFY: '1'
+        run: node scripts/ci/scaffold-test-shards.mjs --workspace packages/stylegan-js
+
+  lab:
+    needs: build
+    name: six local cells (eris and the P30 Pro)
+    runs-on: [self-hosted, device-lab]
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: artifact
+      - name: The artifact is the one built in this run
+        env:
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: |
+          got=$(node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; console.log(treeDigest('artifact/deploy-next'))")
+          echo "artifact digest $got (built: $DIGEST)"
+          test "$got" = "$DIGEST"
+      - name: Run the six cells on the artifact
+        working-directory: tools/device-lab
+        env:
+          RUNTIME_SHA: ${{ needs.build.outputs.runtime_sha }}
+        run: |
+          set -euo pipefail
+          export RUNTIME_FILES="$HOME/.cache/facemorph-device-lab/runtime-public"
+          uv run --quiet --with playwright python lab.py matrix --artifact "$GITHUB_WORKSPACE/artifact" \
+            --runtime-sha "$RUNTIME_SHA" --journey cold-face,warm-face,morph --label "release-$GITHUB_RUN_ID" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Leave the devices in their resting state
+        if: always()
+        working-directory: tools/device-lab
+        run: uv run --quiet --with playwright python lab.py recover || true
+
+  timing:
+    needs: build
+    name: paired timing against the pinned control (CPU)
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci && npx playwright install --with-deps chromium
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: artifact
+      - name: The artifact is the one built in this run
+        env:
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: |
+          got=$(node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; console.log(treeDigest('artifact/deploy-next'))")
+          echo "artifact digest $got (built: $DIGEST)"
+          test "$got" = "$DIGEST"
+      - uses: ./.github/actions/setup-runtime
+      - name: Fetch the pinned control (digest verified)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/import/fetch-control.mjs --dest .cache/control
+      - name: Three ABBA pairs, control against this build
+        run: |
+          python3 autoresearch/run.py --exclusive gpu-timing --wait 0 --timeout 9000 -- \
+            node scripts/verify/not-worse/run.ts --control .cache/control/tree/deploy-next \
+              --build artifact/deploy-next --build-digest "${{ needs.build.outputs.digest }}" --build-source "run:$GITHUB_RUN_ID" \
+              --pairs 3 --provider cpu --browser chromium --runtime "$FACEMORPH_RUNTIME_DIR" \
+              --label "release-$GITHUB_RUN_ID" --out "$RUNNER_TEMP/timing"
+      - name: Median of each measure within 15 % of the control
+        run: node scripts/verify/not-worse/median-check.mjs "$RUNNER_TEMP/timing/release-$GITHUB_RUN_ID" --threshold 0.15 | tee -a "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: [build, journeys, engine, lab, timing]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    # One publication per target at a time; a publication in progress is never cancelled.
+    concurrency:
+      group: deploy-${{ inputs.target }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: bash # -eo pipefail: a failed step piped to tee still fails
+    env:
+      TARGET: ${{ inputs.target }}
+      PUBLISH: ${{ inputs.publish && '--publish' || '' }}
+      FACEMORPH_PUBLISH_TARGETS: ${{ vars.FACEMORPH_PUBLISH_TARGETS }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Single-publisher guard, site and mirror, before any network call
+        run: node scripts/hosting/publish-guard.mjs --target "$TARGET" --kind site,mirror
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: web
+      - name: The artifact is the one built in this run and qualified above
+        env:
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: |
+          got=$(node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; console.log(treeDigest('web/deploy-next'))")
+          echo "artifact digest $got (built: $DIGEST)"
+          test "$got" = "$DIGEST"
+          node scripts/hosting/deploy.mjs verify --artifact web
+      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host
+      - uses: ./.github/actions/setup-runtime
+      - name: The runtime set, file by file, and the WebGPU contract
+        run: |
+          test "$(sha256sum < "$FACEMORPH_RUNTIME_DIR/manifest.json" | cut -d' ' -f1)" = '${{ needs.build.outputs.runtime_sha }}'
+          node scripts/hosting/deploy.mjs runtime --runtime "$FACEMORPH_RUNTIME_DIR"
+      - name: Stage
+        run: node scripts/hosting/deploy.mjs stage --runtime "$FACEMORPH_RUNTIME_DIR" --artifact web --public "$RUNNER_TEMP/public"
+      - name: Deploy the site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/hosting/deploy.mjs site-deploy --target "$TARGET" --public "$RUNNER_TEMP/public" $PUBLISH | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: The live site serves this build, the historic hello preview and every runtime file
+        if: inputs.publish
+        run: node scripts/hosting/deploy.mjs live --target "$TARGET" --public "$RUNNER_TEMP/public" --artifact web | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Deploy the runtime mirror
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/hosting/deploy.mjs mirror-deploy --target "$TARGET" $PUBLISH | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Warm the runtime mirror with every immutable runtime file
+        run: node scripts/hosting/deploy.mjs warm --target "$TARGET" --public "$RUNNER_TEMP/public" $PUBLISH | tee -a "$GITHUB_STEP_SUMMARY"
+
+  live:
+    needs: [build, deploy]
+    if: inputs.publish
+    name: the six cells against the live site
+    runs-on: [self-hosted, device-lab]
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Post-delivery check of the published site
+        run: |
+          origin=$(node -p "require('./hosting/publish-targets.json').targets['${{ inputs.target }}'].site.origin")
+          echo "ORIGIN=$origin" >> "$GITHUB_ENV"
+          node scripts/delivery/post-delivery-check.mjs --mode app --host "$(node -p "new URL('$origin').host")" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Journeys on the live site
+        working-directory: tools/device-lab
+        run: |
+          set -euo pipefail
+          uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --journey cold-face,warm-face,morph \
+            --label "live-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Leave the devices in their resting state
+        if: always()
+        working-directory: tools/device-lab
+        run: uv run --quiet --with playwright python lab.py recover || true

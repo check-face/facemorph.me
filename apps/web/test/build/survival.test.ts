@@ -86,10 +86,13 @@ test('a module moved into a package without a module map update fails; the map u
 test('a listed test no CI command runs, and a removed runtime capability, each fail', () => {
   const root = copy();
   try {
-    const workflow = join(root, '.github/workflows/next-site-artifact.yml');
+    const manifest = join(root, 'apps/web/package.json');
     writeFileSync(
-      workflow,
-      readFileSync(workflow, 'utf8').replaceAll(' src/Next/storage-request.test.mjs', ''),
+      manifest,
+      readFileSync(manifest, 'utf8').replace(
+        "'src/Next/**/*.test.mjs'",
+        "'src/Next/**/!(storage-request).test.mjs'",
+      ),
     );
     const worker = join(root, 'apps/web/src/Next/browser/ort-worker.mjs');
     writeFileSync(

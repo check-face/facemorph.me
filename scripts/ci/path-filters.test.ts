@@ -33,12 +33,6 @@ function tree(files: Record<string, string>): string {
   return root;
 }
 
-test('this repository: every code root covered, every lane conforming', () => {
-  const r = check(REPO, FILTERS);
-  assert.deepEqual(r.problems, []);
-  assert.ok(r.roots.includes('apps') && r.roots.includes('packages'));
-});
-
 test('a fixture tree with an uncovered top-level code root fails; a prose-only root is not a code root', () => {
   const root = tree({
     'apps/web/src/a.ts': 'export {}',

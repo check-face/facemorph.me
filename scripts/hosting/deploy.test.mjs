@@ -15,8 +15,9 @@ import { runtimeFiles, warm } from './deploy.mjs';
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
 const DEPLOY = join(REPO, 'scripts/hosting/deploy.mjs');
-const WORKFLOW = readFileSync(join(REPO, '.github/workflows/next-deploy.yml'), 'utf8');
-const MAIN = readFileSync(join(REPO, '.github/workflows/main.yml'), 'utf8');
+// The deploy step of release.yml (fm-fy2.11): its job, from `  deploy:` to the next job.
+const RELEASE = readFileSync(join(REPO, '.github/workflows/release.yml'), 'utf8');
+const WORKFLOW = /^ {2}deploy:\n(?:(?: {4}.*)?\n)+/m.exec(RELEASE)?.[0] ?? '';
 const config = loadTargets();
 const sha256 = (b) => createHash('sha256').update(b).digest('hex');
 
@@ -253,7 +254,7 @@ test('workflow: the mirror origin comes from configuration (no literal model hos
 test('workflow: concurrency, one fixed group per target that never cancels a publication in progress', () => {
   const block = /^ {4}concurrency:\n {6}group: (.*)\n {6}cancel-in-progress: (.*)$/m.exec(WORKFLOW);
   assert.ok(block, 'the deploy job has a concurrency block');
-  assert.equal(block[1], 'next-deploy-${{ inputs.target }}');
+  assert.equal(block[1], 'deploy-${{ inputs.target }}');
   assert.equal(block[2], 'false');
   assert.doesNotMatch(
     block[1],
@@ -261,8 +262,7 @@ test('workflow: concurrency, one fixed group per target that never cancels a pub
     'a second push waits in the same group',
   );
   assert.doesNotMatch(WORKFLOW, /cancel-in-progress: true/);
-  // main.yml, the caller, keeps its own single never-cancelling group.
-  assert.match(MAIN, /^concurrency:\n {2}group: main\n {2}cancel-in-progress: false$/m);
+  assert.match(RELEASE, /^concurrency:\n {2}group: release\n {2}cancel-in-progress: false$/m);
 });
 
 test('workflow: the guard runs before any network step; every deploy runs through deploy.mjs behind it', () => {
@@ -278,11 +278,11 @@ test('workflow: the guard runs before any network step; every deploy runs throug
     'cf runs only inside deploy.mjs, after its own guard',
   );
   const order = [
-    'Verify the artifact',
-    'The acquired runtime set',
+    'The artifact is the one built',
+    'The runtime set',
     'Stage',
     'Deploy the site',
-    'Check the live site',
+    'The live site serves',
     'Deploy the runtime mirror',
     'Warm the runtime mirror',
   ];
@@ -293,20 +293,12 @@ test('workflow: the guard runs before any network step; every deploy runs throug
   );
 });
 
-test('workflow: the deploy job needs the release gate for the artifact it publishes', () => {
-  assert.match(
-    WORKFLOW,
-    /^ {2}gate:\n(?: {4}.*\n)*? {4}uses: \.\/\.github\/workflows\/release-gate\.yml$/m,
-  );
-  assert.match(WORKFLOW, /^ {2}deploy:\n {4}needs: gate$/m);
-  for (const input of ['artifact_run', 'artifact_name', 'artifact_commit', 'runtime_sha'])
-    assert.match(WORKFLOW, new RegExp(`${input}: \\$\\{\\{ inputs\\.${input} \\}\\}`));
-  // Publication follows complete qualification of the exact artifact.
-  const job = /^ {2}next-deploy:\n((?: {4}.*\n)+)/m.exec(MAIN)?.[1] ?? '';
-  assert.match(job, /needs: \[changes, next-site-artifact, next-site, pre-deploy\]/);
-  assert.match(
-    job,
-    /if: github\.event_name == 'workflow_dispatch' && inputs\.dependency_group == '' && vars\.FACEMORPH_DEPLOY_TARGET != '' && needs\.pre-deploy\.result == 'success'/,
-  );
-  assert.match(job, /uses: \.\/\.github\/workflows\/next-deploy\.yml/);
+test('workflow: the deploy step needs every qualifying job and publishes only the digest built in this run', () => {
+  assert.match(WORKFLOW, /^ {4}needs: \[build, journeys, engine, lab, timing\]$/m);
+  const verify = runOf('The artifact is the one built in this run and qualified above');
+  assert.match(verify, /DIGEST: \$\{\{ needs\.build\.outputs\.digest \}\}/);
+  assert.match(verify, /test "\$got" = "\$DIGEST"/);
+  assert.match(verify, /deploy\.mjs verify --artifact web/);
+  // Unticked publish is the dry run: every step runs and deploy.mjs publishes nothing without --publish.
+  assert.match(WORKFLOW, /PUBLISH: \$\{\{ inputs\.publish && '--publish' \|\| '' \}\}/);
 });

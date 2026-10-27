@@ -178,31 +178,3 @@ test('candidate admission binds artifact sums, clean source identity and runtime
   writeFileSync(join(artifact, 'deploy-next/index.html'), '<p>unrecorded mutation</p>');
   await assert.rejects(verifyMatrixArtifact(input), /does not match|DigestMismatch/);
 });
-
-test('the same five cells retain deployed mode and gain exact-artifact mode without stage substitutions', () => {
-  const workflow = readFileSync(
-    new URL('../../../.github/workflows/next-matrix.yml', import.meta.url),
-    'utf8',
-  );
-  const driver = readFileSync(
-    new URL('../../../apps/web/scripts/next-matrix.mjs', import.meta.url),
-    'utf8',
-  );
-  assert.match(workflow, /workflow_call:/);
-  for (const field of [
-    'artifact_source_repo_id',
-    'artifact_workflow',
-    'artifact_run',
-    'artifact_commit',
-    'artifact_name',
-    'runtime_sha',
-  ])
-    assert.match(workflow, new RegExp(`${field}:\\n\\s+type: string\\n\\s+required: true`));
-  assert.equal([...workflow.matchAll(/engine: (?:chromium|firefox|webkit)/g)].length, 5);
-  assert.match(workflow, /node scripts\/ci\/site\/matrix-artifact.mjs/);
-  assert.match(workflow, /if: inputs.artifact_run == ''/);
-  assert.match(workflow, /uses: \.\/\.github\/actions\/setup-runtime/);
-  assert.match(driver, /launchOptions.proxy=localProxy\?\.proxy\|\|matrixProxy/);
-  assert.doesNotMatch(driver, /host-resolver-rules|LOCAL_PORT needs Chromium/);
-  assert.match(driver, /const verdict=rowVerdict\(report.stages\)/);
-});

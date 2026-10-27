@@ -1,0 +1,32 @@
+name: dependency
+# The dependency currency check (fm-fy2.11): on demand when a release starts, never continuously. Moves every
+# package.json dependency to its latest release (caret ranges, operator 24 October 2026), confirms the workspace
+# still installs, typechecks and builds, and lands the bump as one commit on main for the release to build.
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: dependency
+  cancel-in-progress: false
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Every dependency to its latest release
+        run: npx --yes npm-check-updates@latest --upgrade --workspaces --root --target latest --reject node
+      - run: npm install
+      - run: npm run typecheck && npm run build
+      - name: One commit on main
+        run: |
+          if git diff --quiet; then echo 'Every dependency is already at its latest release.' | tee -a "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          git diff --stat | tee -a "$GITHUB_STEP_SUMMARY"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -qam 'deps: move every dependency to its latest release'
+          git push origin HEAD:main

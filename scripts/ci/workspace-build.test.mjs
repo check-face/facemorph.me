@@ -14,7 +14,6 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
-import { parse } from 'yaml';
 import { BUILD_FILES, BUILD_PATHS, packBuild, restoreBuild } from './workspace-build.mjs';
 
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -288,22 +287,4 @@ test('missing or empty compiled trees and output inside a compiled tree are refu
   rmSync(join(f.root, BUILD_PATHS[1]), { recursive: true });
   mkdirSync(join(f.root, BUILD_PATHS[1]));
   assert.throws(() => packBuild(f), /empty compiled directory/);
-});
-
-test('the composite downloads only this commit artifact from the current run and verifies before use', () => {
-  const action = parse(
-    readFileSync(
-      new URL('../../.github/actions/restore-workspace-build/action.yml', import.meta.url),
-      'utf8',
-    ),
-  );
-  const download = action.runs.steps.find((step) => step.uses === 'actions/download-artifact@v4');
-  assert.deepEqual(download.with, {
-    name: 'workspace-build-${{ github.sha }}',
-    path: '${{ steps.location.outputs.directory }}',
-  });
-  const restore = action.runs.steps.find((step) => step.name?.startsWith('Verify and restore'));
-  assert.match(restore.run, /workspace-build\.mjs" restore/);
-  assert.match(restore.run, /--commit "\$GITHUB_SHA"/);
-  assert.match(action.runs.steps[0].run, /mktemp -d/);
 });

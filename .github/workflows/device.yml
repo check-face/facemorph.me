@@ -1,68 +1,29 @@
-name: hosted-lanes
-run-name: hosted-${{ inputs.qualification_id || inputs.artifact_name }}
-# fm-5klw: the device lab's journeys (cold face, warm face, morph to a playable video) on hosted
-# platforms, against one exact artifact, each lane reporting the route it used
-# (tools/device-lab/hosted.py): macOS WebKit/Firefox/Chrome, Windows Chrome/Edge, Chrome in the
-# Android emulator and Safari in the iOS Simulator. Part of release validation with the device-lab
-# cells (release-gate.yml). Its bounded supervisor distinguishes an unallocated
-# hosted runner from executed failures; missing reports on executed jobs still fail.
+name: device
+# Best effort (fm-fy2.11): the hosted macOS, Windows, Android emulator and iOS Simulator lanes on a release run's
+# artifact. Results are recorded; this workflow never blocks check.yml or release.yml, and its harness is not
+# repaired in place. A real product failure seen here becomes a bead.
 on:
+  workflow_run:
+    workflows: [release]
+    types: [completed]
   workflow_dispatch:
     inputs:
-      qualification_id:
-        description: Correlates one bounded release attempt
-        required: false
-      artifact_source_repo_id:
+      run:
+        description: release.yml run id whose artifact to test
         required: true
-        description: Numeric source repository ID
-      artifact_workflow:
-        required: true
-        description: Source workflow file
-      artifact_commit:
-        required: true
-        description: Full source commit SHA
-      artifact_run:
-        description: Build run id
-        required: true
-      artifact_name:
-        description: Its site artifact (contains deploy-next/)
-        required: true
-      runtime_sha:
-        description: Runtime manifest SHA256 the artifact was qualified with
-        default: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
-  workflow_call:
-    inputs:
-      qualification_id:
-        type: string
-        required: false
-      artifact_source_repo_id:
-        type: string
-        required: true
-        description: Numeric source repository ID
-      artifact_workflow:
-        type: string
-        required: true
-        description: Source workflow file
-      artifact_commit:
-        type: string
-        required: true
-        description: Full source commit SHA
-      artifact_run:
-        type: string
-        required: true
-      artifact_name:
-        type: string
-        required: true
-      runtime_sha:
-        type: string
+      commit:
+        description: Full commit SHA that run built
         required: true
 permissions:
   contents: read
   actions: read
 concurrency:
-  group: hosted-lanes-${{ inputs.artifact_name }}
+  group: device-${{ inputs.run || github.event.workflow_run.id }}
   cancel-in-progress: false
 env:
+  RUN: ${{ inputs.run || github.event.workflow_run.id }}
+  COMMIT: ${{ inputs.commit || github.event.workflow_run.head_sha }}
+  RUNTIME_SHA: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
   LANES: macos-webkit,macos-firefox,macos-chrome,windows-chrome,windows-msedge,android-emulator-chrome,ios-simulator-safari
 jobs:
   desktop:
@@ -85,11 +46,11 @@ jobs:
           node-version: '24'
       - uses: ./.github/actions/fetch-artifact
         with:
-          source_repo_id: ${{ inputs.artifact_source_repo_id }}
-          workflow: ${{ inputs.artifact_workflow }}
-          run_id: ${{ inputs.artifact_run }}
-          commit: ${{ inputs.artifact_commit }}
-          artifact_name: ${{ inputs.artifact_name }}
+          source_repo_id: ${{ github.repository_id }}
+          workflow: .github/workflows/release.yml
+          run_id: ${{ env.RUN }}
+          commit: ${{ env.COMMIT }}
+          artifact_name: next-site-${{ env.COMMIT }}
           out: artifact
       - uses: actions/setup-python@v5
         with:
@@ -132,7 +93,7 @@ jobs:
             node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/loaded-browser.component.ts
       - name: Journeys on ${{ matrix.lane }}
         working-directory: tools/device-lab
-        run: python hosted.py browser --lane ${{ matrix.lane }} --browser ${{ matrix.browser }} --artifact ../../artifact/deploy-next --runtime-sha ${{ inputs.runtime_sha }} --out ../../lane
+        run: python hosted.py browser --lane ${{ matrix.lane }} --browser ${{ matrix.browser }} --artifact ../../artifact/deploy-next --runtime-sha ${{ env.RUNTIME_SHA }} --out ../../lane
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -155,11 +116,11 @@ jobs:
           node-version: '24'
       - uses: ./.github/actions/fetch-artifact
         with:
-          source_repo_id: ${{ inputs.artifact_source_repo_id }}
-          workflow: ${{ inputs.artifact_workflow }}
-          run_id: ${{ inputs.artifact_run }}
-          commit: ${{ inputs.artifact_commit }}
-          artifact_name: ${{ inputs.artifact_name }}
+          source_repo_id: ${{ github.repository_id }}
+          workflow: .github/workflows/release.yml
+          run_id: ${{ env.RUN }}
+          commit: ${{ env.COMMIT }}
+          artifact_name: next-site-${{ env.COMMIT }}
           out: artifact
       - uses: actions/setup-python@v5
         with:
@@ -182,7 +143,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           working-directory: tools/device-lab
-          script: python hosted.py android --lane android-emulator-chrome --artifact ../../artifact/deploy-next --runtime-sha ${{ inputs.runtime_sha }} --out ../../lane
+          script: python hosted.py android --lane android-emulator-chrome --artifact ../../artifact/deploy-next --runtime-sha ${{ env.RUNTIME_SHA }} --out ../../lane
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -204,18 +165,18 @@ jobs:
           node-version: '24'
       - uses: ./.github/actions/fetch-artifact
         with:
-          source_repo_id: ${{ inputs.artifact_source_repo_id }}
-          workflow: ${{ inputs.artifact_workflow }}
-          run_id: ${{ inputs.artifact_run }}
-          commit: ${{ inputs.artifact_commit }}
-          artifact_name: ${{ inputs.artifact_name }}
+          source_repo_id: ${{ github.repository_id }}
+          workflow: .github/workflows/release.yml
+          run_id: ${{ env.RUN }}
+          commit: ${{ env.COMMIT }}
+          artifact_name: next-site-${{ env.COMMIT }}
           out: artifact
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Journeys in Safari on the iOS Simulator
         working-directory: tools/device-lab
-        run: python hosted.py ios --lane ios-simulator-safari --device 'iPhone 16 Pro' --artifact ../../artifact/deploy-next --runtime-sha ${{ inputs.runtime_sha }} --out ../../lane
+        run: python hosted.py ios --lane ios-simulator-safari --device 'iPhone 16 Pro' --artifact ../../artifact/deploy-next --runtime-sha ${{ env.RUNTIME_SHA }} --out ../../lane
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -228,7 +189,7 @@ jobs:
   summary:
     needs: [desktop, android, ios]
     if: always()
-    runs-on: [self-hosted, linux-x64]
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4

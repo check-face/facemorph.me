@@ -1,0 +1,88 @@
+name: check
+# Every push to main, one run at a time, never cancelled (fm-fy2.11). Fresh GitHub-hosted runners: nothing carries
+# over between jobs. Static checks, the unit tests in six shards, then the built app in Chromium on CPU.
+# Budget: under 8 minutes. Over it, merge or delete tests; do not add runners or lanes.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: check
+  cancel-in-progress: false
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - name: Every test file is run by npm test
+        run: node scripts/build/check-tests-listed.mjs
+      - name: The checks wrote nothing
+        run: git diff --exit-code
+
+  unit:
+    name: npm test (${{ matrix.shard }}/6)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: This shard's npm test files
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci/scaffold-test-shards.mjs --shard ${{ matrix.shard }} --quick
+      - name: The tests wrote nothing
+        run: git diff --exit-code
+
+  smoke:
+    name: built app in Chromium on CPU
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Build the site artifact
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build:next
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          python -m pip install --quiet --upgrade playwright
+          python -m playwright install --with-deps chromium
+      - name: cold-face, warm-face, morph and operated
+        working-directory: tools/device-lab
+        run: |
+          runtime=$(node --input-type=module -e "import {loadCandidateRuntime} from '../../scripts/ci/candidate-runtime.ts'; console.log(loadCandidateRuntime('../..').manifestSha256)")
+          python hosted.py browser --lane linux-chromium --browser chromium --journey cold-face,warm-face,morph,operated \
+            --artifact ../../deploy-next --runtime-sha "$runtime" --out ../../lane
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: smoke
+          path: lane/
+          retention-days: 7
