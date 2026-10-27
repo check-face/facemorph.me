@@ -215,6 +215,7 @@ jobs:
         run: |
           python3 autoresearch/run.py --exclusive gpu-timing --wait 0 --timeout 3600 -- \
             node scripts/verify/not-worse/run.ts --control .cache/control/tree/deploy-next \
+              --control-digest "$(node -p 'require("./autoresearch/drivers/control.json").treeSha256')" \
               --build artifact/deploy-next --build-digest "${{ needs.build.outputs.digest }}" --build-source "run:$GITHUB_RUN_ID" \
               --pairs 3 --provider cpu --browser chromium --runtime "$FACEMORPH_RUNTIME_DIR" \
               --label "release-$GITHUB_RUN_ID" --out "$RUNNER_TEMP/timing"
