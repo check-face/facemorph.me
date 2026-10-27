@@ -10,7 +10,9 @@ import test, { after, before } from 'node:test';
 import { handle } from '../../services/stats/worker.mjs';
 import { annotation, parseAnnotateArgs } from './annotate-cutover.mjs';
 import {
+  asBuilt,
   deployNextDigest,
+  HOSTING_CONFIG,
   invocationArgs,
   judgeChunk,
   judgeIdentity,
@@ -272,4 +274,16 @@ test('stats-route is checked on the zone hosts only; a workers.dev site has no r
     statsNotApplicable('facemorph-next-staging.cdilga.workers.dev'),
     /not on the facemorph\.me zone/,
   );
+});
+
+test('identity: the edge beacon is removed once from HTML, hosting config is never fetched', () => {
+  const page = '<body>\n  </body>\n';
+  const beacon =
+    '<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v1" integrity="sha512-x" crossorigin="anonymous"></script>\n';
+  const served = new TextEncoder().encode(page.replace('</body>', beacon + '</body>'));
+  assert.equal(new TextDecoder().decode(asBuilt('index.html', served)), page);
+  assert.equal(asBuilt('app.js', served), served, 'only HTML pages are touched');
+  const twice = new TextEncoder().encode(page.replace('</body>', beacon + beacon + '</body>'));
+  assert.notEqual(new TextDecoder().decode(asBuilt('index.html', twice)), page);
+  assert.deepEqual(HOSTING_CONFIG, ['_headers', '_redirects']);
 });

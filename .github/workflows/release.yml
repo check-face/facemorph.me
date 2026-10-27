@@ -524,12 +524,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci # hermetic: the post-delivery check imports playwright
-      - name: Post-delivery check of the published site
-        run: |
-          origin=$(node -p "require('./hosting/publish-targets.json').targets['${{ inputs.target }}'].site.origin")
-          echo "ORIGIN=$origin" >> "$GITHUB_ENV"
-          echo "CONTROL=$(node -p "require('./hosting/publish-targets.json').targets.control.site.origin")" >> "$GITHUB_ENV"
-          node scripts/delivery/post-delivery-check.mjs --mode app --host "$(node -p "new URL('$origin').host")" | tee post-delivery.txt | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/download-artifact@v4
         if: inputs.site != 'live' && inputs.site != 'promote'
         with:
@@ -543,6 +537,15 @@ jobs:
           run-id: ${{ inputs.live_run }}
           github-token: ${{ github.token }}
           path: artifact
+      - name: Post-delivery check of the published site
+        run: |
+          origin=$(node -p "require('./hosting/publish-targets.json').targets['${{ inputs.target }}'].site.origin")
+          echo "ORIGIN=$origin" >> "$GITHUB_ENV"
+          echo "CONTROL=$(node -p "require('./hosting/publish-targets.json').targets.control.site.origin")" >> "$GITHUB_ENV"
+          # Bound to this artifact: every served deploy-next file re-digested (edge beacon removed from HTML).
+          digest=$(node --input-type=module -e "import {deployNextDigest} from './scripts/delivery/post-delivery-check.mjs'; import {readFileSync} from 'node:fs'; console.log(deployNextDigest(JSON.parse(readFileSync('artifact/next-site-identity.json','utf8')).files))")
+          node scripts/delivery/post-delivery-check.mjs --mode app --host "$(node -p "new URL('$origin').host")" \
+            --expect-digest "$digest" --identity artifact/next-site-identity.json | tee post-delivery.txt | tee -a "$GITHUB_STEP_SUMMARY"
       - name: The six cells, once, on every journey
         working-directory: tools/device-lab
         run: |

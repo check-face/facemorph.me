@@ -294,14 +294,40 @@ export function parseIdentity(text) {
 const readIdentity = (path) => parseIdentity(readFileSync(path, 'utf8'));
 
 /** Fetches every deploy-next/ file the identity lists from the host and re-digests what was served. */
+/** Read by the host, never served: they count at their listed digest. */
+export const HOSTING_CONFIG = ['_headers', '_redirects'];
+// The zone's edge inserts this element right before </body> of served HTML (the page's own indentation stays).
+const BEACON_ELEMENT =
+  /<script[^>]*\bsrc="https:\/\/static\.cloudflareinsights\.com\/beacon\.min\.js[^"]*"[^>]*><\/script>\n?/;
+/** The served bytes as built: an HTML page loses the edge's one platform beacon element (a second one stays). Pure. */
+export function asBuilt(path, body) {
+  if (!path.endsWith('.html')) return body;
+  const text = new TextDecoder().decode(body);
+  const stripped = text.replace(BEACON_ELEMENT, '');
+  return stripped === text ? body : new TextEncoder().encode(stripped);
+}
+
 async function servedIdentity(origin, identity) {
   const files = [];
   const missing = [];
   for (const f of identity.files.filter((x) => x.path.startsWith('deploy-next/'))) {
     const path = f.path.slice('deploy-next/'.length);
-    const res = await get(`${origin}/${path === 'index.html' ? '' : path}`);
+    if (HOSTING_CONFIG.includes(path)) {
+      files.push({ path: f.path, sha256: f.sha256 });
+      continue;
+    }
+    let res = await get(`${origin}/${path === 'index.html' ? '' : path}`);
+    // A page's clean URL (/x.html answers 307 to /x on the same origin): one hop, never off the origin.
+    const location = res.headers?.get('location');
+    if (
+      res.status >= 300 &&
+      res.status < 400 &&
+      location &&
+      new URL(location, origin).origin === origin
+    )
+      res = await get(new URL(location, origin).href);
     if (res.status !== 200) missing.push(`${path} (${res.status})`);
-    files.push({ path: f.path, sha256: res.body ? sha256(res.body) : 'missing' });
+    files.push({ path: f.path, sha256: res.body ? sha256(asBuilt(path, res.body)) : 'missing' });
   }
   return { served: deployNextDigest(files), missing };
 }
