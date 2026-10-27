@@ -24,10 +24,12 @@ import {
   PLATFORM_BEACON,
   redirectCheck,
   retiredCheck,
+  statsNotApplicable,
   statsProbe,
   summarize,
   TEST_REPORT_MARKER,
   testReport,
+  ZONE_HOSTS,
   unchangedCheck,
 } from './post-delivery-check.mjs';
 
@@ -262,4 +264,12 @@ test('redirect, retired, page and unchanged against a real local server with a f
     'a changed file fails unchanged',
   );
   site.files['/app.js'] = 'app';
+});
+
+test('stats-route is checked on the zone hosts only; a workers.dev site has no route to bind', () => {
+  assert.deepEqual(ZONE_HOSTS, ['next.facemorph.me', 'facemorph.me']);
+  assert.match(
+    statsNotApplicable('facemorph-next-staging.cdilga.workers.dev'),
+    /not on the facemorph\.me zone/,
+  );
 });

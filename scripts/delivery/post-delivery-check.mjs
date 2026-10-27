@@ -34,6 +34,11 @@ export const MODES = ['app', 'retired', 'page', 'redirect', 'unchanged'];
 export const TEST_REPORT_MARKER = 'post-delivery-check-test';
 export const MIRROR = 'https://models.facemorph.me';
 export const COLLECTOR = 'https://next.facemorph.me/diagnostics/events';
+/** The hosts on the facemorph.me zone: only they carry the collector and the /stats/v1 Worker route. */
+export const ZONE_HOSTS = ['next.facemorph.me', 'facemorph.me'];
+/** Why a host off the zone (a workers.dev test site) has no statistics route to check. */
+export const statsNotApplicable = (host) =>
+  `${host} is not on the facemorph.me zone: the statistics Worker is a zone route`;
 const sha256 = (b) => createHash('sha256').update(b).digest('hex');
 
 // ------------------------------------------------------------------------------------------------- arguments
@@ -393,8 +398,7 @@ async function appMode({ host, expectDigest, identity: identityPath }, out) {
     parts.push(part('names-catalogue', 'fail', `answered ${catalogue.status}: not a catalogue`));
   }
 
-  const collectorOrigins = ['next.facemorph.me', 'facemorph.me'];
-  if (collectorOrigins.includes(host)) {
+  if (ZONE_HOSTS.includes(host)) {
     const sent = await get(COLLECTOR, {
       method: 'POST',
       headers: {
@@ -411,6 +415,10 @@ async function appMode({ host, expectDigest, identity: identityPath }, out) {
     );
   } else parts.push(part('test-report', 'not_applicable', `${host} is not a collector origin`));
 
+  if (!ZONE_HOSTS.includes(host)) {
+    parts.push(part('stats-route', 'not_applicable', statsNotApplicable(host)));
+    return parts;
+  }
   const probe = statsProbe(origin);
   const stats = await get(probe.url, probe.init);
   parts.push(
