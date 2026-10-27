@@ -15,6 +15,10 @@ on:
         description: Publish; unticked is the deploy dry run (every step, nothing published)
         type: boolean
         default: false
+# shell: bash runs every step with -eo pipefail; the default (bash -e) drops a failure piped into tee.
+defaults:
+  run:
+    shell: bash
 permissions:
   contents: read
 concurrency:

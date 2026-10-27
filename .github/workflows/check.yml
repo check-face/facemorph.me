@@ -6,6 +6,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+# shell: bash runs every step with -eo pipefail; the default (bash -e) drops a failure piped into tee.
+defaults:
+  run:
+    shell: bash
 permissions:
   contents: read
 concurrency:

@@ -14,6 +14,10 @@ on:
       commit:
         description: Full commit SHA that run built
         required: true
+# shell: bash runs every step with -eo pipefail; the default (bash -e) drops a failure piped into tee.
+defaults:
+  run:
+    shell: bash
 permissions:
   contents: read
   actions: read
