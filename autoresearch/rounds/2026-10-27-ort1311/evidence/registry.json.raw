@@ -1,0 +1,20 @@
+{
+  "version": "1.31.1",
+  "dist": {
+    "shasum": "309e196c733e90a038e0380867dde308a994de92",
+    "tarball": "https://registry.npmjs.org/onnxruntime-web/-/onnxruntime-web-1.31.1.tgz",
+    "fileCount": 511,
+    "integrity": "sha512-5GeH+bWQ+HxM10z7erGlsWqryrwMbSvm/1tkIsKTT48g0fI19VXVVC435t4t7VsPdSQeS7NmuZPXrQ73k82URw==",
+    "signatures": [
+      {
+        "sig": "MEYCIQDzMJNJJ8DYAdYYRUFfS1fPUH50IiybWjMBQWwixZFySAIhAP0QHFsGc6QPTPsNvP4+Nuos5lOQudymf6CMq5CMKvF9",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      },
+      {
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+        "sig": "MEUCIQD1RctZDNNTHrJoKbFKhNN8rn2x1MYqW+6fk5SiH8J2+wIgOVGa26m6LH8O921WfmuS1+0+CY1elO1LojrUw7pETJU="
+      }
+    ],
+    "unpackedSize": 150622959
+  }
+}

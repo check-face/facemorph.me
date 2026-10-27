@@ -1,0 +1,181 @@
+{
+  "summary": {
+    "ort": "1.31.1",
+    "provenance": {
+      "schema": "facemorph.ort-qualification/1",
+      "scope": "pinned-classic-synthesis-canaries; not monorepo or encoder adoption",
+      "source": {
+        "classicCommit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+        "classicManifestSha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+        "qualifierSha256": "eb0354e740f2596008cd76ad7c709d6de9690a6157ade98f41807f9839fb6c11",
+        "harnessSha256": "e94a2860975693ebd11950460ec9f682937831038cfdb65b07aca75b1469acee"
+      },
+      "controlManifestSha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "candidateManifestSha256": "875b334f7836253a7a8915c87152ddf8e95fc66a07cc05cdca75ecfb6909e1ae",
+      "release": {
+        "package": "onnxruntime-web",
+        "version": "1.31.1",
+        "packageJsonSha256": "81fa53b6bf23c91d6fdd37dac97ebec558048bbd14ccbcc02e54fb47d3c1c699"
+      },
+      "gpuBuild": "webgpu",
+      "assets": [
+        {
+          "file": "ort.wasm.min.mjs",
+          "url": "https://127.0.0.1:36025/ort.wasm.min.mjs",
+          "sha256": "c21d9c326d453a4a61398270c804d5979e118540597cb0c07f7b3d64e6098234",
+          "size": 53725
+        },
+        {
+          "file": "ort-wasm-simd-threaded.mjs",
+          "url": "https://127.0.0.1:36025/ort-wasm-simd-threaded.mjs",
+          "sha256": "30ed0b5cd1182ede931fea448afb567d4dc705ec957af09f108a2be5f770dac3",
+          "size": 24738
+        },
+        {
+          "file": "ort-wasm-simd-threaded.wasm",
+          "url": "https://127.0.0.1:36025/ort-wasm-simd-threaded.wasm",
+          "sha256": "4b884c203b0fa48d057be3332c65513ff85aa3c5bddd6946acc0fab7ecda001d",
+          "size": 14848852
+        },
+        {
+          "file": "ort.webgpu.min.mjs",
+          "url": "https://127.0.0.1:36025/ort.webgpu.min.mjs",
+          "sha256": "329cd956772397a1aedd668e911195d39afefb182f6fc14aafa4f08ac8d8f379",
+          "size": 70742
+        },
+        {
+          "file": "ort-wasm-simd-threaded.asyncify.mjs",
+          "url": "https://127.0.0.1:36025/ort-wasm-simd-threaded.asyncify.mjs",
+          "sha256": "59cf781530e1a16df2a291d78798e3ec1152467edaec402d6f9599d85047c302",
+          "size": 53457
+        },
+        {
+          "file": "ort-wasm-simd-threaded.asyncify.wasm",
+          "url": "https://127.0.0.1:36025/ort-wasm-simd-threaded.asyncify.wasm",
+          "sha256": "ca319e9539cd0f1e291cf56074760121eaf39650f5dbf84b6e52c07f4b2944ec",
+          "size": 28747738
+        }
+      ],
+      "runtimeSetSha256": "a6f61b4d8503dbee2746b5d00a0656248966a45a19467b39ca61c24d7db7c345"
+    },
+    "routes": 1,
+    "failed": []
+  },
+  "results": [
+    {
+      "ort": "1.31.1",
+      "provenance": {
+        "schema": "facemorph.ort-qualification/1",
+        "scope": "pinned-classic-synthesis-canaries; not monorepo or encoder adoption",
+        "source": {
+          "classicCommit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+          "classicManifestSha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+          "qualifierSha256": "eb0354e740f2596008cd76ad7c709d6de9690a6157ade98f41807f9839fb6c11",
+          "harnessSha256": "e94a2860975693ebd11950460ec9f682937831038cfdb65b07aca75b1469acee"
+        },
+        "controlManifestSha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+        "candidateManifestSha256": "875b334f7836253a7a8915c87152ddf8e95fc66a07cc05cdca75ecfb6909e1ae",
+        "release": {
+          "package": "onnxruntime-web",
+          "version": "1.31.1",
+          "packageJsonSha256": "81fa53b6bf23c91d6fdd37dac97ebec558048bbd14ccbcc02e54fb47d3c1c699"
+        },
+        "gpuBuild": "webgpu",
+        "assets": [
+          {
+            "file": "ort.wasm.min.mjs",
+            "url": "https://127.0.0.1:36025/ort.wasm.min.mjs",
+            "sha256": "c21d9c326d453a4a61398270c804d5979e118540597cb0c07f7b3d64e6098234",
+            "size": 53725
+          },
+          {
+            "file": "ort-wasm-simd-threaded.mjs",
+            "url": "https://127.0.0.1:36025/ort-wasm-simd-threaded.mjs",
+            "sha256": "30ed0b5cd1182ede931fea448afb567d4dc705ec957af09f108a2be5f770dac3",
+            "size": 24738
+          },
+          {
+            "file": "ort-wasm-simd-threaded.wasm",
+            "url": "https://127.0.0.1:36025/ort-wasm-simd-threaded.wasm",
+            "sha256": "4b884c203b0fa48d057be3332c65513ff85aa3c5bddd6946acc0fab7ecda001d",
+            "size": 14848852
+          },
+          {
+            "file": "ort.webgpu.min.mjs",
+            "url": "https://127.0.0.1:36025/ort.webgpu.min.mjs",
+            "sha256": "329cd956772397a1aedd668e911195d39afefb182f6fc14aafa4f08ac8d8f379",
+            "size": 70742
+          },
+          {
+            "file": "ort-wasm-simd-threaded.asyncify.mjs",
+            "url": "https://127.0.0.1:36025/ort-wasm-simd-threaded.asyncify.mjs",
+            "sha256": "59cf781530e1a16df2a291d78798e3ec1152467edaec402d6f9599d85047c302",
+            "size": 53457
+          },
+          {
+            "file": "ort-wasm-simd-threaded.asyncify.wasm",
+            "url": "https://127.0.0.1:36025/ort-wasm-simd-threaded.asyncify.wasm",
+            "sha256": "ca319e9539cd0f1e291cf56074760121eaf39650f5dbf84b6e52c07f4b2944ec",
+            "size": 28747738
+          }
+        ],
+        "runtimeSetSha256": "a6f61b4d8503dbee2746b5d00a0656248966a45a19467b39ca61c24d7db7c345"
+      },
+      "route": "cpu",
+      "engine": null,
+      "provider": "wasm",
+      "canaries": [
+        {
+          "name": "frame-00",
+          "passed": true,
+          "maxRgb": 1,
+          "maxFloat": 0.000004470348358154297
+        },
+        {
+          "name": "frame-25",
+          "passed": true,
+          "maxRgb": 1,
+          "maxFloat": 0.0000033080577850341797
+        },
+        {
+          "name": "encoded-synthetic-photo",
+          "passed": true,
+          "maxRgb": 1,
+          "maxFloat": 0.0000036954879760742188
+        },
+        {
+          "name": "zero-noise",
+          "passed": true,
+          "maxRgb": 1,
+          "maxFloat": 0.000005304813385009766
+        },
+        {
+          "name": "alternate-noise",
+          "passed": true,
+          "maxRgb": 1,
+          "maxFloat": 0.0000027120113372802734
+        },
+        {
+          "name": "trunc-psi-0",
+          "passed": true,
+          "maxRgb": 1,
+          "maxFloat": 0.0000030994415283203125
+        },
+        {
+          "name": "trunc-psi-1",
+          "passed": true,
+          "maxRgb": 1,
+          "maxFloat": 0.000004947185516357422
+        }
+      ],
+      "ok": true,
+      "ms": 20142,
+      "ortFiles": [
+        "/src/Next/browser/ort-worker.mjs",
+        "/ort.wasm.min.mjs",
+        "/ort-wasm-simd-threaded.mjs",
+        "/ort-wasm-simd-threaded.wasm"
+      ]
+    }
+  ]
+}

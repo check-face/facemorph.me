@@ -1,0 +1,320 @@
+{
+  "version": "1.31.1",
+  "registry_metadata": {
+    "version": "1.31.1",
+    "dist": {
+      "shasum": "309e196c733e90a038e0380867dde308a994de92",
+      "tarball": "https://registry.npmjs.org/onnxruntime-web/-/onnxruntime-web-1.31.1.tgz",
+      "fileCount": 511,
+      "integrity": "sha512-5GeH+bWQ+HxM10z7erGlsWqryrwMbSvm/1tkIsKTT48g0fI19VXVVC435t4t7VsPdSQeS7NmuZPXrQ73k82URw==",
+      "signatures": [
+        {
+          "sig": "MEYCIQDzMJNJJ8DYAdYYRUFfS1fPUH50IiybWjMBQWwixZFySAIhAP0QHFsGc6QPTPsNvP4+Nuos5lOQudymf6CMq5CMKvF9",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEUCIQD1RctZDNNTHrJoKbFKhNN8rn2x1MYqW+6fk5SiH8J2+wIgOVGa26m6LH8O921WfmuS1+0+CY1elO1LojrUw7pETJU="
+        }
+      ],
+      "unpackedSize": 150622959
+    }
+  },
+  "tarball_bytes": 34586352,
+  "tarball_sha512": "e46787f9b590f87c4cd74cfb7ab1a5b16aabcabc0c6d2be6ff5b6422c2934f8f20d1f235f555d5542e37e6de2ded5b0f75241e4bb366b993d7ad0ef793cd9447",
+  "seconds": 1.6103351199999452,
+  "dist_files": [
+    {
+      "name": "ort-wasm-simd-threaded.asyncify.mjs",
+      "bytes": 53457,
+      "sha256": "59cf781530e1a16df2a291d78798e3ec1152467edaec402d6f9599d85047c302"
+    },
+    {
+      "name": "ort-wasm-simd-threaded.asyncify.wasm",
+      "bytes": 28747738,
+      "sha256": "ca319e9539cd0f1e291cf56074760121eaf39650f5dbf84b6e52c07f4b2944ec"
+    },
+    {
+      "name": "ort-wasm-simd-threaded.jsep.mjs",
+      "bytes": 47250,
+      "sha256": "7838b4b2e77d6f1a739cd0de800e7f18a089328b365e6af4d416a88a94fd7fd3"
+    },
+    {
+      "name": "ort-wasm-simd-threaded.jsep.wasm",
+      "bytes": 29520971,
+      "sha256": "5ab8361783822d02a57d1e97cf2514bceb451a628f2b29ae0d7b6e618201ff8f"
+    },
+    {
+      "name": "ort-wasm-simd-threaded.jspi.mjs",
+      "bytes": 51321,
+      "sha256": "eeb051cdbdb9f6edd8992cb4f81ad3c94ad01e4d8f767ffb415143e8afc41fc5"
+    },
+    {
+      "name": "ort-wasm-simd-threaded.jspi.wasm",
+      "bytes": 17920659,
+      "sha256": "b89a3efceeb6df2ba29a66fef59f48fd7b7c22a62af54c3cfe05e63863a07fd5"
+    },
+    {
+      "name": "ort-wasm-simd-threaded.mjs",
+      "bytes": 24738,
+      "sha256": "30ed0b5cd1182ede931fea448afb567d4dc705ec957af09f108a2be5f770dac3"
+    },
+    {
+      "name": "ort-wasm-simd-threaded.wasm",
+      "bytes": 14848852,
+      "sha256": "4b884c203b0fa48d057be3332c65513ff85aa3c5bddd6946acc0fab7ecda001d"
+    },
+    {
+      "name": "ort.all.bundle.min.mjs",
+      "bytes": 869537,
+      "sha256": "2aef479af24d8ebb0d4f94abfa26eb738e0791cba6fb0b1717d0e0439415cb4c"
+    },
+    {
+      "name": "ort.all.bundle.min.mjs.map",
+      "bytes": 3294135,
+      "sha256": "2023f593f29ebd2e2ab0be38756d6e85d035496ddd4404cf5d069ae6da97e301"
+    },
+    {
+      "name": "ort.all.js",
+      "bytes": 6060527,
+      "sha256": "ecb80563a8727fed5cdd0820a0cc0054dc97465a2d1c5b823e619d0297c68abf"
+    },
+    {
+      "name": "ort.all.min.js",
+      "bytes": 823379,
+      "sha256": "4f8c9e2241c34eda8515cee38b62ed9eb052c054a1e531591074459c8bd8ff97"
+    },
+    {
+      "name": "ort.all.min.js.map",
+      "bytes": 3165855,
+      "sha256": "07978e0db14a4e1395a6bb155425b5c2a402d8107fb2658bf0eae604df5b8014"
+    },
+    {
+      "name": "ort.all.min.mjs",
+      "bytes": 823307,
+      "sha256": "d95eb420c46e4e2b72a83aa906ff9a06baa9223a7809c8ce1c905b4c1ddedfa5"
+    },
+    {
+      "name": "ort.all.min.mjs.map",
+      "bytes": 3165803,
+      "sha256": "3812de0c0bf590a0be4569a04da68823cb11f7a86c2a8b3213bedada80954305"
+    },
+    {
+      "name": "ort.all.mjs",
+      "bytes": 5977507,
+      "sha256": "7bfedc577f29244a28e681d17b037cf51e9b261006bb4fc6aa70d03efad99d57"
+    },
+    {
+      "name": "ort.bundle.min.mjs",
+      "bytes": 417713,
+      "sha256": "5d801ce7f8f6957a32a789322dcac612e22abed275d702d8af3fa75ea74be62e"
+    },
+    {
+      "name": "ort.bundle.min.mjs.map",
+      "bytes": 1562273,
+      "sha256": "8048c1a23d3f3c808be4e76f996b89964ee1047d18f8afc8e8a7013c2afa6604"
+    },
+    {
+      "name": "ort.js",
+      "bytes": 2720706,
+      "sha256": "361df8dfa3fd0d805f37c16ade6d8fc89178c69237a542395ce979b3e3435f8c"
+    },
+    {
+      "name": "ort.jspi.bundle.min.mjs",
+      "bytes": 120674,
+      "sha256": "d00754f28680c3e6a7d2cdf71f88f6d751da28b22af5aa72009ba22accb15cc4"
+    },
+    {
+      "name": "ort.jspi.bundle.min.mjs.map",
+      "bytes": 526567,
+      "sha256": "0c6742ce44d64e53a445e6e25dd44be1bf4a56645cc745eb622269deb49c3bcb"
+    },
+    {
+      "name": "ort.jspi.js",
+      "bytes": 735154,
+      "sha256": "a41d5b13cc20e48d93937c41d98ed0b85c3569da4286763badb932f4f6eab0e0"
+    },
+    {
+      "name": "ort.jspi.min.js",
+      "bytes": 70975,
+      "sha256": "442669b71a848351a4af5c0d74506bfc1d55134321e1eb8eca0f032e7c940804"
+    },
+    {
+      "name": "ort.jspi.min.js.map",
+      "bytes": 405686,
+      "sha256": "77dc3a08d69607d16fb4c21938d231e66ee09d6e457757ab375aa40b886cc962"
+    },
+    {
+      "name": "ort.jspi.min.mjs",
+      "bytes": 70904,
+      "sha256": "722bdee68871a7787afbd667ea2d65a1261f635455b601bc8a1a4e65f22ea46d"
+    },
+    {
+      "name": "ort.jspi.min.mjs.map",
+      "bytes": 405639,
+      "sha256": "4fff2497ee9fea8bd1a694d6894f07f4d614612d6f46bb180bed62185ea4ddb6"
+    },
+    {
+      "name": "ort.jspi.mjs",
+      "bytes": 724806,
+      "sha256": "58ab3e29f51aba9de62850e2a2c700badb9222b511a868a41d843ac56ed71ecb"
+    },
+    {
+      "name": "ort.min.js",
+      "bytes": 371810,
+      "sha256": "cb76ed9827dd1f2c96fcf902f04aa5a8eb0958b7c6bf8a244b362d06e9104797"
+    },
+    {
+      "name": "ort.min.js.map",
+      "bytes": 1436132,
+      "sha256": "ad8dec6a204dabeb1be2452f5720f12f4de8819768c19d9eb919f17e73495a5e"
+    },
+    {
+      "name": "ort.min.mjs",
+      "bytes": 371734,
+      "sha256": "52a134dde25935f0b3d31aae963f5b858583cd356c5ba05a0c50cc62eb786d72"
+    },
+    {
+      "name": "ort.min.mjs.map",
+      "bytes": 1436081,
+      "sha256": "9da86796916fde7f4e0cfb47061f64046335191a3befb63a9e00c88614f648e4"
+    },
+    {
+      "name": "ort.mjs",
+      "bytes": 2687426,
+      "sha256": "35f7e637e5419e0d65951629df1735dd726dd88e274f1dad161e33a90785f525"
+    },
+    {
+      "name": "ort.node.min.js",
+      "bytes": 29279,
+      "sha256": "c42472bfa6c72844228246c58be7f2f11cafb8f3fa1b7ddf366bc9318cb1da89"
+    },
+    {
+      "name": "ort.node.min.js.map",
+      "bytes": 168364,
+      "sha256": "38a3a4b3dfefa0bfc1cf34d52b8a1c335f0893577fd00b4b3d0827b274e3c8da"
+    },
+    {
+      "name": "ort.node.min.mjs",
+      "bytes": 29181,
+      "sha256": "9bdb8aaab1d0deabe6f38572ad4d6f8b793bad8a5e184f8aa4fcc0d8cace7810"
+    },
+    {
+      "name": "ort.node.min.mjs.map",
+      "bytes": 168601,
+      "sha256": "48f0b2f1d96fbf1fcc5c4d4977d5a8470744a3311411d30ffb6cba7771bae3fe"
+    },
+    {
+      "name": "ort.wasm.bundle.min.mjs",
+      "bytes": 77024,
+      "sha256": "51bd7168175767324ab0acfcfc4ca94a096a3826e3ebac9ccc4f195eb865f8dd"
+    },
+    {
+      "name": "ort.wasm.bundle.min.mjs.map",
+      "bytes": 414141,
+      "sha256": "135fc27fec132a8d1d6649390b779192a073f261f131362fde5051426c61f0fc"
+    },
+    {
+      "name": "ort.wasm.js",
+      "bytes": 632080,
+      "sha256": "68410eadc754f1b3eaeb86ed2243ecd483699f10e1254826e655b31bdec904ae"
+    },
+    {
+      "name": "ort.wasm.min.js",
+      "bytes": 53796,
+      "sha256": "b8a78c408c40da65fdc8ba0846f7b2948e92a4c6d6b23cc8e4165e428ad95443"
+    },
+    {
+      "name": "ort.wasm.min.js.map",
+      "bytes": 348793,
+      "sha256": "a8f6c3e237560cb28f11eefe3a586c77778493ca8dd046d5f8f8029cb13d0df5"
+    },
+    {
+      "name": "ort.wasm.min.mjs",
+      "bytes": 53725,
+      "sha256": "c21d9c326d453a4a61398270c804d5979e118540597cb0c07f7b3d64e6098234"
+    },
+    {
+      "name": "ort.wasm.min.mjs.map",
+      "bytes": 348745,
+      "sha256": "5deb6a1138273b8bdb253aee9c08dfc753d06a5734978f3d0a78424eed567b1a"
+    },
+    {
+      "name": "ort.wasm.mjs",
+      "bytes": 623434,
+      "sha256": "7f2993187420fe105d93b8587f9a672514c3acfeab934485377f71af1e3766ef"
+    },
+    {
+      "name": "ort.webgl.js",
+      "bytes": 3608571,
+      "sha256": "050f9559ef050f5e2d694d67631e47889545405bbbc21878dcf7005636f28e06"
+    },
+    {
+      "name": "ort.webgl.min.js",
+      "bytes": 473821,
+      "sha256": "bc9a9f4ec0dfca91cf0c2c973069e06ee4ea92f88acdd899aa005a70c297daaf"
+    },
+    {
+      "name": "ort.webgl.min.js.map",
+      "bytes": 1916963,
+      "sha256": "7e45290ef12b52e19dd3701c9311910acece73329284dedc4e41918f531c9434"
+    },
+    {
+      "name": "ort.webgl.min.mjs",
+      "bytes": 473681,
+      "sha256": "761dededbe0f371ff711f15d776ee40d526838bdbf7c1ac415f82cbedb1f8036"
+    },
+    {
+      "name": "ort.webgl.min.mjs.map",
+      "bytes": 1916603,
+      "sha256": "0de6ebdf43e06a6d29bd5a091b4d00697bdbe803b9312c81ec165b05d1b9d1f8"
+    },
+    {
+      "name": "ort.webgl.mjs",
+      "bytes": 3555235,
+      "sha256": "95eaf2d04897012095dd82e4925180521d0f2765bb6057fdc9efbcc8082d36ab"
+    },
+    {
+      "name": "ort.webgpu.bundle.min.mjs",
+      "bytes": 122491,
+      "sha256": "c90275ffcd0e74e8929f527840ce9339399bfd45f11a74887e4b81a893907b70"
+    },
+    {
+      "name": "ort.webgpu.bundle.min.mjs.map",
+      "bytes": 542899,
+      "sha256": "62fd450a9317f8d42f69808f7e095b4c8a4a3aa7ca850ae721e686bb49e8a7bc"
+    },
+    {
+      "name": "ort.webgpu.js",
+      "bytes": 735137,
+      "sha256": "18d009c7747b6489d940994636915045bf82ad0efba34d02f850a38737782a6b"
+    },
+    {
+      "name": "ort.webgpu.min.js",
+      "bytes": 70811,
+      "sha256": "03f4423bd12fdbf5eb4ffcf6c1a3c471c760e10c2a1533f1ca64f5a7619c7731"
+    },
+    {
+      "name": "ort.webgpu.min.js.map",
+      "bytes": 405567,
+      "sha256": "e5bb44b8f173678a12a73a9e3889ae0ab2ca26c5a911b6e2eab36a1e9ece8ec5"
+    },
+    {
+      "name": "ort.webgpu.min.mjs",
+      "bytes": 70742,
+      "sha256": "329cd956772397a1aedd668e911195d39afefb182f6fc14aafa4f08ac8d8f379"
+    },
+    {
+      "name": "ort.webgpu.min.mjs.map",
+      "bytes": 405520,
+      "sha256": "be90120f2752231a09e9470d98ba5877d8e0835455c6ab1a8196700207335b80"
+    },
+    {
+      "name": "ort.webgpu.mjs",
+      "bytes": 724785,
+      "sha256": "f4386d9be46f9abf7c6a81c3415970adf0f6a5b2cd942c5e8052169e311b9476"
+    }
+  ],
+  "shipping": false,
+  "numerics_run": false
+}

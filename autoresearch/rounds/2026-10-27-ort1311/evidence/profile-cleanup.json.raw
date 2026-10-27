@@ -1,0 +1,30 @@
+{
+  "profiles_removed": [
+    "/tmp/ort-qualify-tls-j3gxhv",
+    "/tmp/ort-qualify-6sEAyl"
+  ],
+  "task_references": [],
+  "denied_non_task_daemons": [
+    {
+      "pid": "1128",
+      "comm": "systemd"
+    },
+    {
+      "pid": "1137",
+      "comm": "(sd-pam)"
+    },
+    {
+      "pid": "11101",
+      "comm": "sshd-session"
+    },
+    {
+      "pid": "11108",
+      "comm": "sshd-session"
+    },
+    {
+      "pid": "3630675",
+      "comm": "sshd-session"
+    }
+  ],
+  "privileged_audit": false
+}

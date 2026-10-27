@@ -1,0 +1,50 @@
+{
+  "registry.json.raw": {
+    "bytes": 789,
+    "sha256": "d8f00c9f043584b2b3a62a91ff1219b459ae42eccac76484d96188f5c6be6ad4"
+  },
+  "acquisition.json.raw": {
+    "bytes": 10216,
+    "sha256": "3ee4fc455211414c064173b27499281bbe7a7969c8fb2f7b9d05f524a695dd81"
+  },
+  "upstream-tag.json.raw": {
+    "bytes": 353,
+    "sha256": "30dc3a2935a870df8635b628a7cbdf3f9f06a49b14ebb33c7d701545985a2d87"
+  },
+  "classic-cpu.json.raw": {
+    "bytes": 6829,
+    "sha256": "63486a63209694aee09b552f72e6362e4203223f0040ed45c0e1606d8e8dcbcb"
+  },
+  "classic-cpu.log": {
+    "bytes": 4944,
+    "sha256": "539d7e45df89ec8a72af3dcac8de7bc9082e89e7613e3e21aed5d5a4bd3b63e7"
+  },
+  "invocation.json.raw": {
+    "bytes": 613,
+    "sha256": "5eb8277114c5e1c6d702e457c4ab75443ad902c3240b71b2f0e6501b40359dfd"
+  },
+  "profile-cleanup.json.raw": {
+    "bytes": 497,
+    "sha256": "3205adc48e425025ea603f2fced5b1f5cbdb4979637f556b15ab673e9f2752e6"
+  },
+  "source-pins-summary.json.raw": {
+    "bytes": 5276,
+    "sha256": "e3f84c9564e163f7a8dcae5fa05f46ba71160a1faf2a95a5d6c268c18405bd1a"
+  },
+  "emsdk-gitlink.json.raw": {
+    "bytes": 910,
+    "sha256": "3cdb9c35627076c33e9686f4fdca4de6acf1fa12a4fbb8036407fa4e50a2851b"
+  },
+  "VERSION_NUMBER.raw": {
+    "bytes": 7,
+    "sha256": "a047762d2cc2cf4a6818e566644f189682d8c8ece297a71dec7ce4d0fc4e79f2"
+  },
+  "upstream-lib-version.ts.raw": {
+    "bytes": 230,
+    "sha256": "0dedd3fdba72cb777a892d687a2b10943bca5b8897cfd3a4a3ef8768e58e75fe"
+  },
+  "source-preparation.md": {
+    "bytes": 2892,
+    "sha256": "7d97631d96fb6b826f69e571e91ad785d1cf82f0c6a1aa02a4763600c30af37b"
+  }
+}
