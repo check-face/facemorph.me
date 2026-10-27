@@ -14,7 +14,7 @@ from urllib.request import Request, urlopen
 spec=importlib.util.spec_from_file_location('ios_product',Path(__file__).resolve().parents[2]/'scripts/next-ios-sim.py')
 ios_product=importlib.util.module_from_spec(spec);spec.loader.exec_module(ios_product)
 import unittest
-from run import chrome_intent, assess, open_safari, EXPECTED, MANAGER_EXPECTED, simulator_options
+from run import android_network, chrome_intent, assess, open_safari, EXPECTED, MANAGER_EXPECTED, simulator_options
 
 
 def manager_rows():
@@ -57,6 +57,21 @@ class EvidenceTests(unittest.TestCase):
             words = subprocess.run(['/bin/sh', '-c', 'printf \"%s\\n\" '+suffix],
                                    capture_output=True, text=True, check=True, timeout=5)
             self.assertEqual(words.stdout, literal+'\ncom.android.chrome\n')
+
+    def test_chrome_waits_for_two_validated_network_polls(self):
+        up = '  NetworkAgentInfo{ ni{[type: WIFI[]]} nc{[ Capabilities: INTERNET&NOT_RESTRICTED&VALIDATED ]} }'
+        down = '  NetworkAgentInfo{ ni{[type: WIFI[]]} nc{[ Capabilities: INTERNET&NOT_RESTRICTED ]} }'
+        request = '      NetworkRequest [ LISTEN id=15, [ Capabilities: INTERNET&VALIDATED ] ]'
+        dumps = iter(['', request, up, down, up, up])
+        clock = iter(range(100))
+        result = android_network(lambda: next(dumps), sleep=lambda s: None, now=lambda: next(clock))
+        self.assertEqual((result['validated'], result['polls']), (True, 6))
+
+    def test_an_unvalidated_network_is_recorded_after_the_bound(self):
+        clock = iter(range(0, 1000, 50))
+        result = android_network(lambda: '', sleep=lambda s: None, now=lambda: next(clock), budget=120)
+        self.assertEqual(result['validated'], False)
+        self.assertLessEqual(result['polls'], 3)
 
     def test_safari_is_launched_before_openurl_and_a_cold_exit_60_is_retried(self):
         calls, sleeps = [], []

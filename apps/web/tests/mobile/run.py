@@ -183,6 +183,21 @@ def chrome_intent(url):
                        'com.android.chrome'])
 
 
+def android_network(dump, sleep=time.sleep, now=time.monotonic, budget=120):
+    # Boot completion precedes Android's default network: in main run 40458102995 Chrome loaded the page,
+    # then netd reconfigured wlan0 and the network change aborted the suite.mjs import. Open Chrome only
+    # once two consecutive polls show a validated default network; an unvalidated one is recorded, not fatal.
+    start, polls, streak = now(), 0, 0
+    while True:
+        polls += 1
+        text = dump()
+        agents = [line for line in text.splitlines() if line.lstrip().startswith('NetworkAgentInfo')]
+        streak = streak + 1 if any('VALIDATED' in line for line in agents) else 0
+        if streak == 2 or now()-start >= budget:
+            return {'validated': streak == 2, 'polls': polls, 'seconds': round(now()-start, 1)}
+        sleep(1)
+
+
 def open_chrome(url):
     # A fresh emulator's Chrome can swallow the first VIEW intent behind its first-run promos
     # (main run 40284140320: the notifications sheet over the new-tab page). Record it; only the
@@ -601,6 +616,8 @@ def main():
             # granting the permission up front skips that sheet. Older images have no such permission.
             command('adb', 'shell', 'pm', 'grant', 'com.android.chrome', 'android.permission.POST_NOTIFICATIONS', check=False)
             command('adb', 'shell', 'am', 'force-stop', 'com.android.chrome')
+            evidence['network'] = android_network(
+                lambda: command('adb', 'shell', 'dumpsys', 'connectivity', check=False))
             evidence['launchAttempts'] = [open_chrome(url)]
         elif args.platform == 'ios':
             evidence['xcode'] = command('xcodebuild', '-version')
