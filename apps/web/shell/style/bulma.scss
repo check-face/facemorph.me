@@ -12,4 +12,13 @@
 @use 'bulma/sass/layout/footer' with (
   $footer-background-color: $footer-background-color
 );
-@use 'bulma/sass';
+// Only the Bulma 1 groups classic's stylesheet shipped and the port renders (fm-mc27): the full `bulma/sass` added
+// helpers (15 KB gz, no helper class used), the new .grid/.cell system (5 KB gz) and components (10 KB gz, none
+// used: dialogs are MUI), making each uncached visit's CSS 74.7 KB gz against classic's 49.6 KB.
+@use 'bulma/sass/themes';
+@use 'bulma/sass/base';
+@use 'bulma/sass/elements';
+@use 'bulma/sass/form';
+@use 'bulma/sass/grid/columns';
+@use 'bulma/sass/layout';
+@use 'bulma/sass/base/skeleton';
