@@ -120,6 +120,58 @@ jobs:
           name: facade-failure-${{ github.run_id }}-${{ matrix.shard }}
           path: apps/web/test-results/facade/
           if-no-files-found: ignore
+  # Consent overlap timings use the real hardware route; CPU coverage remains in runtime-e2e.
+  consent-webgpu:
+    if: inputs.full
+    runs-on: [self-hosted, device-lab]
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
+      - uses: ./.github/actions/setup-runtime
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - name: Verify the canonical site artifact
+        uses: ./.github/actions/fetch-artifact
+        with:
+          source_repo_id: ${{ github.repository_id }}
+          workflow: ${{ inputs.artifact_workflow }}
+          run_id: ${{ inputs.artifact_run }}
+          commit: ${{ inputs.artifact_commit }}
+          artifact_name: ${{ inputs.artifact_name }}
+          out: .cache/canonical-site
+      - name: Use those exact bytes as the identified artifact
+        run: cp -R .cache/canonical-site/. .
+      - name: Measure operated cold and warm consent journeys on hardware WebGPU
+        env:
+          FACEMORPH_REQUIRE_RUNTIME: '1'
+          FACEMORPH_CONSENT_ROUTE: webgpu
+          DISPLAY: ':0'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess, sys
+          sys.path.insert(0, str(Path('tools/device-lab').resolve()))
+          from lab import lab_lock
+          with lab_lock(['eris-webgpu']):
+              subprocess.run([
+                  'node', '--test', '--test-timeout=1200000',
+                  '--test-name-pattern=approved photo transfer overlaps',
+                  'test/e2e/consent-requests.e2e.ts',
+              ], cwd='apps/web', check=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: consent-webgpu-${{ github.run_id }}
+          path: apps/web/test-results/consent-requests/desktop-webgpu-overlap*
+          if-no-files-found: error
+          retention-days: 30
   # Full confirmed-crop/recovery acceptance on the same identified artifact (fm-d4mw).
   crop-acceptance:
     if: inputs.full
