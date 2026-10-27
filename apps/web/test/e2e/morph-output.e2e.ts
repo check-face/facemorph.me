@@ -1284,27 +1284,126 @@ test(
     assert.ok(existsSync(file), `actual native-player verifier input exists: ${file}`);
     const bytes = [...readFileSync(file)],
       evidence: unknown[] = [];
+    mkdirSync(out, { recursive: true });
     for (const width of [1280, 390]) {
       const profile = await launchFreshChromiumProfile({
         ...(width === 390 ? devices['Pixel 7'] : {}),
         viewport: { width, height: 900 },
       });
+      let completed = false;
       try {
+        await profile.context.tracing.start({ screenshots: true, snapshots: true });
         const page = await profile.context.newPage();
         await page.setContent(
           '<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1"><div style="height:1000px"></div><div class="next-video-slot"><video controls loop playsinline style="width:332px;height:332px;max-width:100%"></video></div><div style="height:1000px"></div>',
         );
         await page.evaluate((saved) => {
-          document.querySelector('video')!.src = URL.createObjectURL(
-            new Blob([new Uint8Array(saved)], { type: 'video/mp4' }),
-          );
+          const video = document.querySelector('video')!;
+          const ranges = (value: TimeRanges) =>
+            Array.from({ length: value.length }, (_, i) => [value.start(i), value.end(i)]);
+          const snapshot = () => ({
+            now: performance.now(),
+            paused: video.paused,
+            currentTime: video.currentTime,
+            duration: video.duration,
+            readyState: video.readyState,
+            networkState: video.networkState,
+            ended: video.ended,
+            error: video.error && { code: video.error.code, message: video.error.message },
+            buffered: ranges(video.buffered),
+            played: ranges(video.played),
+            seekable: ranges(video.seekable),
+            width: video.videoWidth,
+            height: video.videoHeight,
+            visibility: document.visibilityState,
+            focused: document.hasFocus(),
+          });
+          const probe = { timeOrigin: performance.timeOrigin, events: [] as object[], snapshot };
+          Object.assign(window, { __nativePlayerProbe: probe });
+          // Observe native media and real input without changing playback or codec answers.
+          for (const name of [
+            'loadstart',
+            'loadedmetadata',
+            'loadeddata',
+            'canplay',
+            'play',
+            'playing',
+            'pause',
+            'timeupdate',
+            'waiting',
+            'stalled',
+            'suspend',
+            'ended',
+            'error',
+            'emptied',
+            'abort',
+            'pointerdown',
+            'touchstart',
+            'click',
+          ])
+            video.addEventListener(
+              name,
+              (event) => {
+                if (probe.events.length < 250)
+                  probe.events.push({ event: event.type, trusted: event.isTrusted, ...snapshot() });
+              },
+              { capture: true, passive: true },
+            );
+          video.src = URL.createObjectURL(new Blob([new Uint8Array(saved)], { type: 'video/mp4' }));
         }, bytes);
         await page.waitForFunction(() => document.querySelector('video')!.readyState >= 2);
         evidence.push({
           width,
           operation: await operateNativePlayer(page, page.locator('video'), width === 390),
         });
+        completed = true;
+      } catch (error) {
+        const page = profile.context.pages().at(-1);
+        const observed = await page
+          ?.evaluate(() => {
+            const probe = (
+              window as unknown as {
+                __nativePlayerProbe?: {
+                  timeOrigin: number;
+                  events: unknown[];
+                  snapshot: () => unknown;
+                };
+              }
+            ).__nativePlayerProbe;
+            return {
+              timeOrigin: probe?.timeOrigin,
+              events: probe?.events,
+              video: probe?.snapshot(),
+            };
+          })
+          .catch((observationError: unknown) => ({ observationError: String(observationError) }));
+        writeFileSync(
+          join(out, `native-player-${width}-failure.json`),
+          JSON.stringify(
+            {
+              actualSavedFile: file,
+              width,
+              bytes: bytes.length,
+              browser: profile.context.browser()?.version(),
+              error:
+                error instanceof Error
+                  ? { name: error.name, message: error.message, stack: error.stack }
+                  : String(error),
+              completedCases: evidence,
+              observed,
+            },
+            null,
+            2,
+          ) + '\n',
+        );
+        await page
+          ?.screenshot({ path: join(out, `native-player-${width}-failure.png`) })
+          .catch(() => {});
+        throw error;
       } finally {
+        await profile.context.tracing
+          .stop(completed ? {} : { path: join(out, `native-player-${width}-failure-trace.zip`) })
+          .catch(() => {});
         await profile.close();
       }
     }
