@@ -127,9 +127,12 @@ def validate_journeys(value):
     return names
 
 
-def budget_findings(cell, runs):
-    """Each executed journey's wall-clock duration against its frozen budget for this cell."""
+def budget_findings(cell, runs, local=True):
+    """Each executed journey's wall-clock duration against its frozen budget for this cell. Budgets were measured
+    on the local destination; a live site adds the network download, so its durations are reported, not budgeted."""
     findings = []
+    if not local:
+        return findings
     for run in runs:
         for journey, seconds in (run.get('durationsS') or {}).items():
             entry = REGISTRY.get(journey)
@@ -152,7 +155,7 @@ def budget_rows(reports):
                 seen.setdefault(journey, []).append(seconds)
         for journey, durations in seen.items():
             budget = ((REGISTRY.get(journey) or {}).get('budgetsS') or {}).get(r['cell'])
-            verdict = ('unbudgeted' if budget is None else
+            verdict = ('unbudgeted' if budget is None else 'live: budgets are for the local destination' if not r.get('local') else
                        'over budget' if max(durations) > budget else 'within budget')
             shown = '/'.join(f'{s:.0f}s' for s in durations)
             rows.append(f"| {r['cell']} | {journey} | {shown} | {'–' if budget is None else f'{budget}s'} | {verdict} |")
@@ -1008,7 +1011,7 @@ def run_journeys(dev, args, cell, gpu, out, report, memory=None):
         finally:
             # Action completion and budget qualification are separate: preserve rec.ok,
             # but keep diagnostics before report_findings later rejects an over-budget run.
-            budget_errors = budget_findings(cell, [rec])
+            budget_errors = budget_findings(cell, [rec], bool(getattr(args, 'local', False)))
             retain_diagnostics = not rec.get('ok') or bool(budget_errors)
             if budget_errors:
                 rec['budgetBreaches'] = budget_errors
@@ -1082,7 +1085,7 @@ def report_findings(report, journeys, digest=None):
                     findings.append(str(e))
             elif not result.get('steps') or not all(s.get('ok') for s in result['steps']):
                 findings.append('operated steps failed or missing')
-    return findings + budget_findings(cell, runs)
+    return findings + budget_findings(cell, runs, bool(report.get('local')))
 
 
 def run_cell(cell, args, out, report=None):

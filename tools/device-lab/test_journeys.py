@@ -123,7 +123,7 @@ class BudgetDiagnostics(unittest.TestCase):
         warm = {'route': 'Ready · this device’s GPU (webgpu).' if cell == 'eris-webgpu'
                 else 'Ready · this device’s CPU.', 'url': dev.page.url,
                 'documentSha256': 'b' * 64, 'faceS': 3.0}
-        args = SimpleNamespace(repeat=1, journey='warm-face', url=dev.page.url)
+        args = SimpleNamespace(repeat=1, journey='warm-face', url=dev.page.url, local=True)
         with patch.object(lab.time, 'monotonic', side_effect=[100, 100 + seconds]), \
                 patch.object(lab, 'journey_face', return_value=warm, side_effect=error), \
                 patch.object(lab, 'ScreenBuffer', return_value=frames), \
@@ -180,7 +180,7 @@ class BudgetDiagnostics(unittest.TestCase):
 
 class Evidence(unittest.TestCase):
     def report(self):
-        return {'cell': 'eris-cpu', 'browser': {'family': 'chrome', 'version': 'Google Chrome 150.0',
+        return {'cell': 'eris-cpu', 'local': True, 'browser': {'family': 'chrome', 'version': 'Google Chrome 150.0',
                 'executable': '/opt/google/chrome/chrome', 'flags': []},
                 'artifact': {'digest': 'a' * 64},
                 'runs': [{'ok': True, 'warm': {'route': 'Ready · this device’s CPU.',
@@ -287,6 +287,8 @@ class Registry(unittest.TestCase):
         report['runs'][0]['durationsS'] = {'warm-face': 31.4}
         self.assertEqual(lab.report_findings(report, ['warm-face'], 'a' * 64),
                          ['warm-face took 31.4s on eris-cpu, over its 20s budget'])
+        # The budgets were measured on the local destination; a live site's run adds the network download.
+        self.assertEqual(lab.report_findings({**report, 'local': False}, ['warm-face'], 'a' * 64), [])
 
     def test_unregistered_journey_in_a_report_is_named(self):
         report = Evidence.report(self)
