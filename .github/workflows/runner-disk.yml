@@ -1,0 +1,32 @@
+name: runner-disk
+# Dispatch only: where a self-hosted runner host's disk goes, seen as the runner user (the tempcpu runners run in a
+# container whose storage the host login cannot read). Reports; deletes nothing. Full run 40458102995 failed its
+# photo-encoder downloads on tempcpu ('Cache.put() encountered a network error') with the host at 93-95% of 98 GB.
+on:
+  workflow_dispatch:
+    inputs:
+      label:
+        description: Runner label to report on
+        required: true
+        default: tempcpu
+permissions:
+  contents: read
+jobs:
+  report:
+    runs-on: [self-hosted, '${{ inputs.label }}']
+    timeout-minutes: 15
+    steps:
+      - name: Disk use by the runner user
+        shell: bash
+        run: |
+          {
+            echo '```'
+            df -h / "$HOME" /tmp 2>/dev/null
+            echo
+            echo "HOME=$HOME RUNNER_TEMP=$RUNNER_TEMP RUNNER_TOOL_CACHE=$RUNNER_TOOL_CACHE"
+            echo
+            du -xh --max-depth=2 "$HOME" 2>/dev/null | sort -h | tail -40
+            echo
+            du -xh --max-depth=1 /tmp 2>/dev/null | sort -h | tail -25
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
