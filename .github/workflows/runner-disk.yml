@@ -1,7 +1,10 @@
 name: runner-disk
 # Dispatch only: where a self-hosted runner host's disk goes, seen as the runner user (the tempcpu runners run in a
-# container whose storage the host login cannot read). Reports; deletes nothing. Full run 40458102995 failed its
-# photo-encoder downloads on tempcpu ('Cache.put() encountered a network error') with the host at 93-95% of 98 GB.
+# container whose storage the host login cannot read). Full run 40458102995 failed its
+# photo-encoder downloads on tempcpu ('Cache.put() encountered a network error') with the host at 93-95% of 98 GB; the
+# runner's /tmp held 11 GB of leaked test scratch. With clean=true it removes only runner-owned /tmp entries with a
+# known test prefix that are over two hours old (no running job's scratch is that old); caches, workspaces and home
+# are never touched.
 on:
   workflow_dispatch:
     inputs:
@@ -9,6 +12,10 @@ on:
         description: Runner label to report on
         required: true
         default: tempcpu
+      clean:
+        description: Remove stale runner-owned test scratch in /tmp (older than 2 h, known test prefixes only)
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -16,6 +23,17 @@ jobs:
     runs-on: [self-hosted, '${{ inputs.label }}']
     timeout-minutes: 15
     steps:
+      - name: Remove stale test scratch from /tmp
+        if: inputs.clean
+        shell: bash
+        run: |
+          before=$(df --output=avail -B1M / | tail -1)
+          find /tmp -mindepth 1 -maxdepth 1 -user "$(id -u)" -mmin +120 \( -name 'evict-*' -o -name 'model-host-*' \
+            -o -name 'facemorph-*' -o -name 'playwright_*' -o -name 'playwright-artifacts-*' -o -name 'real-ui-cpu-*' \
+            -o -name 'crop-acceptance-*' -o -name 'warm-*' -o -name 'guard-*' \) -print0 > stale.list
+          echo "stale entries: $(tr -cd '\0' < stale.list | wc -c)"
+          xargs -0 -r -I{} find {} -depth -delete < stale.list || true
+          echo "freed $(( $(df --output=avail -B1M / | tail -1) - before )) MiB" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Disk use by the runner user
         shell: bash
         run: |
