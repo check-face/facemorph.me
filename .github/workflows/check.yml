@@ -25,6 +25,18 @@ jobs:
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
+      - name: Repository-level TypeScript projects (scripts/hooks/typecheck.mjs reads this list)
+        run: |
+          npx tsc -p scripts/ci --noEmit
+          npx tsc -p apps/web/src/admission --noEmit
+          npx tsc -p apps/web/src/admission/tsconfig.test.json --noEmit
+          npx tsc -p apps/web/src/contracts --noEmit
+          npx tsc -p apps/web/src/contracts/tsconfig.test.json --noEmit
+          npx tsc -p apps/web/src/media --noEmit
+          npx tsc -p apps/web/src/media/tsconfig.test.json --noEmit
+          npx tsc -p packages/browser-model-manager/src/contracts/tsconfig.test.json --noEmit
+          npx tsc -p packages/stylegan-js/tsconfig.json --noEmit
+          npx tsc -p packages/stylegan-js/tsconfig.test.json --noEmit
       - name: Every test file is run by npm test
         run: node scripts/build/check-tests-listed.mjs
       - name: The checks wrote nothing
@@ -46,6 +58,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
       - name: This shard's npm test files
         env:
           GITHUB_TOKEN: ${{ github.token }}
