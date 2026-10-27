@@ -42,7 +42,7 @@ permissions:
 jobs:
   smoke:
     runs-on: [self-hosted, eris]
-    timeout-minutes: 75 # zero timing-lock wait; covers setup, the 3600 s command and cleanup
+    timeout-minutes: 105 # covers setup, a 1800 s timing-lock wait, the 3600 s command and cleanup
     env:
       LABEL: ci-morph-frame-${{ github.run_id }}-${{ github.run_attempt }}
       OUT: /home/cdilga/Work/runs/facemorph-research
@@ -83,6 +83,9 @@ jobs:
         uses: ./.github/actions/run-command
         with:
           exclusive: gpu-timing # times the GPU: alone among timing jobs, never blocking others
+          # A full run starts every timing job at once (next-gpu-lane and both research smokes): waiting zero seconds
+          # made whichever started second exit 75 (full runs 40433665126, 40443468068). Each takes minutes, so wait.
+          wait: '1800'
           timeout: '3600'
           command: >-
             node autoresearch/drivers/morph-frame-product.mjs --label "$LABEL" --mode "${{ inputs.mode || 'smoke' }}"
