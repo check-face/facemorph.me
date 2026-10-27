@@ -864,7 +864,8 @@ def journey_face(phone, url, cold, word, gpu=None):
         phone.cdp.send('Storage.clearDataForOrigin', {'origin': origin, 'storageTypes': 'indexeddb,local_storage'})
     t0 = time.time()
     response = phone.page.goto(url, wait_until='domcontentloaded')
-    html_digest = hashlib.sha256(response.body()).hexdigest() if response else None
+    # The document as built: on the facemorph.me zone the edge injects its analytics beacon into it.
+    html_digest = hashlib.sha256(without_platform_beacon('index.html', response.body())[0]).hexdigest() if response else None
     if getattr(phone, 'expected_index', None) and html_digest != phone.expected_index:
         raise RuntimeError(f'executed document digest {html_digest} differs from the artifact index')
     phone.capabilities = capture_capabilities(phone)
