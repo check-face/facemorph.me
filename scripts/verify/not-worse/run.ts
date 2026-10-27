@@ -557,7 +557,8 @@ const build = opt.build
       source: opt['build-source'] ?? `artifact:${opt['build-digest']}`,
     }
   : { ...control };
-const timing = artifact.requireTimingLock();
+// CPU timing may hold its own core set's lock (cpu-timing-<cpus>, under taskset); the cores are recorded.
+const timing = artifact.requireTimingLock(process.env, { cpuSet: opt.provider === 'cpu' });
 const runtime = session.verifiedRuntime(resolve(opt.runtime ?? join(REPO, '.cache/runtime')));
 const photo = readFileSync(join(REPO, PHOTO.path));
 if (journey.sha(photo) !== PHOTO.sha256)

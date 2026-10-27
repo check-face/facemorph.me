@@ -22,6 +22,7 @@ export function timingCommands({
   source,
   label,
   wait = 3600,
+  cpus,
 }) {
   if (!TIMING_SEGMENTS.includes(segment)) throw new Error(`unknown timing segment ${segment}`);
   // pair null: the whole segment in one job, three pairs then the stop rule, with its verdict.
@@ -30,7 +31,11 @@ export function timingCommands({
   const run = [
     // The machine-wide timing lock is how a machine runs one timing job at a time (operator, 28 October 2026): a
     // second job waits for it rather than failing.
-    `python3 autoresearch/run.py --exclusive gpu-timing --wait ${wait} --timeout 3600 --`,
+    // With a core set the job is pinned to those cores and waits only for that set's lock, so several timing jobs share
+    // a machine, each alone on its cores (operator, 28 October 2026).
+    cpus
+      ? `taskset -c ${cpus} python3 autoresearch/run.py --exclusive cpu-timing-${cpus} --wait ${wait} --timeout 3600 --`
+      : `python3 autoresearch/run.py --exclusive gpu-timing --wait ${wait} --timeout 3600 --`,
     `node scripts/verify/not-worse/run.ts --control ${CONTROL} --control-digest ${controlDigest}`,
     `--build ${build} --build-digest ${digest ?? treeDigest(build)} --build-source ${source ?? 'local'}`,
     `--segment ${segment}`,

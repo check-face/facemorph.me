@@ -47,3 +47,19 @@ test('a CI segment job without a pair index runs three pairs and the stop rule, 
   assert.match(ci[1], /--segment morph --pairs 3 --max-pairs 7 /);
   assert.equal(ci[2], 'node scripts/verify/not-worse/median-check.mjs o/L --expect morph');
 });
+
+test("a core set pins the timing job and takes only that set's lock", () => {
+  const ci = timingCommands({
+    segment: 'photo',
+    build: 'b',
+    runtimeDir: 'r',
+    out: 'o',
+    pair: null,
+    digest: 'd',
+    cpus: '4-7',
+  });
+  assert.match(
+    ci[1],
+    /^taskset -c 4-7 python3 autoresearch\/run\.py --exclusive cpu-timing-4-7 --wait 3600 /,
+  );
+});

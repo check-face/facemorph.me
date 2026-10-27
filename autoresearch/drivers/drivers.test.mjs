@@ -196,3 +196,17 @@ test('a copy of the control with one file removed is not the control', (t) => {
   assert.throws(() => verifyArtifact(copy, CONTROL.treeSha256), /refused before the run/);
   rmSync(copy, { recursive: true });
 });
+
+test('a CPU timing run may hold its own core set, pinned to exactly those cores', () => {
+  const env = { FACEMORPH_EXCLUSIVE: 'cpu-timing-4-7', FACEMORPH_RUN: 'r1' };
+  assert.deepEqual(requireTimingLock(env, { cpuSet: true, cpus: () => '4-7' }), {
+    lock: 'cpu-timing-4-7',
+    run: 'r1',
+    cpus: '4-7',
+  });
+  assert.throws(
+    () => requireTimingLock(env, { cpuSet: true, cpus: () => '0-11' }),
+    /taskset -c 4-7/,
+  );
+  assert.throws(() => requireTimingLock(env, { cpus: () => '4-7' }), /gpu-timing lock/);
+});

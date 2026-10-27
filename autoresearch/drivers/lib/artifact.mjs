@@ -67,11 +67,30 @@ export function freshRunDir(root, label) {
   return dir;
 }
 
-/** A timing run measures alone among timing runs: run.py --exclusive gpu-timing sets these for its command. */
-export function requireTimingLock(env = process.env) {
-  if (env.FACEMORPH_EXCLUSIVE !== 'gpu-timing' || !env.FACEMORPH_RUN)
-    throw new Error(
-      'not running under the gpu-timing lock: python3 autoresearch/run.py --exclusive gpu-timing -- <this command>',
-    );
-  return { lock: env.FACEMORPH_EXCLUSIVE, run: env.FACEMORPH_RUN };
+/** The CPUs this process may run on (Linux /proc), as a canonical list like `0-3`; null where unknown. */
+export function allowedCpus(status = () => readFileSync('/proc/self/status', 'utf8')) {
+  try {
+    return /^Cpus_allowed_list:\s*(\S+)$/m.exec(status())?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A timing run measures alone among timing runs: run.py --exclusive gpu-timing sets these for its command. A CPU
+ * timing run may instead hold the lock of its own fixed core set, `cpu-timing-<cpus>` (run.py --exclusive
+ * cpu-timing-4-7 under taskset -c 4-7), so several run side by side on one machine, each alone on its cores
+ * (operator, 28 October 2026); the process's actual affinity must be exactly that set.
+ */
+export function requireTimingLock(env = process.env, { cpuSet = false, cpus = allowedCpus } = {}) {
+  const lock = env.FACEMORPH_EXCLUSIVE ?? '';
+  const set = /^cpu-timing-(\d+(?:-\d+)?)$/.exec(lock)?.[1];
+  if (env.FACEMORPH_RUN && lock === 'gpu-timing') return { lock, run: env.FACEMORPH_RUN };
+  if (env.FACEMORPH_RUN && cpuSet && set && cpus() === set)
+    return { lock, run: env.FACEMORPH_RUN, cpus: set };
+  throw new Error(
+    cpuSet && set
+      ? `the ${lock} lock needs the process pinned to exactly those cores (taskset -c ${set}); it runs on ${cpus()}`
+      : 'not running under the gpu-timing lock: python3 autoresearch/run.py --exclusive gpu-timing -- <this command>',
+  );
 }
