@@ -101,6 +101,21 @@ jobs:
         uses: ./.github/actions/restore-workspace-build
       - if: '!inputs.shared_build'
         run: npm run build
+      # Full qualification must execute the model journeys, never rely on ambient runner caches.
+      - uses: ./.github/actions/setup-playwright
+        if: github.event_name == 'workflow_dispatch' || inputs.full
+        with:
+          browsers: chromium firefox webkit
+      - uses: ./.github/actions/setup-runtime
+        if: github.event_name == 'workflow_dispatch' || inputs.full
+      - name: Bind model tests to the verified runtime and require all encoder canaries
+        if: github.event_name == 'workflow_dispatch' || inputs.full
+        run: |
+          test -n "$FACEMORPH_RUNTIME_DIR"
+          runtime_sha=$(sha256sum "$FACEMORPH_RUNTIME_DIR/manifest.json" | cut -c1-64)
+          echo "FACEMORPH_RUNTIME_CACHE=$FACEMORPH_RUNTIME_DIR" >> "$GITHUB_ENV"
+          echo "FACEMORPH_RUNTIME_SHA256=$runtime_sha" >> "$GITHUB_ENV"
+          echo 'FACEMORPH_FULL_QUALIFY=1' >> "$GITHUB_ENV"
       - name: Run every npm-test file assigned to this shard
         run: |
           args=(--shard "$SHARD")
