@@ -37,7 +37,12 @@ export function checks({ artifact, runtimeSha, runtimeDir, out, url, control }) 
     {
       name: 'engine',
       cwd: REPO,
-      env: { FACEMORPH_FULL_QUALIFY: '1', FACEMORPH_RUNTIME_CACHE: runtimeDir },
+      env: {
+        FACEMORPH_FULL_QUALIFY: '1',
+        FACEMORPH_RUNTIME_CACHE: runtimeDir,
+        // The regenerated full31 fixtures, where the release's engine job reads them.
+        FACEMORPH_FULL31: join(process.env.HOME ?? '', '.cache/facemorph-device-lab/full31'),
+      },
       cmd: 'node scripts/ci/scaffold-test-shards.mjs --workspace packages/stylegan-js',
     },
     ...TIMING_SEGMENTS.map((segment) => ({
