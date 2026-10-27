@@ -28,15 +28,25 @@ import { fetchControl } from '../../../../scripts/import/fetch-control.mjs';
 export const ORIGIN_HOST = 'next.facemorph.me';
 export const ORIGIN = `https://${ORIGIN_HOST}`;
 // Playwright's setup and workers inherit the same mapping; independent runs choose their own port.
+// Chosen below Linux's ephemeral range (32768+): a port the OS handed out for listen(0) and released is soon reused
+// as some outgoing connection's source port, so the server could not bind it later (runtime-e2e, full run
+// 40455559357: 'Address already in use'). Outgoing connections never take ports below that range.
 async function freePort(): Promise<number> {
   const { createServer } = await import('node:net');
-  return new Promise((resolve, reject) => {
-    const server = createServer();
-    server.once('error', reject).listen(0, '127.0.0.1', () => {
-      const port = (server.address() as { port: number }).port;
-      server.close((error) => (error ? reject(error) : resolve(port)));
+  const tryPort = (port: number) =>
+    new Promise<boolean>((resolve) => {
+      const server = createServer();
+      server
+        .once('error', () => resolve(false))
+        .listen(port, '127.0.0.1', () => {
+          server.close(() => resolve(true));
+        });
     });
-  });
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const port = 20000 + Math.floor(Math.random() * 12000);
+    if (await tryPort(port)) return port;
+  }
+  throw new Error('no free control port in 20000-31999');
 }
 export const PORT = Number(process.env['FACEMORPH_CONTROL_PORT'] ?? (await freePort()));
 process.env['FACEMORPH_CONTROL_PORT'] = String(PORT);
