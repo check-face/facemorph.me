@@ -56,7 +56,8 @@ on:
         description: Canonical site artifact name
 jobs:
   check:
-    runs-on: [self-hosted, linux-x64]
+    # Only this browser-free job is qualified on Triton (fm-jx26).
+    runs-on: [self-hosted, triton]
     timeout-minutes: 30
     defaults:
       run:

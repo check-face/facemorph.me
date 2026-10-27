@@ -40,9 +40,10 @@ or a runner label is not inference evidence; the adapter column is what a real b
 
 Operator policy on 25 October allowed compatible work on Triton while available.
 The 27 October fm-kfs5 correction removed it from ordinary portable CPU scheduling.
-The subsequent fm-jx26 qualification assigns only the six scaffold check groups
-and the dependency-free change selector to its specific `triton` label. Dependency
-policy and all browser/workerd jobs retain the qualified portable pool.
+The subsequent fm-jx26 qualification assigns the six scaffold check groups,
+the dependency-free change selector and the browser-free checks listed below to
+its specific `triton` label. Dependency policy and all browser/workerd jobs retain
+the qualified portable pool.
 Triton does not regain `linux-x64`.
 
 Observed pool on 27 October after the operator-directed label changes:
@@ -71,6 +72,27 @@ restore was a hardlink hit in 24.9s. A scratch checkout outside the
 `/mnt/unit/gh-runners` dataset fell back to a 44.5s copy. Dependency policy stays
 on the faster portable cache to keep pipeline startup short. These are standalone
 qualification timings, not measured main-pipeline improvement or browser support.
+Additional browser-free commands were qualified on immutable source `e082c1d`
+(`import-inventory` used `4bf1987`) before moving their jobs to Triton:
+
+| Job | Actual command results on Triton |
+| --- | --- |
+| identity-check/check | Pinned checksum-verified gh 2.101.0, four sibling clones and 20 tests passed, zero skips (37.3s of tests) |
+| rename-check/check | 7 API tests and all 13 rename assertions passed (80.0s + 7.1s) |
+| import-checks/checks | Node/Python tests, real app build/identity check and destination checks passed; destination checks 24.6s |
+| import-inventory/checks | All eight commands passed with full classic history at the frozen commit; 39 tests, zero skips, 32.6s of checks |
+| import-closure/checks | Unit tests, exclusion/resolution scans and independent retained-control download/pin checks passed |
+| research-ledger/check | Full-history classic clone, ledger tests and append-only checks passed |
+| web-shell/check | Real app inventory and bridge import scans passed (0.5s); browser siblings retain their pools |
+| native-retirement/check | 21 tests passed against the real built destination, zero skips |
+
+The same qualification restored the current lockfile's dependency tree by hardlink
+in 1.1s and built the actual app in 12.1s. These are executed standalone commands,
+not a claim about main wall time. Existing artifact restoration, pinned tools,
+checkouts and assertions remain in each workflow. App-contracts stays portable:
+its Node command includes real browser cases, and Triton reported those cases
+untested because it lacks a supported browser.
+
 GitHub can assign independent portable jobs to the eligible eris and temporary CPU
 slots. Four Triton slots share its 20 threads and 125 GiB RAM; they are not four
 separate 20-thread machines. Run compatible work concurrently on its specific
