@@ -47,4 +47,21 @@ test('hosted and self-hosted caches use the asset key and retain full acquisitio
       step.run?.includes('node scripts/runtime/check-pins.mjs --runtime "$RUNTIME_DIR"'),
     ),
   );
+  const verify = steps.find((step) => step.run?.includes('node scripts/runtime/check-pins.mjs'));
+  assert.match(verify.run, /FACEMORPH_CONTROL_RUNTIME_DIR=\$RUNTIME_DIR/);
+  const candidate = steps.find((step) => step.run?.includes('acquire-candidate-runtime.ts'));
+  assert.equal(candidate.if, "hashFiles('import/runtime-mirror.json') != ''");
+  assert(steps.indexOf(candidate) > steps.indexOf(verify));
+  assert.equal(candidate.env.CONTROL_RUNTIME_DIR, '${{ steps.runtime.outputs.dir }}');
+  assert.equal(candidate.env.GH_TOKEN, '${{ github.token }}');
+  assert.match(candidate.run, /mktemp -d "\$RUNNER_TEMP\/candidate-runtime-XXXXXX"/);
+  assert.match(
+    candidate.run,
+    /--control-runtime "\$CONTROL_RUNTIME_DIR" --out "\$candidate\/runtime"/,
+  );
+  assert.match(candidate.run, /FACEMORPH_RUNTIME_DIR=\$\{result.runtimeDir\}/);
+  assert.equal(
+    steps.find((step) => step.uses === 'actions/cache@v4').with.path,
+    '.cache/ci-runtime',
+  );
 });

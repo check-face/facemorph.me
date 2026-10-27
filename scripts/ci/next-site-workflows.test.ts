@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { parse } from 'yaml';
+import { loadCandidateRuntime } from './candidate-runtime.ts';
 
 const workflow = (name: string) =>
   parse(readFileSync(new URL(`../../.github/workflows/${name}.yml`, import.meta.url), 'utf8'));
@@ -78,10 +79,44 @@ test('both qualification paths consume all explicit pins and retain real CPU, UI
     cpu.jobs['real-ui-cpu'].steps.some((s: any) => s.with?.command?.includes('real-ui-cpu.mjs')),
   );
   assert.equal(qualify.jobs.qualify.with.runtime_sha, '${{ inputs.runtime_sha }}');
+  assert.equal(wrapper.jobs.qualify.with.runtime_sha, '${{ needs.artifact.outputs.runtime_sha }}');
+});
+
+test('artifact runtime output comes from trusted source composition and reaches every qualification and deployment caller', () => {
   assert.equal(
-    qualify.on.workflow_call.inputs.runtime_sha.default,
-    wrapper.jobs.qualify.with.runtime_sha,
+    artifact.on.workflow_call.outputs.runtime_sha.value,
+    '${{ jobs.artifact.outputs.runtime_sha }}',
   );
+  assert.equal(artifact.jobs.artifact.outputs.runtime_sha, '${{ steps.runtime.outputs.sha256 }}');
+  for (const name of ['next-site', 'next-matrix', 'next-deploy'])
+    assert.equal(
+      main.jobs[name].with.runtime_sha,
+      '${{ needs.next-site-artifact.outputs.runtime_sha }}',
+    );
+  const root = mkdtempSync(join(tmpdir(), 'fm-runtime-output-'));
+  try {
+    const output = join(root, 'output');
+    const result = spawnSync(
+      'bash',
+      [
+        '-euo',
+        'pipefail',
+        '-c',
+        artifact.jobs.artifact.steps.find((s: any) => s.id === 'runtime').run,
+      ],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, GITHUB_OUTPUT: output },
+      },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      readFileSync(output, 'utf8'),
+      `sha256=${loadCandidateRuntime(process.cwd()).manifestSha256}\n`,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('the executed CPU provenance gate rejects workflow and commit mismatches before fetching bytes', () => {

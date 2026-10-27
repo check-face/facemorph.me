@@ -54,4 +54,21 @@ runs:
       run: |
         node scripts/runtime/check-pins.mjs --runtime "$RUNTIME_DIR" > "$RUNNER_TEMP/runtime-pins.jsonl"
         tail -1 "$RUNNER_TEMP/runtime-pins.jsonl"
+        echo "FACEMORPH_CONTROL_RUNTIME_DIR=$RUNTIME_DIR" >> "$GITHUB_ENV"
         echo "FACEMORPH_RUNTIME_DIR=$RUNTIME_DIR" >> "$GITHUB_ENV"
+    - name: Acquire and verify the reviewed candidate separately from the frozen control
+      if: hashFiles('import/runtime-mirror.json') != ''
+      shell: bash
+      env:
+        CONTROL_RUNTIME_DIR: ${{ steps.runtime.outputs.dir }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        candidate=$(mktemp -d "$RUNNER_TEMP/candidate-runtime-XXXXXX")
+        node scripts/ci/acquire-candidate-runtime.ts --repo . \
+          --control-runtime "$CONTROL_RUNTIME_DIR" --out "$candidate/runtime" \
+          > "$RUNNER_TEMP/candidate-runtime.json"
+        node --input-type=module - "$RUNNER_TEMP/candidate-runtime.json" <<'JS'
+        import { appendFileSync, readFileSync } from 'node:fs';
+        const result = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+        appendFileSync(process.env.GITHUB_ENV, `FACEMORPH_RUNTIME_DIR=${result.runtimeDir}\n`);
+        JS
