@@ -16,6 +16,9 @@ on:
         description: Remove stale runner-owned test scratch in /tmp (older than 2 h, known test prefixes only)
         type: boolean
         default: false
+      minutes:
+        description: Minimum age in minutes of a scratch entry to remove (lower it only while the host's runners are idle)
+        default: '120'
 permissions:
   contents: read
 jobs:
@@ -28,7 +31,7 @@ jobs:
         shell: bash
         run: |
           before=$(df --output=avail -B1M / | tail -1)
-          find /tmp -mindepth 1 -maxdepth 1 -user "$(id -u)" -mmin +120 \( -name 'evict-*' -o -name 'model-host-*' \
+          find /tmp -mindepth 1 -maxdepth 1 -user "$(id -u)" -mmin "+${{ inputs.minutes }}" \( -name 'evict-*' -o -name 'model-host-*' \
             -o -name 'facemorph-*' -o -name 'playwright_*' -o -name 'playwright-artifacts-*' -o -name 'real-ui-cpu-*' \
             -o -name 'crop-acceptance-*' -o -name 'warm-*' -o -name 'guard-*' -o -name 'control-*' \) -print0 > stale.list
           echo "stale entries: $(tr -cd '\0' < stale.list | wc -c)"
