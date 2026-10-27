@@ -384,8 +384,14 @@ jobs:
           # A phone cell over its absolute budget passes when not worse than the pinned control on the same phone and link:
           # three alternating pairs, control first, medians by the timing rule (1.15x and 50 ms); all are printed.
           control=$(node -p "require('../../hosting/publish-targets.json').targets.control.site.origin")
+          # The eris cells once on every journey; the phone set is cold and warm first face over the real network in three
+          # alternating pairs (operator, 28 October 2026); the rest of the phone is covered by the local six cells.
           uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --deployed "$GITHUB_WORKSPACE/artifact" \
-            --control-url "$control" --journey cold-face,warm-face,morph --label "live-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
+            --cells eris-webgpu,eris-cpu,eris-firefox-webgpu,eris-firefox-cpu --journey cold-face,warm-face,morph \
+            --label "live-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
+          uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --deployed "$GITHUB_WORKSPACE/artifact" \
+            --control-url "$control" --cells phone-cpu,phone-webgpu --journey cold-face,warm-face \
+            --label "live-pairs-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Leave the devices in their resting state
         if: always()
         working-directory: tools/device-lab
