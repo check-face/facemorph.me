@@ -258,6 +258,13 @@ class HostedBrowser(lab.Desktop):
         return self.page.evaluate('navigator.userAgent')
 
 
+VIEWPORT_STATE = '({offsetTop: visualViewport.offsetTop, height: visualViewport.height, innerHeight, scale: visualViewport.scale})'
+VIEWPORT_STILL = """(() => { const v = visualViewport, key = [v.offsetTop, v.height, innerHeight, v.scale].join();
+  const w = window.__fmViewport || (window.__fmViewport = {key: '', still: 0});
+  w.still = w.key === key ? w.still + 1 : 0; w.key = key;
+  return v.offsetTop === 0 && w.still >= 5; })()"""
+
+
 class AndroidChrome(lab.Desktop):
     """Chrome in the Android emulator over the DevTools protocol (adb forward), reaching the runner's
     server through adb reverse, so localhost is the page's origin there too."""
@@ -303,9 +310,16 @@ class AndroidChrome(lab.Desktop):
         state = self.adb('shell', 'dumpsys', 'input_method')
         if re.search(r'\bmInputShown=true\b', state):
             self.adb('shell', 'input', 'keyevent', '4')
-            self.page.wait_for_function(
-                'visualViewport.offsetTop===0 && Math.abs(visualViewport.height-innerHeight)<1',
-                timeout=8000, polling=100)
+            # Settled means stopped: offsetTop 0 and the viewport unchanged for five polls (0.5 s). Equality of
+            # visualViewport.height with innerHeight never came true in release gate 40476025542 with the
+            # keyboard gone (the toolbar can keep them apart), failing a journey whose face had arrived.
+            try:
+                self.page.wait_for_function(VIEWPORT_STILL, timeout=8000, polling=100)
+            except Exception as error:
+                seen = self.page.evaluate(VIEWPORT_STATE)
+                raise TimeoutError(f'keyboard did not settle: viewport {seen}') from error
+            if re.search(r'\bmInputShown=true\b', self.adb('shell', 'dumpsys', 'input_method')):
+                raise TimeoutError('keyboard did not settle: still shown after Back')
         return self.js("([s,i])=>document.querySelectorAll(s)[i].value", [selector, index])
 
     def version(self):

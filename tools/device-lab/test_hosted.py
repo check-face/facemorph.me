@@ -12,11 +12,13 @@ RUN = {'cold': {'route': 'Ready · this device’s CPU.', 'faceS': 22.2}, 'warm'
 
 
 class AndroidKeyboard(unittest.TestCase):
-    def device(self, state):
+    def device(self, state, after='  mInputShown=false'):
         dev = AndroidChrome.__new__(AndroidChrome)
-        dev.adb = Mock(return_value=state)
+        dumps = iter([state, after])
+        dev.adb = Mock(side_effect=lambda *a: next(dumps) if a[:2] == ('shell', 'dumpsys') else '')
         dev.js = Mock(return_value='the actual field')
-        dev.page = SimpleNamespace(wait_for_function=Mock())
+        dev.page = SimpleNamespace(wait_for_function=Mock(),
+                                   evaluate=Mock(return_value={'offsetTop': 0, 'height': 600, 'innerHeight': 640}))
         return dev
 
     def test_visible_keyboard_is_hidden_before_reading_final_field(self):
@@ -24,23 +26,29 @@ class AndroidKeyboard(unittest.TestCase):
         with patch.object(lab.Desktop, 'type_into') as typed:
             self.assertEqual(dev.type_into('input', 'word', 2), 'the actual field')
         typed.assert_called_once_with('input', 'word', 2)
-        self.assertEqual(dev.adb.call_args_list[-1].args, ('shell', 'input', 'keyevent', '4'))
+        self.assertEqual(dev.adb.call_args_list[1].args, ('shell', 'input', 'keyevent', '4'))
         dev.page.wait_for_function.assert_called_once()
         self.assertEqual(dev.page.wait_for_function.call_args.kwargs, dict(timeout=8000, polling=100))
-        self.assertIn('visualViewport.height-innerHeight', dev.page.wait_for_function.call_args.args[0])
+        self.assertIn('w.still >= 5', dev.page.wait_for_function.call_args.args[0])
         dev.js.assert_called_once_with("([s,i])=>document.querySelectorAll(s)[i].value", ['input', 2])
 
     def test_hidden_keyboard_never_sends_back_even_if_input_view_remains(self):
         dev = self.device('  mInputShown=false\n  mIsInputViewShown=true')
         with patch.object(lab.Desktop, 'type_into'):
             dev.type_into('input', 'word')
-        dev.adb.assert_called_once_with('shell', 'dumpsys', 'input_method')
+        self.assertEqual([c.args for c in dev.adb.call_args_list], [('shell', 'dumpsys', 'input_method')])
         dev.page.wait_for_function.assert_not_called()
 
     def test_unsettled_viewport_fails_without_continuing_the_journey(self):
         dev = self.device('  mInputShown=true')
         dev.page.wait_for_function.side_effect = TimeoutError('keyboard did not settle')
-        with patch.object(lab.Desktop, 'type_into'), self.assertRaisesRegex(TimeoutError, 'keyboard did not settle'):
+        with patch.object(lab.Desktop, 'type_into'), self.assertRaisesRegex(TimeoutError, "did not settle: viewport .*'innerHeight': 640"):
+            dev.type_into('input', 'word')
+        dev.js.assert_not_called()
+
+    def test_a_keyboard_still_shown_after_back_fails(self):
+        dev = self.device('  mInputShown=true', after='  mInputShown=true')
+        with patch.object(lab.Desktop, 'type_into'), self.assertRaisesRegex(TimeoutError, 'still shown after Back'):
             dev.type_into('input', 'word')
         dev.js.assert_not_called()
 
