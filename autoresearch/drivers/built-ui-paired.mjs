@@ -203,13 +203,28 @@ async function sample(side, caseId, warmup) {
         `photo-${which}`,
         async () => {
           await page.locator('input[aria-label="Choose photo"]').last().setInputFiles(input);
-          await page.waitForTimeout(1000);
-          const idle = await page.evaluate(
-            () =>
-              document.querySelector('.next-product')?.getAttribute('data-next-busy') !== 'true',
-          );
+          // Until work starts, or the tile shows the chosen photo with its Generate ready (still loading before that), then
+          // press it; pressing earlier would generate the tile's previous input.
           const generate = j.tile(1).locator('.next-face-generate');
-          if (idle && (await generate.isEnabled().catch(() => false))) await generate.click();
+          for (const end = Date.now() + 15_000; Date.now() < end;) {
+            const busy = await page.evaluate(
+              () =>
+                document.querySelector('.next-product')?.getAttribute('data-next-busy') === 'true',
+            );
+            if (busy) break;
+            const placed = /synthetic-public-photo/.test(
+              (await j
+                .tile(1)
+                .locator('.next-field input')
+                .inputValue()
+                .catch(() => '')) ?? '',
+            );
+            if (placed && (await generate.isEnabled().catch(() => false))) {
+              await generate.click();
+              break;
+            }
+            await page.waitForTimeout(100);
+          }
         },
         j.settled(1, 'photo'),
       );
