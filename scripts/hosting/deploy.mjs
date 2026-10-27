@@ -17,6 +17,9 @@
 //   warm         --target <t> --public <dir> [--publish]
 //                                                    the package's warm: every immutable runtime path HEAD 200
 //   all          every step above in order
+//   rollback     --target <t> --version <id> [--publish]
+//                                                    guard; serve that earlier Worker version at 100 % (the version
+//                                                    site-deploy recorded as previousVersion); never part of `all`
 // One JSON line per step on stdout; exit 0 ok, 1 refused or failed, 2 usage.
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -430,6 +433,46 @@ export async function warm({ target, public: dir, publish = false, env = process
 
 const STEPS = ['verify', 'runtime', 'stage', 'site-deploy', 'live', 'mirror-deploy', 'warm'];
 
+/** Serve an earlier version of the target's site Worker at 100 %: the warmed previous build, for a site broken for visitors. */
+export function rollback({ target, version, publish = false, env = process.env }) {
+  if (!/^[0-9a-f-]{36}$/.test(version ?? ''))
+    return {
+      step: 'rollback',
+      ok: false,
+      refused: '--version <the Worker version id to serve> is required',
+    };
+  const site = publish ? assertMayPublish(target, ['site'], env).site : targetConfig(target).site;
+  const versions = JSON.stringify([{ version_id: version, percentage: 100 }]);
+  const args = [
+    'workers',
+    'deployments',
+    'create',
+    '--worker',
+    site.worker,
+    '--strategy',
+    'percentage',
+    '--versions',
+    versions,
+  ];
+  if (!publish)
+    return {
+      step: 'rollback',
+      ok: true,
+      published: false,
+      worker: site.worker,
+      command: `cf ${args.join(' ')}`,
+    };
+  const r = cf(args, siteEnv(site), env);
+  return {
+    step: 'rollback',
+    ok: r.status === 0,
+    published: r.status === 0,
+    worker: site.worker,
+    version,
+    ...(r.status === 0 ? {} : { output: r.output.slice(-4000) }),
+  };
+}
+
 async function run(step, v) {
   const o = {
     target: v.target,
@@ -445,6 +488,7 @@ async function run(step, v) {
   if (step === 'live') return live(o);
   if (step === 'mirror-deploy') return mirrorDeploy(o);
   if (step === 'warm') return warm(o);
+  if (step === 'rollback') return rollback({ ...o, version: v.version });
   return null;
 }
 
@@ -458,11 +502,12 @@ if (import.meta.main) {
       runtime: { type: 'string' },
       publish: { type: 'boolean' },
       record: { type: 'string' },
+      version: { type: 'string' },
     },
   });
   const step = positionals[0];
   const steps = step === 'all' ? STEPS : [step];
-  if (!step || !steps.every((s) => STEPS.includes(s))) {
+  if (!step || !steps.every((s) => [...STEPS, 'rollback'].includes(s))) {
     console.error(
       `usage: deploy.mjs <${STEPS.join('|')}|all> [--target t] [--public dir] [--artifact dir] [--runtime dir] [--publish]`,
     );

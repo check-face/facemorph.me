@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { check, loadTargets } from './publish-guard.mjs';
-import { runtimeFiles, warm } from './deploy.mjs';
+import { rollback, runtimeFiles, warm } from './deploy.mjs';
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
 const DEPLOY = join(REPO, 'scripts/hosting/deploy.mjs');
@@ -301,4 +301,23 @@ test('workflow: the deploy step needs every qualifying job and publishes only th
   assert.match(verify, /deploy\.mjs verify --artifact web/);
   // Unticked publish is the dry run: every step runs and deploy.mjs publishes nothing without --publish.
   assert.match(WORKFLOW, /PUBLISH: \$\{\{ inputs\.publish && '--publish' \|\| '' \}\}/);
+});
+
+test('rollback: needs a version id; without --publish it only names the command; publishing goes through the guard', () => {
+  assert.equal(rollback({ target: 'staging', version: 'latest' }).ok, false);
+  const id = '0f0e0d0c-0b0a-4908-8706-050403020100';
+  const dry = rollback({ target: 'staging', version: id });
+  assert.equal(dry.published, false);
+  assert.match(
+    dry.command,
+    /workers deployments create --worker facemorph-next-staging --strategy percentage/,
+  );
+  assert.throws(() =>
+    rollback({
+      target: 'next',
+      version: id,
+      publish: true,
+      env: { FACEMORPH_PUBLISH_TARGETS: 'staging' },
+    }),
+  );
 });
