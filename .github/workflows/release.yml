@@ -16,7 +16,7 @@ on:
         type: boolean
         default: false
       site:
-        description: candidate builds and qualifies this commit; control puts the pinned control on staging, unqualified, for back-to-back live measurement
+        description: candidate builds and qualifies this commit; control (re)deploys the pinned control to its own target, which the live job measures back to back
         type: choice
         options: [candidate, control]
         default: candidate
@@ -288,26 +288,24 @@ jobs:
       - name: Warm the runtime mirror with every immutable runtime file
         run: node scripts/hosting/deploy.mjs warm --target "$TARGET" --public "$RUNNER_TEMP/public" $PUBLISH | tee -a "$GITHUB_STEP_SUMMARY"
 
-  # The pinned control on the test target only, through the same guard and deploy steps, so the live lab can measure
-  # it and the candidate on the same phone over the same link (operator, 28 October 2026). Every candidate job above
-  # is skipped (they need build); the shared runtime mirror is left as the candidate's deploy warmed it.
+  # The pinned control on its own target (hosting/publish-targets.json "control"), through the same guard and deploy
+  # steps, so the live job measures each phone cell on it straight after the candidate, same phone and link (operator,
+  # 28 October 2026). The target input is ignored here; every candidate job above is skipped (they need build).
   control:
     if: inputs.site == 'control'
-    name: the pinned control on staging
+    name: the pinned control on its own target
     runs-on: ubuntu-latest
     timeout-minutes: 45
     concurrency:
-      group: deploy-${{ inputs.target }}
+      group: deploy-control
       cancel-in-progress: false
     env:
-      TARGET: ${{ inputs.target }}
+      TARGET: control
       PUBLISH: ${{ inputs.publish && '--publish' || '' }}
       FACEMORPH_PUBLISH_TARGETS: ${{ vars.FACEMORPH_PUBLISH_TARGETS }}
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
-      - name: The control is served only by the test target
-        run: test "$TARGET" = staging
       - name: Single-publisher guard, before any network call
         run: node scripts/hosting/publish-guard.mjs --target "$TARGET" --kind site
       - uses: actions/setup-node@v4
@@ -367,8 +365,11 @@ jobs:
         working-directory: tools/device-lab
         run: |
           set -euo pipefail
+          # A phone cell over its absolute budget passes when not worse than the pinned control measured straight after
+          # it on the same phone and link (1.15x and 50 ms, the timing rule); budgets and both durations are printed.
+          control=$(node -p "require('../../hosting/publish-targets.json').targets.control.site.origin")
           uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --deployed "$GITHUB_WORKSPACE/artifact" \
-            --journey cold-face,warm-face,morph --label "live-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
+            --control-url "$control" --journey cold-face,warm-face,morph --label "live-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Leave the devices in their resting state
         if: always()
         working-directory: tools/device-lab

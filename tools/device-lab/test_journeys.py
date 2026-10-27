@@ -327,3 +327,40 @@ class LocalPort(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class NotWorseThanControl(unittest.TestCase):
+    """A live phone cell over its absolute budget passes only when not worse than the pinned control back to back."""
+
+    def cell(self, cold, url='https://candidate.test/'):
+        report = {'cell': 'phone-cpu', 'url': url, 'journeys': ['cold-face'], 'status': 'fail',
+                  'runs': [{'ok': True, 'durationsS': {'cold-face': cold}}]}
+        report['evidenceErrors'] = lab.budget_findings('phone-cpu', report['runs'])
+        report['ok'] = not report['evidenceErrors']
+        return report
+
+    def test_over_budget_but_not_worse_than_the_control_passes(self):
+        # 28 October, staging over the same phone link: candidate 83.1 s, control 84.0 s, budget 60 s.
+        candidate = lab.apply_not_worse(self.cell(83.1), self.cell(84.0, 'https://control.test/'))
+        self.assertTrue(candidate['ok'])
+        self.assertEqual(candidate['status'], 'pass')
+        self.assertEqual(candidate['controlComparison']['rows'],
+                         [{'journey': 'cold-face', 'budgetS': 60, 'candidateS': 83.1, 'controlS': 84.0,
+                           'verdict': 'not worse than the control'}])
+
+    def test_over_budget_and_worse_than_the_control_still_fails(self):
+        candidate = lab.apply_not_worse(self.cell(110.0), self.cell(84.0, 'https://control.test/'))
+        self.assertFalse(candidate['ok'])
+        self.assertEqual(candidate['evidenceErrors'], ['cold-face took 110.0s on phone-cpu, over its 60s budget'])
+        self.assertEqual(candidate['controlComparison']['rows'][0]['verdict'], 'over budget and worse than the control')
+
+    def test_a_control_that_produced_nothing_excuses_nothing(self):
+        control = {'cell': 'phone-cpu', 'url': 'https://control.test/', 'runs': [{'ok': False}], 'status': 'fail'}
+        self.assertFalse(lab.apply_not_worse(self.cell(83.1), control)['ok'])
+
+    def test_the_summary_prints_the_budget_and_both_measurements(self):
+        candidate = lab.apply_not_worse(self.cell(83.1), self.cell(84.0, 'https://control.test/'))
+        with tempfile.TemporaryDirectory() as tmp:
+            lab.summarise([candidate], Path(tmp), 'live')
+            text = (Path(tmp) / 'summary.md').read_text()
+        self.assertIn('| phone-cpu | cold-face | 60s | 83.1s | 84.0s | not worse than the control |', text)

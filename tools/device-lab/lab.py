@@ -159,6 +159,55 @@ def budget_rows(reports):
     return rows
 
 
+# A phone cell over its absolute budget on a live site still passes when it is not worse than the pinned control measured
+# back to back on the same phone and link, by the release timing rule: worse means over 1.15x AND more than 50 ms
+# slower (scripts/verify/not-worse/median-check.mjs; operator, 28 October 2026). The budgets themselves never change.
+NOT_WORSE_RATIO, NOT_WORSE_FLOOR_S = 1.15, 0.05
+OVER_BUDGET = re.compile(r'^(?P<journey>[\w-]+) took [\d.]+s on [\w-]+, over its \d+s budget$')
+
+
+def _median(xs):
+    s = sorted(xs)
+    return (s[len(s) // 2] + s[(len(s) - 1) // 2]) / 2
+
+
+def not_worse_rows(candidate, control):
+    """Per journey: its budget, the candidate's and the control's median durations, and the verdict. Pure."""
+    rows = []
+    for journey in candidate.get('journeys') or []:
+        mine = [r['durationsS'][journey] for r in candidate.get('runs') or [] if journey in (r.get('durationsS') or {})]
+        if not mine:
+            continue
+        theirs = [r['durationsS'][journey] for r in control.get('runs') or []
+                  if r.get('ok') and journey in (r.get('durationsS') or {})]
+        budget = ((REGISTRY.get(journey) or {}).get('budgetsS') or {}).get(candidate['cell'])
+        c, k = _median(mine), (_median(theirs) if theirs else None)
+        if budget is None or c <= budget:
+            verdict = 'within budget'
+        elif k is not None and not (c > k * NOT_WORSE_RATIO and c - k > NOT_WORSE_FLOOR_S):
+            verdict = 'not worse than the control'
+        else:
+            verdict = 'over budget and worse than the control' if k is not None else 'over budget; control unmeasured'
+        rows.append({'journey': journey, 'budgetS': budget, 'candidateS': round(c, 1),
+                     'controlS': None if k is None else round(k, 1), 'verdict': verdict})
+    return rows
+
+
+def apply_not_worse(candidate, control):
+    """Attach the comparison; a budget breach on a journey judged not worse stops counting against the cell."""
+    rows = not_worse_rows(candidate, control)
+    candidate['controlComparison'] = {'url': control.get('url'), 'controlStatus': control.get('status'), 'rows': rows}
+    excused = {r['journey'] for r in rows if r['verdict'] == 'not worse than the control'}
+    kept = [e for e in candidate.get('evidenceErrors') or []
+            if not ((m := OVER_BUDGET.match(e)) and m['journey'] in excused)]
+    if kept != (candidate.get('evidenceErrors') or []):
+        candidate['evidenceErrors'] = kept
+        candidate['ok'] = not kept and all(r.get('ok') for r in candidate.get('runs') or [])
+        if candidate['ok']:
+            candidate['status'] = 'pass'
+    return candidate
+
+
 CHROME = 'com.android.chrome'
 WEBCAM, WATCHDOG = 'com.pas.webcam', 'dev.dilger.camera.watchdog'
 CDP_PORT = 9222
@@ -1269,6 +1318,15 @@ def summarise(reports, out, title, beads=()):
     budgets = budget_rows(reports)
     if budgets:
         md += ['', '| Cell | Journey | Duration | Budget | Verdict |', '|---|---|---|---|---|'] + budgets
+    compared = [r for r in reports if r.get('controlComparison')]
+    if compared:
+        md += ['', f"Phone cells against the pinned control, back to back on the same phone and link "
+               f"({compared[0]['controlComparison']['url']}): within the absolute budget, or not worse than the control "
+               f"(worse = over {NOT_WORSE_RATIO}x and more than {NOT_WORSE_FLOOR_S * 1000:.0f} ms slower).", '',
+               '| Cell | Journey | Budget | Candidate | Control | Verdict |', '|---|---|---|---|---|---|']
+        md += [f"| {r['cell']} | {x['journey']} | {'–' if x['budgetS'] is None else f"{x['budgetS']}s"} | {x['candidateS']}s | "
+               f"{'–' if x['controlS'] is None else f"{x['controlS']}s"} | {x['verdict']} |"
+               for r in compared for x in r['controlComparison']['rows']]
     for r in reports:
         browser = r.get('browser') or {}
         artifact = r.get('artifact') or {}
@@ -1371,6 +1429,8 @@ def run_matrix(args):
     if args.repeat < 1:
         raise ValueError('repeat must be at least 1')
     deployed = getattr(args, 'deployed', None)
+    if args.artifact and getattr(args, 'control_url', None):
+        raise ValueError('--control-url compares live sites; it does not apply to a locally served --artifact')
     if args.artifact and deployed:
         raise ValueError('--artifact serves a build locally; --deployed checks the one the URL serves; pass one')
     if getattr(args, 'artifact_digest', None) and not (args.artifact or deployed):
@@ -1394,8 +1454,17 @@ def run_matrix(args):
             args.local = False
             if deployed:
                 args.artifact_evidence = deployed_evidence(deployed, args.url, getattr(args, 'artifact_digest', None))
+            control_url = getattr(args, 'control_url', None)
+            if control_url:
+                ctrl = argparse.Namespace(**{**vars(args), 'url': control_url, 'artifact_evidence': None,
+                                             'label': args.label + '-control'})
+                (out / 'control').mkdir(exist_ok=True)
             for c in cells:
-                reports.append(run_cell_retrying(c, args, out))
+                report = run_cell_retrying(c, args, out)
+                if control_url and CELLS[c][0] == 'phone':  # the control on the same phone, straight after
+                    apply_not_worse(report, run_cell_retrying(c, ctrl, out / 'control'))
+                    (out / f'{c}.json').write_text(json.dumps(report, indent=2))
+                reports.append(report)
     title = f'Device lab: {args.label} ({args.url})'
     beads = sorted(set(getattr(args, 'bead', None) or []))
     summarise(reports, out, title, beads)
@@ -1421,6 +1490,7 @@ def main():
         p.add_argument('--url', default='https://next.facemorph.me/')
         p.add_argument('--artifact', help='serve this exact candidate artifact locally under the production origin')
         p.add_argument('--deployed', help='the artifact --url should serve: every file is fetched and compared before the run')
+        p.add_argument('--control-url', help='the pinned control live: each phone cell is measured there straight after --url')
         p.add_argument('--artifact-digest', help='require this integrated-verification artifact SHA256')
         p.add_argument('--runtime-sha', help='runtime manifest SHA256 for --artifact (fails closed if it differs)')
         p.add_argument('--journey', default=default_journey)

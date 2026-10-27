@@ -19,6 +19,15 @@
         "prefixes": "runtime/assets/,runtime/chunks/,runtime/manifests/,runtime/photo/,runtime/encoder-stream/"
       }
     },
+    "control": {
+      "classicOwned": false,
+      "purpose": "The pinned classic control (autoresearch/drivers/control.json), live, so release.yml's live job measures each phone cell on it straight after the candidate on the same phone and link (operator, 28 October 2026). Deployed by release.yml site=control; never a candidate, never user data.",
+      "site": {
+        "worker": "facemorph-next-control",
+        "origin": "https://facemorph-next-control.cdilga.workers.dev/",
+        "workersDev": true
+      }
+    },
     "next": {
       "classicOwned": true,
       "purpose": "next.facemorph.me and its runtime mirror; classic next-site.yml publishes both until the candidate-source handover.",
