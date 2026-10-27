@@ -369,7 +369,7 @@ test('split contexts still require exactly one successful artifact/UI gate and e
 
 test('a publish to a classic-owned target is refused before any network call, even when the variable names it', () => {
   proxied.length = 0;
-  for (const target of ['next', 'production']) {
+  for (const target of ['production']) {
     const p = plant();
     const r = promote(p, ['--publish', '--target', target], {
       FACEMORPH_PUBLISH_TARGETS: 'next,production,staging',

@@ -1,6 +1,6 @@
 {
   "schema": "facemorph.publish-targets/1",
-  "note": "Where this repository's deploy job (.github/workflows/next-deploy.yml, scripts/hosting/deploy.mjs) and promote.py may publish (fm-6fx6). Exactly one repository publishes a target at a time. scripts/hosting/publish-guard.mjs refuses, before any network call, a target the repository variable FACEMORPH_PUBLISH_TARGETS does not name, a target marked classicOwned, and any target sharing a Worker, bucket or host with a classicOwned one. classicOwned stays true for next and production until delivery's candidate-source handover (scripts/delivery/runbook.json) moves the publisher here; the handover change sets it false and the operator names the target in the variable. Classic keeps publishing until then.",
+  "note": "Where this repository's deploy job (.github/workflows/next-deploy.yml, scripts/hosting/deploy.mjs) and promote.py may publish (fm-6fx6). Exactly one repository publishes a target at a time. scripts/hosting/publish-guard.mjs refuses, before any network call, a target the repository variable FACEMORPH_PUBLISH_TARGETS does not name, a target marked classicOwned, and any target sharing a Worker, bucket or host with a classicOwned one. The candidate-source handover (fm-s3o, 27 October 2026) moved next here: next is no longer classicOwned and classic next-site.yml is disabled. production stays classicOwned until the operator's promotion decision (fm-fy2.12).",
   "variable": "FACEMORPH_PUBLISH_TARGETS",
   "targets": {
     "staging": {
@@ -29,8 +29,8 @@
       }
     },
     "next": {
-      "classicOwned": true,
-      "purpose": "next.facemorph.me and its runtime mirror; classic next-site.yml publishes both until the candidate-source handover.",
+      "classicOwned": false,
+      "purpose": "next.facemorph.me and its runtime mirror; published only by this repository since the candidate-source handover (fm-s3o); classic next-site.yml is disabled.",
       "site": {
         "worker": "facemorph-next",
         "origin": "https://next.facemorph.me/",
@@ -49,10 +49,10 @@
     },
     "production": {
       "classicOwned": true,
-      "purpose": "facemorph.me; production promotion is a separate operator decision (fm-fy2.12).",
+      "purpose": "facemorph.me, still classic's legacy Vercel deploy (deploy.yml); production promotion is a separate operator decision (fm-fy2.12). promotionWorker names the Worker facemorph.me will route to after promotion; it is this repository's next Worker and not a classic-owned identity today. Promotion adds it back as the site worker.",
       "site": {
-        "worker": "facemorph-next",
-        "origin": "https://facemorph.me/"
+        "origin": "https://facemorph.me/",
+        "promotionWorker": "facemorph-next"
       }
     }
   }

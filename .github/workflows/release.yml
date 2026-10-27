@@ -18,10 +18,14 @@ on:
       site:
         description: candidate builds and qualifies this commit; control (re)deploys the pinned control to its own target, which the live job measures back to back
         type: choice
-        options: [candidate, control, live]
+        options: [candidate, control, live, promote]
         default: candidate
       live_run:
-        description: site=live only, the release run whose artifact the target serves; its live journeys run again, nothing is built or deployed
+        description: site=live, the release run whose artifact the target serves (its live journeys run again); site=promote, the green release run whose artifact is deployed
+        type: string
+        default: ''
+      promote_digest:
+        description: site=promote only, the artifact digest that run recorded and qualified; the deploy refuses any other
         type: string
         default: ''
 # shell: bash runs every step with -eo pipefail; the default (bash -e) drops a failure piped into tee.
@@ -236,6 +240,8 @@ jobs:
 
   deploy:
     needs: [build, journeys, engine, lab, timing]
+    # This run's own qualified build, or (site=promote) a named green run's artifact at its recorded digest.
+    if: ${{ !cancelled() && ((inputs.site == 'candidate' && needs.build.result == 'success' && needs.journeys.result == 'success' && needs.engine.result == 'success' && needs.lab.result == 'success' && needs.timing.result == 'success') || (inputs.site == 'promote' && inputs.live_run != '' && inputs.promote_digest != '')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     # One publication per target at a time; a publication in progress is never cancelled.
@@ -260,12 +266,21 @@ jobs:
           cache: npm
       - run: npm ci
       - uses: actions/download-artifact@v4
+        if: inputs.site != 'promote'
         with:
           name: ${{ env.ARTIFACT }}
           path: web
+      - uses: actions/download-artifact@v4
+        if: inputs.site == 'promote'
+        with:
+          pattern: next-site-*
+          merge-multiple: true
+          run-id: ${{ inputs.live_run }}
+          github-token: ${{ github.token }}
+          path: web
       - name: The artifact is the one built in this run and qualified above
         env:
-          DIGEST: ${{ needs.build.outputs.digest }}
+          DIGEST: ${{ inputs.site == 'promote' && inputs.promote_digest || needs.build.outputs.digest }}
         run: |
           got=$(node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; console.log(treeDigest('web/deploy-next'))")
           echo "artifact digest $got (built: $DIGEST)"
@@ -275,7 +290,9 @@ jobs:
       - uses: ./.github/actions/setup-runtime
       - name: The runtime set, file by file, and the WebGPU contract
         run: |
-          test "$(sha256sum < "$FACEMORPH_RUNTIME_DIR/manifest.json" | cut -d' ' -f1)" = '${{ needs.build.outputs.runtime_sha }}'
+          want='${{ needs.build.outputs.runtime_sha }}' # a promote has no build here: the pin from reviewed source
+          [ -n "$want" ] || want=$(node --input-type=module -e "import {loadCandidateRuntime} from './scripts/ci/candidate-runtime.ts'; console.log(loadCandidateRuntime('.').manifestSha256)")
+          test "$(sha256sum < "$FACEMORPH_RUNTIME_DIR/manifest.json" | cut -d' ' -f1)" = "$want"
           node scripts/hosting/deploy.mjs runtime --runtime "$FACEMORPH_RUNTIME_DIR"
       - name: Stage
         run: node scripts/hosting/deploy.mjs stage --runtime "$FACEMORPH_RUNTIME_DIR" --artifact web --public "$RUNNER_TEMP/public"
@@ -349,6 +366,7 @@ jobs:
     # After this run's deploy, or alone (site=live) against what the target already serves: the artifact of live_run,
     # checked byte for byte against the site before any journey.
     if: ${{ !cancelled() && inputs.publish && (needs.deploy.result == 'success' || (inputs.site == 'live' && inputs.live_run != '')) }}
+    # (site=promote reaches here through its deploy and measures the promoted run's artifact.)
     name: the six cells against the live site
     runs-on: [self-hosted, device-lab]
     timeout-minutes: 120
@@ -365,12 +383,12 @@ jobs:
           echo "ORIGIN=$origin" >> "$GITHUB_ENV"
           node scripts/delivery/post-delivery-check.mjs --mode app --host "$(node -p "new URL('$origin').host")" | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/download-artifact@v4
-        if: inputs.site != 'live'
+        if: inputs.site != 'live' && inputs.site != 'promote'
         with:
           name: ${{ env.ARTIFACT }}
           path: artifact
       - uses: actions/download-artifact@v4
-        if: inputs.site == 'live'
+        if: inputs.site == 'live' || inputs.site == 'promote'
         with:
           pattern: next-site-*
           merge-multiple: true

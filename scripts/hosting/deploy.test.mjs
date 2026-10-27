@@ -36,8 +36,8 @@ before(async () => {
 });
 after(() => proxy.close());
 
-test('guard: the classic-owned targets are refused for site and mirror, whatever the variable names', () => {
-  for (const name of ['next', 'production'])
+test('guard: the classic-owned target is refused for site and mirror, whatever the variable names', () => {
+  for (const name of ['production'])
     for (const kinds of [['site'], ['mirror'], ['site', 'mirror']]) {
       const r = check({ config, name, kinds, allowed: ['next', 'production', 'staging'] });
       assert.equal(r.ok, false);
@@ -52,11 +52,11 @@ test('guard: a target sharing a classic Worker, bucket or host is refused; the t
   const sneaky = structuredClone(config);
   sneaky.targets.sneaky = {
     classicOwned: false,
-    site: { worker: 'facemorph-next', origin: 'https://example.invalid/' },
+    site: { worker: 'x', origin: 'https://facemorph.me/' },
     mirror: {
-      worker: 'x',
-      bucket: 'facemorph-runtime-mirror',
-      origin: 'https://models.facemorph.me/',
+      worker: 'y',
+      bucket: 'z',
+      origin: 'https://example.invalid/',
       prefixes: 'runtime/assets/',
     },
   };
@@ -67,9 +67,22 @@ test('guard: a target sharing a classic Worker, bucket or host is refused; the t
     allowed: ['sneaky'],
   });
   assert.equal(r.ok, false);
-  assert.ok(r.refused.some((x) => /site facemorph-next of sneaky/.test(x)));
-  assert.ok(r.refused.some((x) => /mirror facemorph-runtime-mirror/.test(x)));
-  assert.ok(r.refused.some((x) => /mirror models\.facemorph\.me/.test(x)));
+  assert.ok(
+    r.refused.some((x) => /site facemorph\.me of sneaky/.test(x)),
+    JSON.stringify(r),
+  );
+  // Before the handover next was classic's: its Worker, bucket and mirror host were refused to everyone else.
+  const before = structuredClone(config);
+  before.targets.next.classicOwned = true;
+  before.targets.sneaky = {
+    classicOwned: false,
+    site: { worker: 'facemorph-next', origin: 'https://example.invalid/' },
+  };
+  const pre = check({ config: before, name: 'sneaky', kinds: ['site'], allowed: ['sneaky'] });
+  assert.ok(
+    pre.refused.some((x) => /site facemorph-next of sneaky/.test(x)),
+    JSON.stringify(pre),
+  );
   assert.equal(
     check({ config, name: 'staging', kinds: ['site', 'mirror'], allowed: [] }).ok,
     false,
@@ -81,12 +94,24 @@ test('guard: a target sharing a classic Worker, bucket or host is refused; the t
   assert.equal(check({ config, name: 'nowhere', kinds: ['site'], allowed: ['nowhere'] }).ok, false);
 });
 
+test('guard: since the candidate-source handover next is published here, only when the variable names it', () => {
+  for (const kinds of [['site'], ['mirror'], ['site', 'mirror']]) {
+    assert.equal(check({ config, name: 'next', kinds, allowed: ['next'] }).ok, true);
+    const r = check({ config, name: 'next', kinds, allowed: ['staging'] });
+    assert.equal(r.ok, false);
+    assert.deepEqual(r.refused, ['FACEMORPH_PUBLISH_TARGETS does not name next']);
+  }
+  // production's future Worker (promotionWorker) is not a classic identity; facemorph.me's host still is.
+  assert.equal(config.targets.production.classicOwned, true);
+  assert.equal(config.targets.production.site.worker, undefined);
+});
+
 test('guard: a publish attempt (site or mirror) to a classic-owned target is refused before any network call', () => {
   const at = `http://127.0.0.1:${proxy.address().port}`;
   const home = mkdtempSync(join(tmpdir(), 'guard-'));
   proxied.length = 0;
   for (const step of ['site-deploy', 'mirror-deploy', 'warm'])
-    for (const target of ['next', 'production']) {
+    for (const target of ['production']) {
       const r = spawnSync(
         process.execPath,
         [DEPLOY, step, '--target', target, '--public', home, '--publish'],
@@ -296,7 +321,11 @@ test('workflow: the guard runs before any network step; every deploy runs throug
 test('workflow: the deploy step needs every qualifying job and publishes only the digest built in this run', () => {
   assert.match(WORKFLOW, /^ {4}needs: \[build, journeys, engine, lab, timing\]$/m);
   const verify = runOf('The artifact is the one built in this run and qualified above');
-  assert.match(verify, /DIGEST: \$\{\{ needs\.build\.outputs\.digest \}\}/);
+  // This run's build, or (site=promote) the digest the promoted green run recorded; nothing else is deployable.
+  assert.match(
+    verify,
+    /DIGEST: \$\{\{ inputs\.site == 'promote' && inputs\.promote_digest \|\| needs\.build\.outputs\.digest \}\}/,
+  );
   assert.match(verify, /test "\$got" = "\$DIGEST"/);
   assert.match(verify, /deploy\.mjs verify --artifact web/);
   // Unticked publish is the dry run: every step runs and deploy.mjs publishes nothing without --publish.
