@@ -51,7 +51,10 @@ const OBSERVE = `(() => {
   const now = () => performance.timeOrigin + performance.now();
   let pending = null;
   for (const ev of ['pointerdown', 'keydown', 'input', 'change', 'click'])
-    addEventListener(ev, () => {
+    addEventListener(ev, (e) => {
+      // A person's click, not the page's own: Save hands over its file with a programmatic anchor click, and timing
+      // from that left the app's work out of the save measures on both sides.
+      if (ev === 'click' && !e.isTrusted) return;
       nw.last[ev] = now();
       if (ev === 'pointerdown' || ev === 'keydown' || ev === 'input') pending ??= now();
     }, true);
