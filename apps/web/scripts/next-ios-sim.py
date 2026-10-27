@@ -211,7 +211,13 @@ CAMPAIGN = """
     say('firstFaceMs', made ? Date.now() - began : null);
     say('faceProduced', made);
     const surface = document.querySelector('[data-next-face="face-1"] .next-face-image canvas[data-face-drawn="true"], [data-next-face="face-1"] .next-face-image img:not([data-public-preview])');
-    const rendered = surface?.getBoundingClientRect(), tileBounds = surface?.closest('.next-face-image').getBoundingClientRect();
+    // The face fills the image box's content area: the box keeps a 48 px band above the picture for Remove (fm-j4i8),
+    // so the comparison is against the box minus its padding, not its border box.
+    const imageBox = surface?.closest('.next-face-image'), box = imageBox?.getBoundingClientRect(), pad = imageBox ? getComputedStyle(imageBox) : null;
+    const tileBounds = box && {left: box.left + parseFloat(pad.paddingLeft) + parseFloat(pad.borderLeftWidth), top: box.top + parseFloat(pad.paddingTop) + parseFloat(pad.borderTopWidth),
+      width: box.width - parseFloat(pad.paddingLeft) - parseFloat(pad.paddingRight) - parseFloat(pad.borderLeftWidth) - parseFloat(pad.borderRightWidth),
+      height: box.height - parseFloat(pad.paddingTop) - parseFloat(pad.paddingBottom) - parseFloat(pad.borderTopWidth) - parseFloat(pad.borderBottomWidth)};
+    const rendered = surface?.getBoundingClientRect();
     const faceFitsTile = !!rendered && rendered.width > 0 && rendered.height > 0 && Math.abs(rendered.width - tileBounds.width) <= 1 && Math.abs(rendered.height - tileBounds.height) <= 1 && Math.abs(rendered.left - tileBounds.left) <= 1 && Math.abs(rendered.top - tileBounds.top) <= 1;
     say('faceLayout', rendered ? {width: rendered.width, height: rendered.height, tileWidth: tileBounds.width, tileHeight: tileBounds.height, fitsTile: faceFitsTile, fitsViewport: rendered.left>=-1 && rendered.right<=innerWidth+1} : null);
     say('memoryAfterFace', mem());
