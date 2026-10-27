@@ -26,6 +26,14 @@ test('push path is correctness-only; manual all-lanes run keeps every full brows
     assert.equal(main.jobs[id].with.full, "${{ github.event_name == 'workflow_dispatch' }}");
   for (const id of ['mobile-browser', 'next-gpu-lane'])
     assert.match(main.jobs[id].if, /^github.event_name == 'workflow_dispatch' &&/);
+  // Timing lanes on eris start only after the CPU-heavy browser lanes, whatever their result.
+  for (const id of ['next-gpu-lane', 'research-built-ui-media', 'research-rgba-screen']) {
+    assert.deepEqual(main.jobs[id].needs, ['changes', 'scaffold', 'web-shell']);
+    assert.match(
+      main.jobs[id].if,
+      /^github.event_name == 'workflow_dispatch' && !cancelled\(\) &&/,
+    );
+  }
   const shell = wf('web-shell');
   for (const id of ['facade', 'crop-acceptance', 'runtime-e2e', 'e2e'])
     assert.equal(shell.jobs[id].if, 'inputs.full');

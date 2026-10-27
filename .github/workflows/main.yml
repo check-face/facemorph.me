@@ -336,8 +336,12 @@ jobs:
       shared_build: true
     secrets: inherit
   next-gpu-lane:
-    needs: changes
-    if: github.event_name == 'workflow_dispatch' && (contains(fromJSON(needs.changes.outputs.lanes), 'next-gpu-lane'))
+    # Timing lanes run on eris after the CPU-heavy browser lanes (fm-fy2.11): overlapping the built-UI smoke's
+    # four CPU sessions with facade/npm-test starved eris's 12 cores (full runs 40455559357, 40458102995: facade (4)
+    # 'did not settle', intercept shutdown >30 s) and would distort the timings themselves. gpu-timing still
+    # serialises them against each other.
+    needs: [changes, scaffold, web-shell]
+    if: github.event_name == 'workflow_dispatch' && !cancelled() && (contains(fromJSON(needs.changes.outputs.lanes), 'next-gpu-lane'))
     uses: ./.github/workflows/next-gpu-lane.yml
     permissions:
       contents: read
@@ -406,8 +410,8 @@ jobs:
     uses: ./.github/workflows/rename-check.yml
     secrets: inherit
   research-built-ui-media:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.lanes), 'research-built-ui-media') && github.event_name == 'workflow_dispatch'
+    needs: [changes, scaffold, web-shell] # after the CPU lanes; see next-gpu-lane
+    if: github.event_name == 'workflow_dispatch' && !cancelled() && contains(fromJSON(needs.changes.outputs.lanes), 'research-built-ui-media')
     uses: ./.github/workflows/research-built-ui-media.yml
     permissions:
       contents: read
@@ -428,8 +432,8 @@ jobs:
     uses: ./.github/workflows/research-ledger.yml
     secrets: inherit
   research-rgba-screen:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.lanes), 'research-rgba-screen') && github.event_name == 'workflow_dispatch'
+    needs: [changes, scaffold, web-shell] # after the CPU lanes; see next-gpu-lane
+    if: github.event_name == 'workflow_dispatch' && !cancelled() && contains(fromJSON(needs.changes.outputs.lanes), 'research-rgba-screen')
     uses: ./.github/workflows/research-rgba-screen.yml
     permissions:
       contents: read
