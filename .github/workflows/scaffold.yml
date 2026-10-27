@@ -26,7 +26,8 @@ on:
 jobs:
   checks:
     name: ${{ matrix.gate }}
-    runs-on: [self-hosted, linux-x64]
+    # All six pure Node/Oxc/build/pack groups are qualified on Triton; browser npm shards stay portable.
+    runs-on: [self-hosted, triton]
     timeout-minutes: 30
     strategy:
       fail-fast: false

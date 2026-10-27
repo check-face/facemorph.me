@@ -39,9 +39,11 @@ or a runner label is not inference evidence; the adapter column is what a real b
 ## Opportunistic CPU capacity (fm-sziz)
 
 Operator policy on 25 October allowed compatible work on Triton while available.
-The 27 October fm-kfs5 correction removes it from ordinary portable CPU scheduling
-until its workspace/toolchain setup supports that work. Triton remains available
-through its specific labels; development and ordinary CPU CI do not depend on it.
+The 27 October fm-kfs5 correction removed it from ordinary portable CPU scheduling.
+The subsequent fm-jx26 qualification assigns only the six scaffold check groups
+and the dependency-free change selector to its specific `triton` label. Dependency
+policy and all browser/workerd jobs retain the qualified portable pool.
+Triton does not regain `linux-x64`.
 
 Observed pool on 27 October after the operator-directed label changes:
 
@@ -59,6 +61,16 @@ tests, in addition to the workflow-provided Node toolchain. After an observed
 `spawnSync gh ENOENT` scaffold failure, Triton received the checksum-verified
 upstream CLI 2.103.2 in `/usr/local/bin/gh`; the real expired-classic-artifact test
 passed there on 25 October. New/rebuilt workers need the same prerequisite.
+
+Pure Node qualification on 27 October used immutable source `35ec8c1`, cached
+Node 24.22.1 and the current lockfile store on Triton. All six exact scaffold groups
+passed: format 0.9s, lint 0.5s, typecheck 9.9s, seeded violations 15.3s,
+format stability 2.5s and package checks/packs 3.0s. The prerequisite workspace
+build took 12.1s; the final source diff was empty. The real same-dataset cache
+restore was a hardlink hit in 24.9s. A scratch checkout outside the
+`/mnt/unit/gh-runners` dataset fell back to a 44.5s copy. Dependency policy stays
+on the faster portable cache to keep pipeline startup short. These are standalone
+qualification timings, not measured main-pipeline improvement or browser support.
 GitHub can assign independent portable jobs to the eligible eris and temporary CPU
 slots. Four Triton slots share its 20 threads and 125 GiB RAM; they are not four
 separate 20-thread machines. Run compatible work concurrently on its specific
