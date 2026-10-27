@@ -56,7 +56,8 @@ export interface Payloads {
   CancelEncoderSetup: readonly [];
   DownloadNow: readonly [boolean];
   HideModelToast: readonly [];
-  GateAccept: readonly [];
+  GateAccept: readonly [bundle?: 'route' | 'photo'];
+  ResumePhoto: readonly [string];
   GateCancel: readonly [];
   Debug: readonly [boolean];
   Consent: readonly [boolean, ConsentBasis];

@@ -13,10 +13,10 @@ import { cropFrame } from '../facade/helpers.ts';
 import Logo from '../../src/public/logo.svg?react';
 import { msg, type Msg } from '../../src/controller/msg.ts';
 import type { CropChoice, State } from '../../src/controller/state.ts';
+import { downloadDecision, type DownloadBundle } from '../../src/controller/download-decision.ts';
 
 export type Dispatch = (message: Msg) => void;
 export { downloadMegabytes as megabytes } from '../../src/controller/derived.ts';
-import { downloadMegabytes as megabytes } from '../../src/controller/derived.ts';
 import {
   cannotKeepDownload,
   downloadStorageWarning,
@@ -548,9 +548,20 @@ function CropPreview({ crop }: { crop: CropChoice }) {
 export function DownloadDialog({ state, dispatch }: { state: State; dispatch: Dispatch }) {
   const gate = state.Gate;
   const photo = gate?.[0] === 'photo';
-  const size = photo
-    ? state.Downloads.photoBytes + (state.Downloads.routeReady ? 0 : state.Downloads.routeBytes)
-    : state.Downloads.routeBytes;
+  const [selection, setSelection] = useState<{ gate: typeof gate; bundle: DownloadBundle } | null>(
+    null,
+  );
+  const bundle = selection?.gate === gate ? selection.bundle : photo ? 'photo' : 'route';
+  const decision = downloadDecision({
+    downloads: state.Downloads,
+    requiredScope: photo ? 'photo' : 'route',
+    selectedBundle: bundle,
+    photoCount: state.Inputs.filter(
+      (input) =>
+        input.mode === 'photo' && (gate?.[1].type !== 'RunFace' || input.id === gate[1].args[0]),
+    ).length,
+  });
+  const size = decision.totalBytes ?? 0;
   const known = state.Downloads.known;
   const [storageCheck, setStorageCheck] = useState<{
     gate: typeof gate;
@@ -568,14 +579,8 @@ export function DownloadDialog({ state, dispatch }: { state: State; dispatch: Di
     };
   }, [gate, size, known]);
   if (!gate) return null;
-  const cannotKeep =
-    storageCheck?.gate === gate &&
-    storageCheck.size === size &&
-    cannotKeepDownload(storageCheck.storage, size);
-  // Until the device has checked which model files it already holds, no size is shown rather than a guessed one.
-  const amount = state.Downloads.known
-    ? `: ${megabytes(size)}`
-    : ' (its size is still being checked)';
+  const storage =
+    storageCheck?.gate === gate && storageCheck.size === size ? storageCheck.storage : null;
   return (
     <Modal
       label={photo ? 'Download the photo encoder?' : 'Download the face model?'}
@@ -586,16 +591,52 @@ export function DownloadDialog({ state, dispatch }: { state: State; dispatch: Di
         <h2>{photo ? 'Download the photo encoder?' : 'Download the face model?'}</h2>
         <p>
           {photo
-            ? `Photos are turned into faces on this device, so it needs the photo encoder${amount}. Your photo never leaves your device.`
-            : `Faces are made on this device, so it needs the face model${amount}.`}
+            ? 'Photos are turned into faces on this device. Your photo never leaves your device.'
+            : 'Faces are made on this device.'}
+        </p>
+        <fieldset>
+          <legend>Choose what to prepare</legend>
+          <label>
+            <input
+              type="radio"
+              name="download-bundle"
+              checked={bundle === 'photo'}
+              disabled={!state.Downloads.photoAvailable}
+              onChange={() => setSelection({ gate, bundle: 'photo' })}
+            />{' '}
+            Generate and encode
+          </label>{' '}
+          <label>
+            <input
+              type="radio"
+              name="download-bundle"
+              checked={bundle === 'route'}
+              onChange={() => setSelection({ gate, bundle: 'route' })}
+            />{' '}
+            Generate
+          </label>
+        </fieldset>
+        {decision.rows.map((row) => (
+          <div key={row.purpose} data-download-purpose={row.purpose}>
+            <p>{row.text}</p>
+            {row.bytes !== null && cannotKeepDownload(storage, row.bytes) && (
+              <p className="next-download-storage">{downloadStorageWarning(row.amount!)}</p>
+            )}
+          </div>
+        ))}
+        {decision.photoPaused && (
+          <p>
+            Encoding needs the photo encoder. Your chosen photo stays in this tab until you resume
+            or replace it.
+          </p>
+        )}
+        <p>
+          {decision.downloadCaveat} {decision.setupCaveat}
         </p>
         <p>
           Model files are saved on this device where storage is available. Your browser may ask
           whether this site can keep them; saying yes helps keep them when space runs low.
         </p>
-        {cannotKeep && (
-          <p className="next-download-storage">{downloadStorageWarning(megabytes(size))}</p>
-        )}
         <p className="next-download-licences">
           <a href={NOTICES_HREF} target="_blank" rel="noopener">
             Model licences
@@ -606,7 +647,7 @@ export function DownloadDialog({ state, dispatch }: { state: State; dispatch: Di
           <Button
             variant="contained"
             className="next-download-accept"
-            onClick={() => dispatch(msg('GateAccept'))}
+            onClick={() => dispatch(msg('GateAccept', bundle))}
           >
             Download and continue
           </Button>

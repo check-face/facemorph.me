@@ -71,6 +71,9 @@ function retainedPhotos(state: State, except: string | null): Set<Blob> {
     if (file && id !== except) blobs.add(file);
   };
   for (const input of state.Inputs) keep(input.id, input.file);
+  // A Generate-only choice keeps the confirmed source independently of the current field.
+  // This source remains independently retained while a replacement chooser/crop is open.
+  for (const input of state.PausedPhotos?.values() ?? []) if (input.file) blobs.add(input.file);
   for (const [id, held] of state.Held ?? []) keep(id, held.file);
   for (const [id, file] of state.PhotoQueue) keep(id, file);
   for (const choice of [state.Crop, ...state.CropQueue])

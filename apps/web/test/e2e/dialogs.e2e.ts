@@ -59,7 +59,9 @@ test('chromium: consent discloses a download exceeding the actual browser storag
         const amount = megabytes(bytes);
         assert.ok((await warning.innerText()).includes(amount));
         assert.match(await warning.innerText(), /downloaded again on each visit/);
-        assert.ok((await dialog.innerText()).includes(`face model: ${amount}`));
+        assert.ok(
+          (await dialog.locator('[data-download-purpose="generate"]').innerText()).includes(amount),
+        );
         assert.ok(
           await dialog.evaluate((element) => {
             const box = element.getBoundingClientRect();
@@ -354,10 +356,34 @@ for (const [engine, type] of Object.entries(engines).filter(
           });
           await gate.waitFor();
           assert.ok(
-            ((await gate.textContent()) ?? '').includes(
-              megabytes(phoneCpuCheck.cpuPackageBytes + (photo ? 1024 ** 3 : 0)),
+            (await gate.locator('[data-download-purpose="generate"]').innerText()).includes(
+              megabytes(phoneCpuCheck.cpuPackageBytes),
             ),
           );
+          assert.equal(
+            await gate.locator('[data-download-purpose="encode"]').count(),
+            photo ? 1 : 0,
+          );
+          if (photo)
+            assert.ok(
+              (await gate.locator('[data-download-purpose="encode"]').innerText()).includes(
+                megabytes(1024 ** 3),
+              ),
+            );
+          // Selecting a bundle changes only the explanation, never approves a download.
+          const lastBeforeChoice = await page
+            .locator('output[data-dialog-message]')
+            .getAttribute('data-dialog-message');
+          await hit(gate.getByRole('radio', { name: 'Generate', exact: true }));
+          assert.equal(await gate.locator('[data-download-purpose="encode"]').count(), 0);
+          if (photo) assert.match(await gate.innerText(), /Encoding needs the photo encoder/);
+          await hit(gate.getByRole('radio', { name: 'Generate and encode', exact: true }));
+          assert.equal(await gate.locator('[data-download-purpose="encode"]').count(), 1);
+          assert.equal(
+            await page.locator('output[data-dialog-message]').getAttribute('data-dialog-message'),
+            lastBeforeChoice,
+          );
+          if (!photo) await hit(gate.getByRole('radio', { name: 'Generate', exact: true }));
           await shot(photo ? 'download-photo' : 'download-face');
           await hit(gate.getByRole('button', { name: 'Cancel', exact: true }));
           await last(page, 'GateCancel');

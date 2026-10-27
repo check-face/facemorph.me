@@ -91,6 +91,8 @@ export interface State {
   readonly Downloads: Downloads;
   /** Independent page preparation; cancelled suppresses late setup-only revision notices. */
   readonly EncoderSetup?: 'requested' | 'active' | 'cancelled';
+  /** Confirmed photo sources paused by a Generate-only decision; tab memory only. */
+  readonly PausedPhotos?: ReadonlyMap<string, Input>;
   readonly ModelToastHidden: boolean;
   readonly DownloadConsent: ReadonlySet<string>;
   readonly Gate: readonly [string, Msg] | null;

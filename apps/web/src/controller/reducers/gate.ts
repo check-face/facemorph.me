@@ -2,6 +2,8 @@ import { gateScope, scopeReady } from '../derived.ts';
 import { unchanged, type Transition } from '../effects.ts';
 import type { State } from '../state.ts';
 import type { Msg } from '../msg.ts';
+import { msg } from '../msg.ts';
+import { change } from './inputs.ts';
 
 function queuedPreparation(state: State): State {
   return state.Downloads.photoApprovalRequired && state.EncoderSetup !== 'cancelled'
@@ -21,6 +23,21 @@ export function gate(message: Msg, state: State): Transition | null {
     }
   }
   switch (message.type) {
+    case 'ResumePhoto': {
+      const [id] = message.args;
+      const photo = state.PausedPhotos?.get(id);
+      if (!photo || state.Busy || !state.Inputs.some((input) => input.id === id))
+        return unchanged(state);
+      const paused = new Map(state.PausedPhotos);
+      paused.delete(id);
+      return {
+        state: { ...change(state, id, () => photo), PausedPhotos: paused },
+        effects: [
+          { type: 'invalidateFace', id },
+          { type: 'dispatch', message: msg('RunFace', id), continuation: true },
+        ],
+      };
+    }
     case 'PrepareEncoder':
       return state.Downloads.known &&
         state.Downloads.photoAvailable &&
@@ -53,25 +70,70 @@ export function gate(message: Msg, state: State): Transition | null {
       if (state.Gate === null) return unchanged(state);
       const [scope, pending] = state.Gate;
       const preparation = pending.type === 'DownloadNow';
+      const bundle = message.args[0] ?? (scope === 'photo' ? 'photo' : 'route');
+      if (bundle === 'photo' && message.args[0] && !state.Downloads.photoAvailable)
+        return unchanged(state);
+      // Approval of synthesis does not approve the pending photo operation. Keep its
+      // exact inspected source, without a new chooser, under the same admission ceiling.
+      if (scope === 'photo' && bundle === 'route' && !preparation) {
+        const paused = new Map(state.PausedPhotos);
+        const ids = new Set(
+          state.Inputs.filter(
+            (input) =>
+              input.mode === 'photo' &&
+              input.file &&
+              (pending.type !== 'RunFace' || input.id === pending.args[0]) &&
+              !state.Faces.some((face) => face.id === input.id),
+          ).map((input) => {
+            paused.set(input.id, input);
+            return input.id;
+          }),
+        );
+        return {
+          state: {
+            ...state,
+            Gate: null,
+            PausedPhotos: paused,
+            Inputs: state.Inputs.map((input) =>
+              ids.has(input.id)
+                ? { ...input, mode: 'text' as const, value: '', file: null }
+                : input,
+            ),
+            DownloadConsent: new Set([...state.DownloadConsent, 'route']),
+            PendingFaces: state.PendingFaces.filter((id) => !ids.has(id)),
+            PendingJobs: state.PendingJobs.filter(
+              (job) => !(job.type === 'RunFace' && ids.has(job.args[0])) && job.type !== 'Run',
+            ),
+            PendingMorph: false,
+            Status: 'Encoding needs the photo encoder.',
+            ModelToastHidden: false,
+          },
+          effects: [{ type: 'downloadModels', includePhoto: false }],
+        };
+      }
+      const optionalPhoto = scope !== 'photo' && bundle === 'photo';
       return {
         state: queuedPreparation({
           ...state,
           Gate: null,
-          ...(preparation ? { EncoderSetup: 'active' as const } : {}),
+          ...(preparation || optionalPhoto
+            ? { EncoderSetup: bundle === 'photo' ? ('active' as const) : ('cancelled' as const) }
+            : {}),
           Downloads: preparation
             ? { ...state.Downloads, photoApprovalRequired: false }
             : state.Downloads,
           DownloadConsent: new Set([
             ...state.DownloadConsent,
-            scope,
-            ...(scope === 'photo' ? ['route'] : []),
+            bundle,
+            ...(bundle === 'photo' ? ['route'] : []),
           ]),
           ModelToastHidden: true,
         }),
         effects: preparation
-          ? [{ type: 'dispatch', message: pending }]
+          ? [{ type: 'dispatch', message: msg('DownloadNow', bundle === 'photo') }]
           : [
-              { type: 'consentToDownload', scope },
+              ...(optionalPhoto ? [{ type: 'downloadModels' as const, includePhoto: true }] : []),
+              { type: 'consentToDownload', scope: bundle },
               { type: 'dispatch', message: pending },
             ],
       };
