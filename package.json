@@ -22,7 +22,8 @@
     "lint:fix": "oxlint --fix",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "build:next": "node scripts/import/build-next.mjs"
+    "build:next": "node scripts/import/build-next.mjs",
+    "release:local": "node scripts/ci/release-local.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
