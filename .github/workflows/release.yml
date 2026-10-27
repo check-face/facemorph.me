@@ -15,6 +15,11 @@ on:
         description: Publish; unticked is the deploy dry run (every step, nothing published)
         type: boolean
         default: false
+      site:
+        description: candidate builds and qualifies this commit; control puts the pinned control on staging, unqualified, for back-to-back live measurement
+        type: choice
+        options: [candidate, control]
+        default: candidate
 # shell: bash runs every step with -eo pipefail; the default (bash -e) drops a failure piped into tee.
 defaults:
   run:
@@ -28,6 +33,7 @@ env:
   ARTIFACT: next-site-${{ github.sha }}
 jobs:
   build:
+    if: inputs.site == 'candidate'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     outputs:
@@ -124,6 +130,7 @@ jobs:
     name: engine numerics on the verified runtime (full31, CPU and browser routes)
     # Real hardware: the browser routes need eris's memory (a 16 GB hosted runner's in-memory storage quota
     # cannot hold the 1.1 GB encoder: QuotaExceededError in run 40488827815 with 108 GB of disk free).
+    if: inputs.site == 'candidate'
     runs-on: [self-hosted, device-lab]
     timeout-minutes: 60
     steps:
@@ -280,6 +287,59 @@ jobs:
         run: node scripts/hosting/deploy.mjs mirror-deploy --target "$TARGET" $PUBLISH | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Warm the runtime mirror with every immutable runtime file
         run: node scripts/hosting/deploy.mjs warm --target "$TARGET" --public "$RUNNER_TEMP/public" $PUBLISH | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # The pinned control on the test target only, through the same guard and deploy steps, so the live lab can measure
+  # it and the candidate on the same phone over the same link (operator, 28 October 2026). Every candidate job above
+  # is skipped (they need build); the shared runtime mirror is left as the candidate's deploy warmed it.
+  control:
+    if: inputs.site == 'control'
+    name: the pinned control on staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: deploy-${{ inputs.target }}
+      cancel-in-progress: false
+    env:
+      TARGET: ${{ inputs.target }}
+      PUBLISH: ${{ inputs.publish && '--publish' || '' }}
+      FACEMORPH_PUBLISH_TARGETS: ${{ vars.FACEMORPH_PUBLISH_TARGETS }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: The control is served only by the test target
+        run: test "$TARGET" = staging
+      - name: Single-publisher guard, before any network call
+        run: node scripts/hosting/publish-guard.mjs --target "$TARGET" --kind site
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: The pinned control, exactly (autoresearch/drivers/control.json)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/import/fetch-control.mjs --dest .cache/control
+          got=$(node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; console.log(treeDigest('.cache/control/tree/deploy-next'))")
+          want=$(node -p 'require("./autoresearch/drivers/control.json").treeSha256')
+          echo "control digest $got (pinned: $want)" | tee -a "$GITHUB_STEP_SUMMARY"
+          test "$got" = "$want"
+          node scripts/hosting/deploy.mjs verify --artifact .cache/control/tree
+      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host
+      - uses: ./.github/actions/setup-runtime
+      - name: The control's runtime set, file by file
+        run: |
+          test "$(sha256sum < "$FACEMORPH_RUNTIME_DIR/manifest.json" | cut -d' ' -f1)" = "$(node -p 'require("./autoresearch/drivers/control.json").runtimeManifestSha256')"
+          node scripts/hosting/deploy.mjs runtime --runtime "$FACEMORPH_RUNTIME_DIR"
+      - name: Stage
+        run: node scripts/hosting/deploy.mjs stage --runtime "$FACEMORPH_RUNTIME_DIR" --artifact .cache/control/tree --public "$RUNNER_TEMP/public"
+      - name: Deploy the site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/hosting/deploy.mjs site-deploy --target "$TARGET" --public "$RUNNER_TEMP/public" $PUBLISH | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: The live site serves the control and every runtime file
+        if: inputs.publish
+        run: node scripts/hosting/deploy.mjs live --target "$TARGET" --public "$RUNNER_TEMP/public" --artifact .cache/control/tree | tee -a "$GITHUB_STEP_SUMMARY"
 
   live:
     needs: [build, deploy]
