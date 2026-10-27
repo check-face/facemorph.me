@@ -131,7 +131,8 @@ jobs:
   gates:
     needs: [checks, tests]
     if: always()
-    runs-on: [self-hosted, linux-x64]
+    # Pure status aggregation must not queue behind browser/model jobs after all shards finish.
+    runs-on: [self-hosted, triton]
     timeout-minutes: 2
     steps:
       - name: Every scaffold check and npm-test shard passed
