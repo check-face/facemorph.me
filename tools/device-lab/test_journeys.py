@@ -364,3 +364,15 @@ class NotWorseThanControl(unittest.TestCase):
             lab.summarise([candidate], Path(tmp), 'live')
             text = (Path(tmp) / 'summary.md').read_text()
         self.assertIn('| phone-cpu | cold-face | 60s | 83.1s | 84.0s | not worse than the control |', text)
+
+    def test_three_alternating_pairs_compare_medians(self):
+        # 28 October, staging, phone-webgpu cold-face: candidate 105/108/108 s, control 104/107/105 s, budget 70 s.
+        cell = lambda cold, url: {**self.cell(cold, url), 'cell': 'phone-webgpu',
+                                  'evidenceErrors': lab.budget_findings('phone-webgpu', [{'durationsS': {'cold-face': cold}}])}
+        mine = lab.merge_pairs([cell(t, 'https://candidate.test/') for t in (105.0, 108.0, 108.0)])
+        theirs = lab.merge_pairs([cell(t, 'https://control.test/') for t in (104.0, 107.0, 105.0)])
+        self.assertEqual(len(mine['runs']), 3)
+        report = lab.apply_not_worse(mine, theirs)
+        self.assertTrue(report['ok'])
+        self.assertEqual(report['controlComparison']['rows'][0], {'journey': 'cold-face', 'budgetS': 70, 'candidateS': 108.0,
+                         'controlS': 105.0, 'verdict': 'not worse than the control'})

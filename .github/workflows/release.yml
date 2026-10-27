@@ -18,14 +18,19 @@ on:
       site:
         description: candidate builds and qualifies this commit; control (re)deploys the pinned control to its own target, which the live job measures back to back
         type: choice
-        options: [candidate, control]
+        options: [candidate, control, live]
         default: candidate
+      live_run:
+        description: site=live only, the release run whose artifact the target serves; its live journeys run again, nothing is built or deployed
+        type: string
+        default: ''
 # shell: bash runs every step with -eo pipefail; the default (bash -e) drops a failure piped into tee.
 defaults:
   run:
     shell: bash
 permissions:
   contents: read
+  actions: read # site=live downloads the named run's artifact
 concurrency:
   group: release
   cancel-in-progress: false
@@ -341,7 +346,9 @@ jobs:
 
   live:
     needs: [build, deploy]
-    if: inputs.publish
+    # After this run's deploy, or alone (site=live) against what the target already serves: the artifact of live_run,
+    # checked byte for byte against the site before any journey.
+    if: ${{ !cancelled() && inputs.publish && (needs.deploy.result == 'success' || (inputs.site == 'live' && inputs.live_run != '')) }}
     name: the six cells against the live site
     runs-on: [self-hosted, device-lab]
     timeout-minutes: 120
@@ -358,15 +365,24 @@ jobs:
           echo "ORIGIN=$origin" >> "$GITHUB_ENV"
           node scripts/delivery/post-delivery-check.mjs --mode app --host "$(node -p "new URL('$origin').host")" | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/download-artifact@v4
+        if: inputs.site != 'live'
         with:
           name: ${{ env.ARTIFACT }}
+          path: artifact
+      - uses: actions/download-artifact@v4
+        if: inputs.site == 'live'
+        with:
+          pattern: next-site-*
+          merge-multiple: true
+          run-id: ${{ inputs.live_run }}
+          github-token: ${{ github.token }}
           path: artifact
       - name: Journeys on the live site, once it serves this artifact byte for byte
         working-directory: tools/device-lab
         run: |
           set -euo pipefail
-          # A phone cell over its absolute budget passes when not worse than the pinned control measured straight after
-          # it on the same phone and link (1.15x and 50 ms, the timing rule); budgets and both durations are printed.
+          # A phone cell over its absolute budget passes when not worse than the pinned control on the same phone and link:
+          # three alternating pairs, control first, medians by the timing rule (1.15x and 50 ms); all are printed.
           control=$(node -p "require('../../hosting/publish-targets.json').targets.control.site.origin")
           uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --deployed "$GITHUB_WORKSPACE/artifact" \
             --control-url "$control" --journey cold-face,warm-face,morph --label "live-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"

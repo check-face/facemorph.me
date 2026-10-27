@@ -162,7 +162,8 @@ def budget_rows(reports):
 # A phone cell over its absolute budget on a live site still passes when it is not worse than the pinned control measured
 # back to back on the same phone and link, by the release timing rule: worse means over 1.15x AND more than 50 ms
 # slower (scripts/verify/not-worse/median-check.mjs; operator, 28 October 2026). The budgets themselves never change.
-NOT_WORSE_RATIO, NOT_WORSE_FLOOR_S = 1.15, 0.05
+# Three alternating pairs, control first, and their medians decide, as in the CPU timing; a pair is never retried.
+NOT_WORSE_RATIO, NOT_WORSE_FLOOR_S, NOT_WORSE_PAIRS = 1.15, 0.05, 3
 OVER_BUDGET = re.compile(r'^(?P<journey>[\w-]+) took [\d.]+s on [\w-]+, over its \d+s budget$')
 
 
@@ -193,11 +194,21 @@ def not_worse_rows(candidate, control):
     return rows
 
 
+def merge_pairs(reports):
+    """One report from a cell's alternating runs on one side: every run, every finding except per-run budget breaches
+    (the medians decide those), and ok only if each run was. Pure."""
+    merged = {**reports[0], 'runs': [run for r in reports for run in r.get('runs') or []]}
+    merged['evidenceErrors'] = list(dict.fromkeys(e for r in reports for e in r.get('evidenceErrors') or []))
+    merged['ok'] = all(r.get('ok') for r in reports)
+    merged['status'] = 'pass' if merged['ok'] else next((r['status'] for r in reports if not r.get('ok')), 'fail')
+    return merged
+
+
 def apply_not_worse(candidate, control):
     """Attach the comparison; a budget breach on a journey judged not worse stops counting against the cell."""
     rows = not_worse_rows(candidate, control)
     candidate['controlComparison'] = {'url': control.get('url'), 'controlStatus': control.get('status'), 'rows': rows}
-    excused = {r['journey'] for r in rows if r['verdict'] == 'not worse than the control'}
+    excused = {r['journey'] for r in rows if r['verdict'] in ('within budget', 'not worse than the control')}
     kept = [e for e in candidate.get('evidenceErrors') or []
             if not ((m := OVER_BUDGET.match(e)) and m['journey'] in excused)]
     if kept != (candidate.get('evidenceErrors') or []):
@@ -1460,10 +1471,16 @@ def run_matrix(args):
                                              'label': args.label + '-control'})
                 (out / 'control').mkdir(exist_ok=True)
             for c in cells:
-                report = run_cell_retrying(c, args, out)
-                if control_url and CELLS[c][0] == 'phone':  # the control on the same phone, straight after
-                    apply_not_worse(report, run_cell_retrying(c, ctrl, out / 'control'))
-                    (out / f'{c}.json').write_text(json.dumps(report, indent=2))
+                if not (control_url and CELLS[c][0] == 'phone'):
+                    reports.append(run_cell_retrying(c, args, out))
+                    continue
+                # Control, candidate, control, ...: the same phone and link, alternating so drift lands on both.
+                mine, theirs = [], []
+                for i in range(NOT_WORSE_PAIRS):
+                    theirs.append(run_cell_retrying(c, ctrl, out / 'control'))
+                    mine.append(run_cell_retrying(c, args, out))
+                report = apply_not_worse(merge_pairs(mine), merge_pairs(theirs))
+                (out / f'{c}.json').write_text(json.dumps(report, indent=2))
                 reports.append(report)
     title = f'Device lab: {args.label} ({args.url})'
     beads = sorted(set(getattr(args, 'bead', None) or []))
