@@ -58,7 +58,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium # the runner image has its libraries (apt took 8 min once)
       - name: This shard's npm test files
         env:
           GITHUB_TOKEN: ${{ github.token }}
