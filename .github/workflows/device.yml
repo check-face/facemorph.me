@@ -30,7 +30,25 @@ env:
   RUNTIME_SHA: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
   LANES: macos-webkit,macos-firefox,macos-chrome,windows-chrome,windows-msedge,android-emulator-chrome,ios-simulator-safari
 jobs:
+  # A release that built nothing (site=control, live, promote or rollback) has no artifact to test: skip, not fail.
+  artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      present: ${{ steps.probe.outputs.present }}
+    steps:
+      - id: probe
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          names=$(gh api "repos/${{ github.repository }}/actions/runs/$RUN/artifacts?per_page=100" --jq '.artifacts[].name')
+          if grep -qx "next-site-$COMMIT" <<<"$names"; then echo present=true >> "$GITHUB_OUTPUT"; else echo "run $RUN built no next-site-$COMMIT: nothing to test" | tee -a "$GITHUB_STEP_SUMMARY"; echo present=false >> "$GITHUB_OUTPUT"; fi
+
   desktop:
+    needs: artifact
+    if: needs.artifact.outputs.present == 'true'
     name: ${{ matrix.lane }}
     strategy:
       fail-fast: false
@@ -110,6 +128,8 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
   android:
+    needs: artifact
+    if: needs.artifact.outputs.present == 'true'
     name: android-emulator-chrome
     runs-on: ubuntu-24.04
     timeout-minutes: 90
@@ -159,6 +179,8 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
   ios:
+    needs: artifact
+    if: needs.artifact.outputs.present == 'true'
     name: ios-simulator-safari
     runs-on: macos-15
     timeout-minutes: 90
@@ -191,8 +213,8 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
   summary:
-    needs: [desktop, android, ios]
-    if: always()
+    needs: [artifact, desktop, android, ios]
+    if: always() && needs.artifact.outputs.present == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
