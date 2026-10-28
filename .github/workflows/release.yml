@@ -206,7 +206,11 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci && npx playwright install chromium
+      # The suites import the packages' built entry points (stylegan-js, browser-model-manager), and shell.e2e runs in
+      # Chromium, Firefox and WebKit; the system libraries get a bounded apt attempt that fails here, visibly.
+      - run: npm ci && npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host --if-present
+      - run: npx playwright install chromium firefox webkit
+      - run: sudo env "PATH=$PATH" timeout 600 npx playwright install-deps chromium firefox webkit
       - uses: actions/download-artifact@v4
         with:
           name: ${{ env.ARTIFACT }}

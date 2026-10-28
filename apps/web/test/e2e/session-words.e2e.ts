@@ -17,6 +17,10 @@ import { INSTALL_HOOK } from '../parity/elmish-probe.ts';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
 const results = join(REPO, 'apps/web/test-results/session-words');
+// The built artifact: the directory holding deploy-next/ and its identity (FACEMORPH_DEPLOY_OUT), else the repository's.
+const OUT = process.env['FACEMORPH_DEPLOY_OUT']
+  ? resolve(process.env['FACEMORPH_DEPLOY_OUT'])
+  : REPO;
 const COUNTS = (process.env['FACEMORPH_WORDS_COUNTS'] ?? '1,2,3')
   .split(',')
   .map((n) => Number(n.trim()))
@@ -158,12 +162,12 @@ test(
       t.skip(reason);
       return;
     }
-    const artifact = readIdentity(REPO);
+    const artifact = readIdentity(OUT);
     assert.deepEqual(artifact.findings, []);
     assert.equal(artifact.identity?.label, 'destination');
     const site = await startControl({
       runtime,
-      artifact: resolve(REPO, 'deploy-next'),
+      artifact: resolve(OUT, 'deploy-next'),
       source: artifact.identity.deploySource.buildId,
     });
     const browser = await chromium.launch({ args: [...chromiumArgs, '--disable-features=WebGPU'] });
@@ -488,12 +492,12 @@ async function site(t: { skip: (reason: string) => void }) {
     t.skip(reason);
     return null;
   }
-  const artifact = readIdentity(REPO);
+  const artifact = readIdentity(OUT);
   assert.deepEqual(artifact.findings, []);
   assert.equal(artifact.identity?.label, 'destination');
   const control = await startControl({
     runtime,
-    artifact: resolve(REPO, 'deploy-next'),
+    artifact: resolve(OUT, 'deploy-next'),
     source: artifact.identity.deploySource.buildId,
   });
   const browser = await chromium.launch({ args: [...chromiumArgs, '--disable-features=WebGPU'] });
