@@ -14,6 +14,7 @@ import Logo from '../../src/public/logo.svg?react';
 import { msg, type Msg } from '../../src/controller/msg.ts';
 import type { CropChoice, State } from '../../src/controller/state.ts';
 import { downloadDecision, type DownloadBundle } from '../../src/controller/download-decision.ts';
+import { codecMissingBytes } from '../../src/controller/derived.ts';
 
 export type Dispatch = (message: Msg) => void;
 export { downloadMegabytes as megabytes } from '../../src/controller/derived.ts';
@@ -50,6 +51,7 @@ function Modal({
   children,
   faceId,
   backReturnsToDialog = false,
+  returnTo,
 }: {
   label: string;
   className: string;
@@ -57,6 +59,8 @@ function Modal({
   children: ReactNode;
   faceId?: string;
   backReturnsToDialog?: boolean;
+  /** The control that asked, when the modal opens after asynchronous checks may have moved focus. */
+  returnTo?: string | undefined;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const dismiss = useEffectEvent(close);
@@ -72,7 +76,8 @@ function Modal({
       ? document.querySelector<HTMLElement>(
           `[data-next-face="${CSS.escape(faceId)}"] [aria-label="Change mode"]`,
         )
-      : document.activeElement;
+      : ((returnTo ? document.querySelector<HTMLElement>(returnTo) : null) ??
+        document.activeElement);
     const inert: { element: HTMLElement; previous: boolean }[] = [];
     let branch: Element | null = root.current;
     while (branch?.parentElement) {
@@ -93,7 +98,7 @@ function Modal({
       for (const item of inert) item.element.inert = item.previous;
       if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
     };
-  }, [faceId]);
+  }, [faceId, returnTo]);
   useEffect(() => {
     const token = crypto.randomUUID();
     let mounted = true;
@@ -565,6 +570,8 @@ export function DownloadDialog({ state, dispatch }: { state: State; dispatch: Di
       (input) =>
         input.mode === 'photo' && (gate?.[1].type !== 'RunFace' || input.id === gate[1].args[0]),
     ).length,
+    // A morph whose video needs the codec fallback asks for its bytes in the Generate row (fm-9kr8).
+    codecMissingBytes: codecMissingBytes(state, gate?.[1]),
   });
   const size = decision.totalBytes ?? 0;
   const known = state.Downloads.known;
@@ -591,6 +598,15 @@ export function DownloadDialog({ state, dispatch }: { state: State; dispatch: Di
       label={photo ? 'Download the photo encoder?' : 'Download the face model?'}
       className="next-crop-dialog next-download-dialog"
       close={() => dispatch(msg('GateCancel'))}
+      // A Morph or Generate is answered only after its checks (MP4 probe, cache lookup), so focus returns to the
+      // control that asked rather than wherever it was when the question opened (fm-9kr8).
+      returnTo={
+        gate[1].type === 'Run' && gate[1].args[0] === 'morph'
+          ? '.next-primary-action'
+          : gate[1].type === 'RunFace'
+            ? `[data-next-face="${CSS.escape(gate[1].args[0])}"] .next-face-generate`
+            : undefined
+      }
     >
       <div className="next-crop-panel box">
         <h2>{photo ? 'Download the photo encoder?' : 'Download the face model?'}</h2>

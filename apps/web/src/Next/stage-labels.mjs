@@ -44,7 +44,7 @@ export const SILENT_STAGES = new Set([
 ]);
 
 /** Stages that carry bytes and deserve a byte count rather than an indeterminate bar. */
-export const BYTE_STAGES = new Set(['asset-acquisition', 'alignment-model-download', 'photo-acquisition']);
+export const BYTE_STAGES = new Set(['asset-acquisition', 'alignment-model-download', 'photo-acquisition', 'codec-loading']);
 
 /**
  * Stages that repeat inside one phase and carry a step count. Their `-complete` is a tick,
@@ -137,6 +137,13 @@ const LOCAL_LABELS = {
 // Byte counts are only worth showing once they are worth waiting for; below this a count
 // reads as "0 MB of 0 MB" and tells the user less than the label alone.
 const COUNTABLE_BYTES = 8 * MB;
+/**
+ * One unit for every acquisition figure (fm-9kr8): the same whole, grouped megabytes the consent
+ * modal and the download toast show (controller/derived.ts downloadMegabytes), so "1,040 MB" in the
+ * question is "1,040 MB" in the status line. Zero stays zero; any positive transfer is at least 1 MB.
+ */
+export const megabytesText = bytes =>
+  bytes > 0 ? `${Math.max(1, Math.round(bytes / MB)).toLocaleString('en-US')} MB` : '0 MB';
 
 /** Bytes a progress event carries, whichever of the two field names its emitter uses. */
 export function loadedBytes(event) {
@@ -167,9 +174,9 @@ export function labelFor(stage, event = {}) {
     if (Number.isFinite(event.fetchedTotal)) {
       if (event.fetchedTotal < COUNTABLE_BYTES) return LOCAL_LABELS[stage] ?? label;
       const fetched = Number.isFinite(event.fetched) ? event.fetched : 0;
-      return `${label} ${Math.round(fetched / MB)} MB of ${Math.round(event.fetchedTotal / MB)} MB`;
+      return `${label} ${megabytesText(fetched)} of ${megabytesText(event.fetchedTotal)}`;
     }
-    return `${label} ${Math.round(loaded / MB)} MB of ${Math.round(event.total / MB)} MB`;
+    return `${label} ${megabytesText(loaded)} of ${megabytesText(event.total)}`;
   }
   if (STEP_STAGES.has(stage) && event.total > 1 && Number.isFinite(loaded))
     return `${label} ${loaded} of ${event.total}`;

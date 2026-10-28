@@ -119,11 +119,11 @@ export async function probeVideoEncoder({fps=16,quality='standard',modelSize=VID
 /** Test seam: forget the per-session encoder decision. */
 export function resetEncoderProbe(){encoderProbe=null;correctnessChecks=0;}
 
-export function videoWriter({codec,encoder,fps=16,quality='standard',modelSize=VIDEO_WIDTH,framesKey,totalFrames,derivativeSize=512,signal,onProgress=()=>{},imageEncoderFactory=()=>createImageEncoder()}){
+export function videoWriter({codec,codecApproved=false,encoder,fps=16,quality='standard',modelSize=VIDEO_WIDTH,framesKey,totalFrames,derivativeSize=512,signal,onProgress=()=>{},imageEncoderFactory=()=>createImageEncoder()}){
  const worker=new Worker(new URL('./video-worker.mjs',import.meta.url),{type:'module'});let id=0,closed=false,mode='',encodeSize=0,nextIndex=0,submitted=0,encoded=0;const pending=new Map(),persisting=[],drainWaiters=[];let images;
  const stop=(reason=new DOMException('Video cancelled','AbortError'))=>{if(closed)return;closed=true;images?.dispose();signal?.removeEventListener('abort',abort);try{worker.terminate();}catch{}finally{for(const p of pending.values()){clearTimeout(p.timer);p.reject(reason);}pending.clear();for(const w of drainWaiters.splice(0))w();}};
  const abort=()=>stop();signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)stop();
- worker.onmessage=({data})=>{if(closed)return;if(data.progress){if(data.progress.stage==='encoding')encoded=data.progress.loaded;if(submitted-encoded<=4)for(const w of drainWaiters.splice(0))w();try{onProgress({...data.progress,total:submitted||undefined});}catch{}return;}const p=pending.get(data.id);if(!p){if(data.error)stop(Error(data.error));return;}clearTimeout(p.timer);pending.delete(data.id);data.error?p.reject(Error(data.error)):p.resolve(data.result);};
+ worker.onmessage=({data})=>{if(closed)return;if(data.progress){if(data.progress.stage==='encoding')encoded=data.progress.loaded;if(submitted-encoded<=4)for(const w of drainWaiters.splice(0))w();try{onProgress({...data.progress,total:data.progress.stage==='codec-loading'?data.progress.total:submitted||undefined});}catch{}return;}const p=pending.get(data.id);if(!p){if(data.error)stop(Error(data.error));return;}clearTimeout(p.timer);pending.delete(data.id);data.error?p.reject(Error(data.error)):p.resolve(data.result);};
  worker.onerror=()=>stop(Error('The video encoder stopped. Your faces are saved.'));
  worker.onmessageerror=()=>stop(Error('The video encoder returned an unreadable result. Your faces are saved.'));
  const call=(type,payload={},transfer=[])=>new Promise((resolve,reject)=>{if(closed||signal?.aborted){reject(new DOMException('Video cancelled','AbortError'));return;}const key=++id;const timer=setTimeout(()=>stop(Error('Video encoding timed out. Try a shorter morph.')),180000);pending.set(key,{resolve,reject,timer});try{worker.postMessage({id:key,type,...payload},transfer);}catch(error){stop(error);}});
@@ -155,7 +155,7 @@ export function videoWriter({codec,encoder,fps=16,quality='standard',modelSize=V
     choice=probe?await probe:ffmpegChoice('webcodecs-unavailable',{quality,modelSize,deviceMemoryGiB:browserDeviceMemory()});}
    mode=choice.kind;encodeSize=choice.width;
    if(mode==='webcodecs')await call('initialize',{mode,codec:choice.codec,width:choice.width,height:choice.height,fps,bitrate:choice.bitrate});
-   else await call('initialize',{mode:'ffmpeg',codec,fps,width:choice.width,height:choice.height});
+   else await call('initialize',{mode:'ffmpeg',codec,codecApproved:codecApproved===true,fps,width:choice.width,height:choice.height});
    return choice;
   },
   addRaw:(frame,index)=>rawImage(frame,index,true),

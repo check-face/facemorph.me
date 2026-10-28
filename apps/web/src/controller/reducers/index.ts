@@ -100,6 +100,7 @@ export const CASES = {
   GateAccept: gate,
   ResumePhoto: gate,
   GateCancel: gate,
+  MorphCodecChecked: gate,
   Retry: jobs,
   RestoredLast: jobs,
   BlendView: blend,

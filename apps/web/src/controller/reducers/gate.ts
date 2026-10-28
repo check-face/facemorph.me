@@ -1,4 +1,4 @@
-import { gateScope, scopeReady } from '../derived.ts';
+import { codecMissingBytes, gateScope, scopeReady } from '../derived.ts';
 import { unchanged, type Transition } from '../effects.ts';
 import type { State } from '../state.ts';
 import type { Msg } from '../msg.ts';
@@ -23,6 +23,13 @@ export function gate(message: Msg, state: State): Transition | null {
     }
   }
   switch (message.type) {
+    case 'MorphCodecChecked': {
+      const [run, needed, bytes] = message.args;
+      return {
+        state: { ...state, MorphCodec: { run, needed, bytes: needed ? bytes : 0 } },
+        effects: [{ type: 'dispatch', message: run, continuation: true }],
+      };
+    }
     case 'ResumePhoto': {
       const [id] = message.args;
       const photo = state.PausedPhotos?.get(id);
@@ -112,6 +119,8 @@ export function gate(message: Msg, state: State): Transition | null {
         };
       }
       const optionalPhoto = scope !== 'photo' && bundle === 'photo';
+      // The codec belongs to Generate, which every bundle includes: approving the decision approves its bytes.
+      const codec = codecMissingBytes(state, pending) > 0;
       return {
         state: queuedPreparation({
           ...state,
@@ -126,6 +135,7 @@ export function gate(message: Msg, state: State): Transition | null {
             ...state.DownloadConsent,
             bundle,
             ...(bundle === 'photo' ? ['route'] : []),
+            ...(codec ? ['codec'] : []),
           ]),
           ModelToastHidden: true,
         }),
@@ -133,6 +143,7 @@ export function gate(message: Msg, state: State): Transition | null {
           ? [{ type: 'dispatch', message: msg('DownloadNow', bundle === 'photo') }]
           : [
               ...(optionalPhoto ? [{ type: 'downloadModels' as const, includePhoto: true }] : []),
+              ...(codec ? [{ type: 'consentToDownload' as const, scope: 'codec' }] : []),
               { type: 'consentToDownload', scope: bundle },
               { type: 'dispatch', message: pending },
             ],

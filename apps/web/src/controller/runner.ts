@@ -14,7 +14,7 @@ import type {
 } from '../operations/service.ts';
 import type { Effect, Transition } from './effects.ts';
 import { rejection, unchanged } from './effects.ts';
-import type { State, Input, Progress, Request } from './state.ts';
+import type { State, Input, Progress, Request, Downloads } from './state.ts';
 import { init, type InitialFacts } from './init.ts';
 import { faceInputProblem } from './derived.ts';
 import { msg } from './msg.ts';
@@ -107,26 +107,25 @@ export function operationProgress(
 
 /**
  * Where the FFmpeg fallback stands, read from the same-origin runtime manifest (not a model asset): absent
- * only when the manifest positively carries no codec; cached when Cache Storage already holds its wasm;
- * otherwise acquisition consent asks for it. An unreadable manifest is not a refusal: the bridge decides.
+ * only when the manifest positively carries no codec; cached when the bridge's inventory found both its parts
+ * verified on this device; in scope once the person approved its bytes in this tab; otherwise acquisition
+ * consent asks for it (fm-9kr8). An unreadable manifest is not a refusal: the bridge decides.
  */
-async function ffmpegAvailability(): Promise<FfmpegAvailability> {
-  let codec: { wasm?: { url?: unknown } } | undefined;
+async function ffmpegAvailability(
+  downloads: Downloads,
+  approved: boolean,
+): Promise<FfmpegAvailability> {
+  let codec: unknown;
   try {
     const response = await fetch('/runtime/manifest.json', { credentials: 'omit' });
     if (!response.ok) return 'needs-consent';
-    codec = ((await response.json()) as { codec?: { wasm?: { url?: unknown } } }).codec;
+    codec = ((await response.json()) as { codec?: unknown }).codec;
   } catch {
     return 'needs-consent';
   }
   if (!codec) return 'absent';
-  const url = codec.wasm?.url;
-  try {
-    if (typeof url === 'string' && globalThis.caches && (await caches.match(url))) return 'cached';
-  } catch {
-    /* Cache Storage unavailable */
-  }
-  return 'needs-consent';
+  if (approved) return 'in-scope';
+  return downloads.known && downloads.codecReady === true ? 'cached' : 'needs-consent';
 }
 
 /**
@@ -178,7 +177,10 @@ export function createController(
       probeMp4({
         fps: request.settings.fps,
         webcodecs: browserWebCodecs(),
-        ffmpeg: ffmpegAvailability,
+        ffmpeg: () => {
+          const state = store.getState();
+          return ffmpegAvailability(state.Downloads, state.DownloadConsent.has('codec'));
+        },
         quality: request.settings.quality ?? 'standard',
         deviceMemoryGiB:
           (globalThis.navigator as { deviceMemory?: number } | undefined)?.deviceMemory ?? null,
@@ -578,7 +580,17 @@ export function createController(
       () => checks(request).finally(() => (accepting = false)),
       (result) => {
         if (result.failure) refuseMorph(result.failure, null);
-        else store.dispatch(message);
+        // The probe's codec answer goes to the one consent (fm-9kr8): fallback bytes the press must download
+        // are asked for in its Generate row before anything is fetched.
+        else
+          store.dispatch(
+            msg(
+              'MorphCodecChecked',
+              message,
+              result.route?.ok === true && result.route.needsConsent,
+              store.getState().Downloads.codecBytes ?? 0,
+            ),
+          );
         accepted();
       },
       (error) => {

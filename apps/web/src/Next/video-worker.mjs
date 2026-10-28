@@ -114,8 +114,21 @@ self.onmessage=async({data})=>{currentId=data.id;try{
    if(core)throw Error('Encoder already initialized.');fps=data.fps;
    if(!Number.isInteger(fps)||fps<1||fps>60||!data.codec)throw Error('Invalid video configuration.');
    dims(data);
-   const cache=await createBrowserModelCache({timeoutMs:180000,maxConcurrent:1,report:e=>postMessage({progress:{stage:'codec-loading',loaded:e.bytes}})});
-   const grant=bridgeGrant(data.codec,{purpose:'generate'}),wasm=await bytes(data.codec.wasm,cache,grant),moduleBytes=await bytes(data.codec.module,cache,grant);
+   // The codec is fetched only under the person's approval (fm-9kr8): it is part of the Generate purpose's bytes in
+   // the consent that asked for it. Without that approval the grant transfers nothing, so a codec already on this
+   // device is read and one that is not is refused before any request (the app then asks again).
+   const parts=[data.codec.wasm,data.codec.module],total=parts.reduce((n,a)=>n+a.size,0),seen=new Map();
+   const report=e=>{const part=parts.find(a=>a.sha256===e.sha256);if(!part)return;
+    if(e.status==='progress'&&Number.isFinite(e.loaded))seen.set(part.sha256,Math.min(part.size,e.loaded));
+    else if(['verified','saved','retained'].includes(e.status))seen.set(part.sha256,part.size);else return;
+    postMessage({progress:{stage:'codec-loading',loaded:[...seen.values()].reduce((n,b)=>n+b,0),total}});};
+   const cache=await createBrowserModelCache({timeoutMs:180000,maxConcurrent:1,report});
+   const approved=bridgeGrant(data.codec,{purpose:'generate'}),grant=data.codecApproved===true?approved:{...approved,remainingBytes:0};
+   let wasm,moduleBytes;
+   try{wasm=await bytes(data.codec.wasm,cache,grant);moduleBytes=await bytes(data.codec.module,cache,grant);}
+   catch(error){if(error?.name!=='GrantRefused')throw error;
+    // Named so the app asks for exactly these bytes again, in the Generate row of the same consent.
+    throw Object.assign(Error(`The video codec (${total} bytes) is not covered by an approved download (codec).`),{name:'GrantRefused'});}
    const moduleUrl=URL.createObjectURL(new Blob([moduleBytes],{type:'text/javascript'}));
    try{const {default:create}=await import(/* @vite-ignore */ moduleUrl);core=await create({wasmBinary:wasm,locateFile:()=>data.codec.wasm.url});}
    finally{URL.revokeObjectURL(moduleUrl);}

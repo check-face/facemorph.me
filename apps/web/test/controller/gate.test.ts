@@ -144,3 +144,75 @@ test('a card decision never cancels independent page preparation or gets replace
     { type: 'dispatch', message: pending, continuation: true },
   ]);
 });
+// fm-9kr8: the video codec fallback is inside the one consent. A Morph press whose probe needs the codec asks for its
+// bytes in the Generate row even when the face model is already here; approving them approves the codec.
+test('a Morph needing the codec fallback asks for its bytes in Generate before anything is fetched (fm-9kr8)', async () => {
+  const { codecMissingBytes } = await import('../../src/controller/derived.ts');
+  const { downloadDecision } = await import('../../src/controller/download-decision.ts');
+  const ready = {
+    ...state,
+    Downloads: { ...state.Downloads, routeReady: true, routeBytes: 0 },
+    DownloadConsent: new Set(['route']),
+  };
+  const run = msg('Run', 'morph');
+  const checked = reduce(msg('MorphCodecChecked', run, true, 32_344_223), ready)!;
+  assert.deepEqual(checked.effects, [{ type: 'dispatch', message: run, continuation: true }]);
+  const asked = reduce(run, checked.state, { continuation: true })!;
+  assert.deepEqual(asked.state.Gate, ['route', run], 'the codec alone opens the consent');
+  assert.equal(asked.state.Busy, false, 'nothing starts before the decision');
+  assert.equal(codecMissingBytes(asked.state, run), 32_344_223);
+  const decision = downloadDecision({
+    downloads: asked.state.Downloads,
+    requiredScope: 'route',
+    selectedBundle: 'route',
+    photoCount: 0,
+    codecMissingBytes: codecMissingBytes(asked.state, run),
+  });
+  assert.equal(decision.rows.length, 1);
+  assert.equal(
+    decision.rows[0]!.amount,
+    '31 MB',
+    'the codec bytes in the Generate row, in the shared unit',
+  );
+  const accepted = reduce(msg('GateAccept'), asked.state)!;
+  assert.ok(accepted.state.DownloadConsent.has('codec'));
+  assert.deepEqual(accepted.effects, [
+    { type: 'consentToDownload', scope: 'codec' },
+    { type: 'consentToDownload', scope: 'route' },
+    { type: 'dispatch', message: run },
+  ]);
+  assert.equal(codecMissingBytes(accepted.state, run), 0, 'an approved codec is not asked again');
+  // Cancel starts nothing and approves nothing.
+  const cancelled = reduce(msg('GateCancel'), asked.state)!;
+  assert.equal(cancelled.state.Gate, null);
+  assert.ok(!cancelled.state.DownloadConsent.has('codec'));
+  assert.deepEqual(cancelled.effects, []);
+  // A hardware encoder or a codec already on this device asks nothing more than the models need.
+  const none = reduce(msg('MorphCodecChecked', run, false, 32_344_223), ready)!;
+  assert.equal(reduce(run, none.state, { continuation: true })!.state.Gate, null);
+  // A later press probes again: an earlier answer belongs to its own press.
+  assert.equal(codecMissingBytes(checked.state, msg('Run', 'morph')), 0);
+});
+test('a codec refused by the video worker asks again with its bytes in Generate (fm-9kr8)', async () => {
+  const { codecMissingBytes } = await import('../../src/controller/derived.ts');
+  const run = msg('Run', 'morph');
+  const running = {
+    ...state,
+    Downloads: { ...state.Downloads, routeReady: true, routeBytes: 0 },
+    Busy: true,
+    JobId: 9,
+    LastRun: run,
+    DownloadConsent: new Set(['route']),
+  };
+  const refused = reduce(
+    msg(
+      'Failed',
+      9,
+      'The video codec (32344223 bytes) is not covered by an approved download (codec).',
+    ),
+    running,
+  )!;
+  assert.deepEqual(refused.state.Gate, ['route', run]);
+  assert.equal(codecMissingBytes(refused.state, run), 32_344_223);
+  assert.equal(refused.state.Error, null);
+});

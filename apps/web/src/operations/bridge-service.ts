@@ -372,6 +372,10 @@ export function createOperationService(
       const frames = bar.snapshot().phases.find((phase) => phase.kind === 'frames');
       if (frames?.total) item.line = morphLine(frames.done, frames.total);
     } else if (p.stage === 'export' && p.text) item.line = p.text;
+    // The consented codec fallback arrives before the first frame (fm-9kr8): its line counts the bytes in the
+    // consent's unit, and the frame counter takes the line over once frames start.
+    else if (p.stage === 'codec-loading' && p.text && !item.line?.startsWith('Generating '))
+      item.line = p.text;
   }
   async function getBridge(): Promise<OperationBridge> {
     return (loading ??= Promise.resolve(bridge).then((b) => {

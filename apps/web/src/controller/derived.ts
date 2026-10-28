@@ -90,11 +90,21 @@ export function gateScope(state: State, message: Msg): 'route' | 'photo' | null 
   }
   // An inventory not yet known is asked about, never taken as permission (fm-qrfz, audit defect 19: the candidate let
   // work start when its size list could not be built). The dialog says the size is still being checked until it is.
-  return scope &&
-    (!state.Downloads.known || !scopeReady(state.Downloads, scope)) &&
-    !state.DownloadConsent.has(scope)
-    ? scope
-    : null;
+  const models =
+    (!state.Downloads.known || !scopeReady(state.Downloads, scope ?? 'route')) &&
+    !state.DownloadConsent.has(scope ?? '');
+  return scope && (models || codecMissingBytes(state, message) > 0) ? scope : null;
+}
+/**
+ * The video codec fallback bytes this exact Morph press must download first (fm-9kr8), zero when its probe found a
+ * hardware encoder, a codec already on this device, or an earlier approval in this tab. They belong to the Generate
+ * purpose: the consent shows them in that row, and the video worker transfers nothing without that approval.
+ */
+export function codecMissingBytes(state: State, message: Msg | null | undefined): number {
+  const codec = state.MorphCodec;
+  return message && codec?.run === message && codec.needed && !state.DownloadConsent.has('codec')
+    ? codec.bytes
+    : 0;
 }
 export const megabytes = (bytes: number): string =>
   bytes >= 1024 ** 3

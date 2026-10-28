@@ -220,7 +220,15 @@ export function jobs(message: Msg, state: State, facts: JobFacts = {}): Transiti
       // a shard past the advertised size, an evicted file) is a new cost, so the question is asked again for this run
       // rather than shown as a failure (fm-qrfz).
       if (GRANT_REFUSAL.test(error) && state.LastRun) {
-        const asked = { ...state, DownloadConsent: new Set<string>() };
+        // The video worker names a refused codec with its bytes (fm-9kr8): the question then asks for them in Generate.
+        const codec = /^The video codec \((\d+) bytes\)/.exec(error);
+        const asked = {
+          ...state,
+          DownloadConsent: new Set<string>(),
+          ...(codec
+            ? { MorphCodec: { run: state.LastRun, needed: true, bytes: Number(codec[1]) } }
+            : {}),
+        };
         const scope =
           gateScope({ ...asked, Downloads: { ...state.Downloads, known: false } }, state.LastRun) ??
           'route';

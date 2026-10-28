@@ -27,6 +27,7 @@ import { press } from '../support/operate.ts';
 import { launchFreshChromiumProfile } from '../support/browser-profile.ts';
 import { typeMatchesBytes } from '../../src/media/export-policy.ts';
 import { readRecovery } from 'stylegan-js';
+import { downloadMegabytes as megabytes } from '../../src/controller/derived.ts';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
 const out = resolve(process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO);
@@ -1025,6 +1026,204 @@ test(
       server.release();
       await profile.close();
       await server.close();
+      await site.stop();
+    }
+  },
+);
+
+// fm-9kr8: the video codec fallback is inside the one consent. Chromium with VideoEncoder removed from the page (a
+// browser without an H.264 WebCodecs encoder, so the MP4 probe chooses the pinned FFmpeg codec), cold profile, the
+// built app, 1280 px mouse and 390 px touch. The face model is approved and used first, so the Morph question asks
+// for the codec alone: its Generate row names the codec's bytes, no codec byte is requested while it is open or
+// after Cancel, and after approval the status line counts the same figure while the codec arrives.
+test(
+  'the video codec fallback is asked for in Generate, fetched only after approval, with one figure',
+  { timeout: 1_800_000 },
+  async (t) => {
+    if (!existsSync(join(runtime, 'manifest.json'))) {
+      const reason = `untested: no acquired runtime at ${runtime}; owner fm-9kr8`;
+      if (process.env['FACEMORPH_REQUIRE_RUNTIME'] === '1') throw Error(reason);
+      t.skip(reason);
+      return;
+    }
+    const artifact = readIdentity(out);
+    assert.deepEqual(artifact.findings, []);
+    type Part = { url: string; size: number; chunks?: { url: string }[] };
+    const served = JSON.parse(readFileSync(join(runtime, 'manifest.json'), 'utf8')) as {
+      codec?: { wasm: Part; module: Part };
+    };
+    assert.ok(served.codec, 'the pinned runtime carries the codec fallback');
+    const codecParts = [served.codec.wasm, served.codec.module];
+    const codecPaths = new Set(
+      codecParts.flatMap((p) =>
+        [p.url, ...(p.chunks ?? []).map((c) => c.url)].map((u) => new URL(u).pathname),
+      ),
+    );
+    const codecFigure = megabytes(codecParts.reduce((n, p) => n + p.size, 0));
+    const site = await startControl({
+      runtime,
+      artifact: join(out, 'deploy-next'),
+      source: artifact.identity.deploySource.buildId,
+    });
+    const browser = await chromium.launch({ args: [...chromiumArgs, '--disable-features=WebGPU'] });
+    mkdirSync(results, { recursive: true });
+    try {
+      for (const [name, width, touch] of [
+        ['desktop', 1280, false],
+        ['phone', 390, true],
+      ] as const) {
+        const context = await browser.newContext({
+          ...(touch ? devices['iPhone 13'] : {}),
+          viewport: { width, height: 900 },
+          hasTouch: touch,
+          isMobile: touch,
+          ignoreHTTPSErrors: true,
+        });
+        await context.addInitScript(() => {
+          delete (globalThis as { VideoEncoder?: unknown }).VideoEncoder;
+          // Every codec status line the page shows, however briefly (a local codec arrives in moments).
+          const lines: string[] = ((globalThis as { __codecLines?: string[] }).__codecLines = []);
+          new MutationObserver(() => {
+            const match = /Preparing video export… [\d,]+ MB of [\d,]+ MB/.exec(
+              document.body?.innerText ?? '',
+            );
+            if (match && lines.at(-1) !== match[0]) lines.push(match[0]);
+            const model = /Downloading model files… [\d,]+ MB of [\d,]+ MB/.exec(
+              document.body?.innerText ?? '',
+            );
+            const models = ((globalThis as { __modelLines?: string[] }).__modelLines ??= []);
+            if (model && models.at(-1) !== model[0]) models.push(model[0]);
+            const status = document.querySelector('.next-status')?.textContent ?? '';
+            const seen = ((globalThis as { __statusSeen?: string[] }).__statusSeen ??= []);
+            if (status && seen.at(-1) !== status && seen.length < 200) seen.push(status);
+          }).observe(document, { subtree: true, childList: true, characterData: true });
+        });
+        const page = await context.newPage();
+        const errors: string[] = [];
+        const codec: string[] = [];
+        page.on('pageerror', (error) => errors.push(error.message));
+        context.on('request', (request) => {
+          const path = new URL(request.url()).pathname;
+          if (codecPaths.has(path)) codec.push(path);
+        });
+        const operate = async (control: Locator) =>
+          assert.ok((await press(page, control, { touch })).inside, `${name}: ${control}`);
+        try {
+          await page.goto(ORIGIN);
+          const tiles = page.locator('section.next-face');
+          await tiles.nth(1).waitFor();
+          for (const control of [
+            page.locator('.next-model-toast').getByRole('button', { name: 'Not now' }),
+            page.getByRole('button', { name: 'Ask me later' }),
+          ])
+            if (
+              await control.waitFor({ timeout: 5000 }).then(
+                () => true,
+                () => false,
+              )
+            )
+              await operate(control);
+          await chooseCpu(page);
+          const dialog = page.locator('.next-download-dialog');
+          // The face model first, so the Morph question is the codec's alone.
+          await tiles.nth(0).locator('.next-field input').fill('codec first'); // setup
+          await tiles.nth(1).locator('.next-field input').fill('codec second'); // setup
+          await operate(tiles.nth(0).locator('.next-face-generate'));
+          await dialog.waitFor();
+          const routeRow = await dialog.locator('[data-download-purpose="generate"]').innerText();
+          const routeFigure = /^Generate: ([\d,]+ MB);/.exec(routeRow)?.[1];
+          assert.ok(routeFigure, `${name}: the face model row names its bytes: ${routeRow}`);
+          await operate(page.locator('.next-download-accept'));
+          await page.waitForFunction(
+            () =>
+              !!document.querySelector(
+                'section.next-face[data-next-state="filled"] .next-face-img',
+              ),
+            null,
+            { timeout: 600_000 },
+          );
+          await page.waitForFunction(
+            () => !document.querySelector('.next-product[data-next-busy=true]'),
+          );
+          // One figure per purpose: every download status line counts toward the modal's own figure.
+          const modelLines = await page.evaluate(
+            () => (globalThis as { __modelLines?: string[] }).__modelLines ?? [],
+          );
+          assert.ok(modelLines.length > 0, `${name}: the face model download was counted`);
+          for (const seen of modelLines)
+            assert.ok(seen.endsWith(`of ${routeFigure}`), `${name}: ${seen} vs ${routeFigure}`);
+          const morph = page.locator('.next-primary-action');
+          await operate(morph);
+          await dialog.waitFor({ timeout: 60_000 });
+          const rows = dialog.locator('[data-download-purpose]');
+          assert.equal(await rows.count(), 1, `${name}: only the Generate row`);
+          const generate = await dialog.locator('[data-download-purpose="generate"]').innerText();
+          assert.ok(
+            generate.includes(codecFigure),
+            `${name}: the Generate row names the codec's ${codecFigure}: ${generate}`,
+          );
+          await page.screenshot({ path: join(results, `${name}-codec-asked.png`) });
+          assert.deepEqual(codec, [], `${name}: no codec request while the question is open`);
+          await operate(dialog.getByRole('button', { name: 'Cancel' }));
+          await dialog.waitFor({ state: 'detached' });
+          await page.waitForTimeout(2000);
+          assert.deepEqual(codec, [], `${name}: no codec request after Cancel`);
+          assert.ok(
+            await morph.evaluate((el) => el === document.activeElement),
+            `${name}: Cancel returns focus to Create morph`,
+          );
+          await operate(morph);
+          await dialog.waitFor({ timeout: 60_000 });
+          await operate(page.locator('.next-download-accept'));
+          // The status line counts the codec in the modal's unit while it arrives.
+          await page.waitForFunction(
+            () => ((globalThis as { __codecLines?: string[] }).__codecLines ?? []).length > 0,
+            null,
+            { timeout: 300_000 },
+          );
+          const lines = await page.evaluate(
+            () => (globalThis as { __codecLines?: string[] }).__codecLines ?? [],
+          );
+          const status = lines.at(-1)!;
+          for (const seen of lines)
+            assert.ok(
+              seen.endsWith(`of ${codecFigure}`),
+              `${name}: status ${seen} vs ${codecFigure}`,
+            );
+          assert.ok(codec.length > 0, `${name}: the codec is fetched after approval`);
+          console.log(
+            `fm-9kr8 codec ${name}`,
+            JSON.stringify({
+              routeFigure,
+              modelLine: modelLines.at(-1),
+              codecFigure,
+              generate,
+              status,
+              codecRequests: codec.length,
+            }),
+          );
+          await page.screenshot({ path: join(results, `${name}-codec-progress.png`) });
+          assert.deepEqual(errors, []);
+        } catch (error) {
+          await page
+            .screenshot({ path: join(results, `${name}-codec-FAILED.png`), fullPage: true })
+            .catch(() => {});
+          console.log(
+            `fm-9kr8 codec ${name} FAILED`,
+            JSON.stringify({
+              codec,
+              statuses: await page
+                .evaluate(() => (globalThis as { __statusSeen?: string[] }).__statusSeen ?? [])
+                .catch(() => []),
+            }),
+          );
+          throw error;
+        } finally {
+          await context.close();
+        }
+      }
+    } finally {
+      await browser.close();
       await site.stop();
     }
   },

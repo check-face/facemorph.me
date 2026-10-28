@@ -142,7 +142,8 @@ function progress(event){
 // Morph frames per runtime request: enough that the pause between requests is a few percent of
 // the run, few enough that the PNGs a stalled writer could accumulate stay bounded.
 const FRAME_WINDOW=16;
-const MORPH_SPOKEN_STAGES=new Set(['morph','export']);
+// The consented codec fallback's bytes are spoken too, before the first frame (fm-9kr8; operations/bridge-service.ts).
+const MORPH_SPOKEN_STAGES=new Set(['morph','export','codec-loading']);
 const UNIT_TERMINAL_STAGES=new Set(['synthesis-complete','model-loaded','mapping-complete',
  'encoding-complete','alignment-complete','encoder-loaded','original-cached','original-cache-hit']);
 function canonicalProject(value){const decoded=decode(typeof value==='string'?value:JSON.stringify(value));if(decoded.tag!==0)throw Error('This project is invalid or uses an unsupported format.');const encoded=encode(decoded.fields[0]);if(encoded.tag!==0)throw Error('This project cannot be opened.');return JSON.parse(encoded.fields[0]);}
@@ -340,8 +341,13 @@ async function refreshInventory(){
   const route=await measure(routeAssets(planned.manifest,planned.route,planned.engine),cache);
   const photoList=await photoAssets(planned.manifest,cache);
   const photo=await measure(photoList.assets,cache,photoList.extraBytes||0);
+  // The video codec fallback, when this bundle carries one (fm-9kr8): asked for in a morph's Generate row only when
+  // its MP4 probe needs it and these bytes are not already on the device.
+  const codecParts=[planned.manifest.codec?.wasm,planned.manifest.codec?.module].filter(a=>a&&Number.isSafeInteger(a.size));
+  const codec=codecParts.length===2?await measure(codecParts,cache):null;
   Object.assign(downloads,{known:true,routeReady:route.ready,photoReady:photo.ready,photoAvailable:planned.photoAvailable===true,
-   routeBytes:Math.max(0,route.total-route.present),photoBytes:Math.max(0,photo.total-photo.present)});
+   routeBytes:Math.max(0,route.total-route.present),photoBytes:Math.max(0,photo.total-photo.present),
+   ...(codec?{codecReady:codec.ready,codecBytes:Math.max(0,codec.total-codec.present)}:{})});
   announceDownloads();
  }catch(error){console.warn('Model inventory unavailable:',error?.message||error);}
 }
@@ -384,7 +390,10 @@ export function cancelDownloadSetup(){
  setupGeneration++;wanted.clear();runtime?.cancelPrefetch?.();
  Object.assign(downloads,{photoApprovalRequired:false,phase:'idle'});announceDownloads();
 }
-export function consentToDownload(scope){keepModelsOnDevice();approve(scope);void pushGrants();return scope;}
+// The video codec fallback is approved as part of a morph's Generate purpose (fm-9kr8), apart from the model grants:
+// only the video worker spends it, and only once the person has approved its bytes in the consent.
+let codecApproved=false;
+export function consentToDownload(scope){keepModelsOnDevice();if(scope==='codec'){codecApproved=true;return scope;}approve(scope);void pushGrants();return scope;}
 async function pumpDownloads(){
  if(downloading||active)return;
  // Keep the lock through settlement: Cancel may be followed by a new approval while an old await is pending.
@@ -486,7 +495,7 @@ export async function execute(request,compute){
    const framesKey=exportOnly?exportOnly.framesKey:await morphFramesKey();clearLiveFrames();liveFrameKey=framesKey;liveFrames=Array(path.totalFrames).fill('');
    const stored=framesKey?await frameStoreGet(framesKey).catch(()=>null):null;analytics.operationResult?.('frame-cache',stored?'hit':'miss');
    if(exportOnly&&stored?.length!==path.totalFrames)throw Error('The saved images for this video are no longer available. Change a morph setting to generate a new morph.');
-   writer=videoWriter({codec:manifest.codec,fps:project.morph.framesPerSecond,quality:request.quality==='full'?'full':'standard',signal:active.signal,onProgress:progress,framesKey,totalFrames:path.totalFrames});const videoChoice=await writer.initialize();
+   writer=videoWriter({codec:manifest.codec,codecApproved,fps:project.morph.framesPerSecond,quality:request.quality==='full'?'full':'standard',signal:active.signal,onProgress:progress,framesKey,totalFrames:path.totalFrames});const videoChoice=await writer.initialize();
    // morph.render (fm-ioap): stylegan-js renderMorph owns the frame production, the branch choice, ordered delivery
    // and the settle status; the bridge keeps display URLs, the frame counter, progress copy and supersession.
    const counter=createFrameCounter(path.totalFrames),first=counter.start();

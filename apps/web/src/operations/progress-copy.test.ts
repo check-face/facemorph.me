@@ -58,10 +58,13 @@ async function render(total: number, order: readonly number[]) {
   // Acquisition and admission interleave with frames, exactly as the runtime emits them.
   fake.progress(id, 'route-attempt', '', {});
   fake.progress(id, 'route-admitted', 'cpu');
+  // The consented codec fallback speaks before frames start, then never again (fm-9kr8).
+  fake.progress(id, 'codec-loading', 'Preparing video export… 16 MB of 31 MB');
   const counter = createFrameCounter(total);
   const first = counter.start();
   fake.progress(id, 'morph', first.text, { loaded: first.done, total });
   for (const index of order) {
+    fake.progress(id, 'codec-loading', 'Preparing video export… 31 MB of 31 MB');
     fake.progress(id, 'synthesis-complete', 'Face generated.', { elapsedMs: 40 });
     fake.progress(id, 'face', 'Encoding your photo…');
     const finished = counter.complete(index);
@@ -114,10 +117,16 @@ for (const [name, total, order] of [
     for (const line of lines)
       assert.ok(
         line.startsWith('Generating ') ||
+          line === 'Preparing video export… 16 MB of 31 MB' ||
           line === 'Encoding your video…' ||
           line === 'Finishing your video…',
         `a non-morph stage wrote the morph line: "${line}"`,
       );
+    assert.equal(
+      lines[0],
+      'Preparing video export… 16 MB of 31 MB',
+      'the codec line before frames',
+    );
     assert.ok(
       lines.includes('Finishing your video…'),
       'MP4 preparation is reported, so the morph never ends in silence',

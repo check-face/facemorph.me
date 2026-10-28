@@ -147,3 +147,17 @@ test('the morph counter counts finished frames and never goes backwards, in any 
   assert.deepEqual(seen, [1, 2, 3, 3, 4, 5]);
   assert.equal(counter.complete(3).text, 'Generating 5 / 5 images');
 });
+// fm-9kr8: one figure per purpose everywhere. The status line formats bytes exactly as the consent modal and the
+// download toast do (controller/derived.ts downloadMegabytes), and the codec fallback's progress is counted in it.
+test('status byte figures use the consent unit, codec fallback included', async () => {
+  const { megabytesText } = await import('./stage-labels.mjs');
+  const { downloadMegabytes } = await import('../controller/derived.ts');
+  const MiB = 1024 * 1024;
+  for (const bytes of [1, MiB / 3, 31 * MiB, 32_344_223, 1040 * MiB, 1_090_519_040, 4096 * MiB])
+    assert.equal(megabytesText(bytes), downloadMegabytes(bytes), `${bytes} bytes`);
+  assert.equal(megabytesText(0), '0 MB');
+  assert.equal(labelFor('asset-acquisition', { loaded: 0, total: 1040 * MiB }),
+    `Downloading model files… 0 MB of ${downloadMegabytes(1040 * MiB)}`);
+  assert.equal(labelFor('codec-loading', { loaded: 16 * MiB, total: 32_344_223 }),
+    `Preparing video export… 16 MB of ${downloadMegabytes(32_344_223)}`);
+});

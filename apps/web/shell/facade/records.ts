@@ -237,6 +237,9 @@ export interface Downloads {
   readonly photoBytes: number;
   /** An independently requested photo setup discovered a larger scope and needs a fresh decision. */
   readonly photoApprovalRequired?: boolean;
+  /** The pinned video codec fallback (fm-9kr8): verified on this device, and the bytes it would download. */
+  readonly codecReady?: boolean;
+  readonly codecBytes?: number;
 }
 
 /** A photo that needs the crop step: its preview, as photo-selection.mjs returns it (`{crop: true, file, ...}`). */
@@ -372,6 +375,8 @@ export function readDownloads(value: unknown): Downloads {
     ...(r.has('photoApprovalRequired')
       ? { photoApprovalRequired: r.boolean('photoApprovalRequired') }
       : {}),
+    ...(r.has('codecReady') ? { codecReady: r.boolean('codecReady') } : {}),
+    ...(r.has('codecBytes') ? { codecBytes: r.number('codecBytes') } : {}),
   };
 }
 
