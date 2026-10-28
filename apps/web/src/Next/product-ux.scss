@@ -3,6 +3,9 @@
 // the round-1 work order maps to a class or hook noted beside the rule that satisfies it.
 // Bulma keeps page scaffolding only — `.box` — while MUI owns anything a user clicks (D-01).
 
+// The page follows the system's light/dark choice (Shell's prefers-color-scheme theme), so native controls and
+// scrollbars, the many-face strip's among them, draw in the browser's matching variant (fm-vodk).
+:root { color-scheme: light dark; }
 .next-product { max-width: 1100px; margin: auto; padding: 1.25rem; }
 .next-topline,.next-actions { display:flex; align-items:center; flex-wrap:wrap; gap:.65rem; }
 .next-topline { justify-content:space-between; margin-bottom:1.5rem; }

@@ -332,3 +332,145 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
     }
   });
 }
+
+// fm-vodk: at 3+ faces on a wide screen the strip spans the browser's width (not the 1,100 px reading column)
+// while its head keeps the reading width; the root declares `color-scheme: light dark` so native scrollbars follow
+// the dark scheme; a real wheel rests with a whole "+ face" at the strip's start. Light and dark, 1,280 and 1,920.
+const firefoxDark = {
+  'ui.systemUsesDarkTheme': 1,
+  'layout.css.prefers-color-scheme.content-override': 0,
+};
+for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || only.includes(e))) {
+  test(`${engine}: wide screens give 3+ faces the full width, a native dark scheme and start snapping`, async () => {
+    for (const dark of [false, true]) {
+      // Firefox follows its own theme preference rather than the emulated scheme.
+      const browser = await type.launch(
+        engine === 'firefox' && dark ? { firefoxUserPrefs: firefoxDark } : {},
+      );
+      try {
+        for (const width of [1280, 1920]) {
+          const context = await browser.newContext({
+            viewport: { width, height: 900 },
+            colorScheme: dark ? 'dark' : 'light',
+          });
+          const page = await context.newPage();
+          const errors: string[] = [];
+          page.on('pageerror', (e) => errors.push(String(e)));
+          for (const n of [3, 5, 30]) {
+            const label = `${engine} ${dark ? 'dark' : 'light'} ${width} n${n}`;
+            await page.goto(`${site.origin}/render-check.html?faces=${n}`);
+            await page.waitForSelector('[data-next-strip] section.next-face');
+            const strip = page.locator('[data-next-strip]');
+            await strip.scrollIntoViewIfNeeded();
+            const layout = () =>
+              page.evaluate(() => {
+                const root = document.documentElement;
+                const s = document.querySelector<HTMLElement>('[data-next-strip]')!;
+                const r = s.getBoundingClientRect();
+                const kids = [...s.children].filter((k) =>
+                  k.matches('.next-face, .next-connector'),
+                );
+                const pad = parseFloat(getComputedStyle(s).scrollPaddingLeft) || 0;
+                return {
+                  scheme: getComputedStyle(root).colorScheme,
+                  dark: matchMedia('(prefers-color-scheme: dark)').matches,
+                  page: document.scrollingElement!.scrollWidth,
+                  client: root.clientWidth,
+                  strip: { left: r.left, right: r.right, width: r.width },
+                  head: document.querySelector('.next-strip-head')!.getBoundingClientRect().width,
+                  overflowing: s.scrollWidth > s.clientWidth + 1,
+                  scrollLeft: s.scrollLeft,
+                  atEnd: s.scrollLeft >= s.scrollWidth - s.clientWidth - 1,
+                  before: kids[0]!.getBoundingClientRect().left - r.left,
+                  after: r.right - kids.at(-1)!.getBoundingClientRect().right,
+                  // Distance from the strip's snapport start to the nearest + (start-aligned snap points).
+                  snapped: Math.min(
+                    ...[...s.querySelectorAll(':scope > .next-connector')].map((c) =>
+                      Math.abs(c.getBoundingClientRect().left - (r.left + pad)),
+                    ),
+                  ),
+                };
+              });
+            const m = await layout();
+            assert.equal(m.scheme, 'light dark', `${label}: the root declares both schemes`);
+            assert.equal(
+              m.dark,
+              dark,
+              `${label}: the page sees the ${dark ? 'dark' : 'light'} scheme`,
+            );
+            assert.ok(
+              m.page <= m.client,
+              `${label}: no sideways page scroll (${m.page} > ${m.client})`,
+            );
+            assert.ok(
+              Math.abs(m.strip.left) <= 0.5 && Math.abs(m.strip.width - m.client) <= 0.5,
+              `${label}: the strip spans the browser's width, got ${JSON.stringify(m.strip)}`,
+            );
+            assert.ok(m.head <= 1100.5, `${label}: the strip head keeps the reading width`);
+            if (!m.overflowing) {
+              assert.ok(Math.abs(m.before - m.after) <= 1, `${label}: faces that fit are centred`);
+            } else {
+              // A real wheel on the strip, then it rests with a + at the strip's start.
+              const box = (await strip.boundingBox())!;
+              await page.mouse.move(box.x + box.width / 2, box.y + 200);
+              await page.mouse.wheel(700, 0);
+              await page.waitForFunction(
+                () => {
+                  const s = document.querySelector('[data-next-strip]') as HTMLElement & {
+                    __l?: number[];
+                  };
+                  (s.__l ??= []).push(s.scrollLeft);
+                  const l = s.__l;
+                  return (
+                    l.length > 10 && l.slice(-10).every((x) => x === l.at(-1)) && s.scrollLeft > 0
+                  );
+                },
+                null,
+                { polling: 50 },
+              );
+              const rest = await layout();
+              // Short of the strip's end it rests on a +; at the end the last + rests against the end.
+              assert.ok(
+                rest.snapped <= 1 || rest.atEnd,
+                `${label}: the wheel rests on a +, off by ${rest.snapped}px`,
+              );
+            }
+            await shot(page, `wide-${engine}-${dark ? 'dark' : 'light'}-${width}-n${n}`);
+            // A face fully in view is removed by a real click on its Remove.
+            const visible = await page.evaluate(() => {
+              const r = document.querySelector('[data-next-strip]')!.getBoundingClientRect();
+              return [
+                ...document.querySelectorAll<HTMLElement>('[data-next-strip] section.next-face'),
+              ]
+                .filter((f) => {
+                  const b = f.getBoundingClientRect();
+                  return b.left >= r.left && b.right <= r.right;
+                })
+                .map((f) => f.dataset['nextFace']!);
+            });
+            assert.ok(visible.length >= 2, `${label}: at least two whole faces in view`);
+            const id = visible[1]!;
+            const before = await faces(page).count();
+            assert.ok(
+              (await press(page, page.locator(`[data-next-face="${id}"] .next-face-close`))).inside,
+              `${label}: Remove is hit where it is drawn`,
+            );
+            await page.waitForFunction(
+              (gone) => !document.querySelector(`[data-next-face="${gone}"]`),
+              id,
+            );
+            assert.equal(
+              await faces(page).count(),
+              before - 1,
+              `${label}: exactly one face removed`,
+            );
+          }
+          assert.deepEqual(errors, [], `${engine} ${width}: page errors`);
+          await context.close();
+        }
+      } finally {
+        await browser.close();
+      }
+    }
+  });
+}

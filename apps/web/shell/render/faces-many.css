@@ -259,3 +259,46 @@
   font-size: 1.15rem;
   color: #f3f3f3;
 }
+
+/* Wide screens (fm-vodk): three or more faces use the browser's full width instead of the page's 1,100 px
+ * reading column, so more faces show at once; the strip's head (cue and Undo) and everything below the faces
+ * keep the reading width. The app root is the size container, so 100cqw is the width without the page scrollbar
+ * (100vw would include it and scroll the page sideways). Faces that all fit are centred. */
+#elmish-app {
+  container-type: inline-size;
+}
+@media (min-width: 1000px) {
+  .next-morph-content.next-many > .next-faces-many {
+    width: 100cqw;
+    margin-inline: calc(50% - 50cqw);
+  }
+  .next-morph-content.next-many .next-strip-head {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 1100px;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+  .next-morph-content.next-many .next-faces-row.next-faces-strip {
+    padding-inline: 1.25rem;
+    scroll-padding-inline: 1.25rem;
+  }
+  .next-morph-content.next-many .next-faces-strip > :first-child {
+    margin-inline-start: auto;
+  }
+  .next-morph-content.next-many .next-faces-strip > :last-child {
+    margin-inline-end: auto;
+  }
+  /* Several tiles show at once here, so a scroll rests with a whole "+ face" at the strip's start rather than
+   * centring one tile between two cut ones; the last + rests against the end. */
+  .next-morph-content.next-many .next-faces-strip > .next-face {
+    scroll-snap-align: none;
+  }
+  .next-morph-content.next-many .next-faces-strip > .next-connector,
+  .next-morph-content.next-many .next-faces-strip > .next-connector:first-child {
+    scroll-snap-align: start;
+  }
+  .next-morph-content.next-many .next-faces-strip > .next-connector:last-child {
+    scroll-snap-align: end;
+  }
+}
