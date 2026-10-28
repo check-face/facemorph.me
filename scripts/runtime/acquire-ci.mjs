@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // Acquire the complete pinned runtime on clean CI workers without a classic checkout. The classic-source
-// files are also published on the allowed runtime origin; the original inventory digests and sizes still
-// decide whether any downloaded or cached byte is accepted.
+// files come from the classic repository at the frozen commit (a test --origin serves them instead); the
+// original inventory digests and sizes still decide whether any downloaded or cached byte is accepted.
 // ACCEPT_MODEL_TERMS=yes node scripts/runtime/acquire-ci.mjs [--cache <dir>]
 import { fileURLToPath } from 'node:url';
 import { BUILD_INPUTS, line, options, readJson } from '../inventory/lib.mjs';
-import { acquire, DEFAULT_CACHE, ORIGIN, TERMS } from './acquire.mjs';
+import { acquire, CLASSIC_RAW, DEFAULT_CACHE, ORIGIN, TERMS } from './acquire.mjs';
 
-export async function acquireCI({ rows, cache = DEFAULT_CACHE, origin = ORIGIN }) {
+export async function acquireCI({ rows, cache = DEFAULT_CACHE, origin = ORIGIN, commit }) {
   if (!Array.isArray(rows) || !rows.length) throw new Error('Runtime inventory is empty');
   const paths = new Set();
   for (const row of rows) {
@@ -28,7 +28,13 @@ export async function acquireCI({ rows, cache = DEFAULT_CACHE, origin = ORIGIN }
   return acquire({
     rows: rows.map((row) =>
       row.location.startsWith('classic:')
-        ? { ...row, location: `${ORIGIN}/runtime/${row.path}` }
+        ? {
+            ...row,
+            location:
+              origin === ORIGIN && commit
+                ? `${CLASSIC_RAW}${commit}/${row.location.slice('classic:'.length)}`
+                : `${ORIGIN}/runtime/${row.path}`,
+          }
         : row,
     ),
     cache,
@@ -46,7 +52,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const cache = opts.cache ?? DEFAULT_CACHE;
   try {
     const inputs = readJson(opts.inputs ?? BUILD_INPUTS);
-    const result = await acquireCI({ rows: inputs.runtime.assets, cache, origin: opts.origin });
+    const result = await acquireCI({
+      rows: inputs.runtime.assets,
+      cache,
+      origin: opts.origin,
+      commit: inputs.frozen_commit,
+    });
     line({
       summary: {
         ...result,

@@ -41,6 +41,9 @@ import {
 } from '../inventory/lib.mjs';
 
 export const ORIGIN = 'https://next.facemorph.me';
+// Classic's own files at a commit, for clean CI workers: the deployed site's copies change with each deploy (its
+// notices page did), the frozen commit's never do.
+export const CLASSIC_RAW = 'https://raw.githubusercontent.com/facemorph-me/facemorph.me-classic/';
 export const DEFAULT_CACHE = join(REPO, '.cache/runtime');
 export const TERMS =
   'Acquiring the runtime downloads model weights and derived assets under the terms listed in import/licences.json ' +
@@ -53,6 +56,11 @@ const fileDigest = (path) => (existsSync(path) ? sha256(readFileSync(path)) : nu
 export function sourceOf(row, origin = ORIGIN) {
   if (row.location.startsWith('classic:'))
     return { kind: 'classic', path: row.location.slice('classic:'.length) };
+  if (
+    row.location.startsWith(CLASSIC_RAW) &&
+    /^[0-9a-f]{40}\//.test(row.location.slice(CLASSIC_RAW.length))
+  )
+    return { kind: 'https', url: row.location };
   const url = new URL(row.location);
   if (url.origin !== ORIGIN || !url.pathname.startsWith('/runtime/'))
     throw new Error(
