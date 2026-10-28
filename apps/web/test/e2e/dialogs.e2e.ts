@@ -455,12 +455,27 @@ for (const [engine, type] of Object.entries(engines).filter(
         await hit(page.getByRole('button', { name: 'Show model toast', exact: true }));
         assert.equal(await page.locator('.next-model-toast').count(), 0, 'no proactive idle offer');
         await shot('no-idle-model-offer');
-        await open('phase=failed');
-        await hit(page.getByRole('button', { name: 'Show model toast', exact: true }));
-        await hit(
-          page.locator('.next-model-toast').getByRole('button', { name: 'Try again', exact: true }),
-        );
-        await last(page, 'DownloadNow');
+        // Try again resumes the failed download's own scope: a failed face-model download never approves the
+        // photo encoder that is merely available (fm-9kr8); a failed photo-encoder download retries it.
+        for (const [scope, includePhoto] of [
+          ['route', false],
+          ['photo', true],
+        ] as const) {
+          await open(`phase=failed&scope=${scope}`);
+          await hit(page.getByRole('button', { name: 'Show model toast', exact: true }));
+          await hit(
+            page
+              .locator('.next-model-toast')
+              .getByRole('button', { name: 'Try again', exact: true }),
+          );
+          await last(page, 'DownloadNow');
+          assert.deepEqual(
+            JSON.parse((await page.locator('output[data-dialog-message]').textContent()) ?? '')
+              .args,
+            [includePhoto],
+            `failed ${scope} download retries only its scope`,
+          );
+        }
         await open('phase=done');
         await hit(page.getByRole('button', { name: 'Show model toast', exact: true }));
         await page.locator('.next-model-toast').waitFor();

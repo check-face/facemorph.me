@@ -149,6 +149,30 @@ test(
           await dialog.waitFor({ state: 'detached' });
           await page.waitForTimeout(2000);
           assert.deepEqual(models, [], `${name}: no model request after Cancel`);
+          // Escape, the backdrop and Back each equal Cancel (fm-9kr8): nothing fetched, and focus is back on the
+          // Generate control that asked.
+          const generate = tiles.nth(0).locator('.next-face-generate');
+          const focusedOnGenerate = () => generate.evaluate((el) => el === document.activeElement);
+          assert.ok(await focusedOnGenerate(), `${name}: Cancel returns focus to Generate`);
+          for (const exit of ['Escape', 'backdrop', 'Back'] as const) {
+            await operate(generate);
+            await dialog.waitFor();
+            if (exit === 'Escape') await page.keyboard.press('Escape');
+            else if (exit === 'Back') await page.goBack();
+            else {
+              // The backdrop at its visible position: the overlay itself, not its panel, is under the point.
+              assert.ok(
+                await dialog.evaluate((el) => document.elementFromPoint(6, 6) === el),
+                `${name}: the backdrop is under the pressed point`,
+              );
+              if (touch) await page.touchscreen.tap(6, 6);
+              else await page.mouse.click(6, 6);
+            }
+            await dialog.waitFor({ state: 'detached' });
+            await page.waitForTimeout(1000);
+            assert.deepEqual(models, [], `${name}: no model request after ${exit}`);
+            assert.ok(await focusedOnGenerate(), `${name}: ${exit} returns focus to Generate`);
+          }
 
           // Approval: the face is made from this route's files only.
           await operate(tiles.nth(0).locator('.next-face-generate'));

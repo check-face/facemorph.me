@@ -42,6 +42,7 @@ function initial(): State {
           : query.get('phase') === 'failed'
             ? 'failed'
             : 'idle',
+      scope: query.get('scope') ?? state.Downloads.scope,
       routeBytes:
         Number.isSafeInteger(downloadBytes) && downloadBytes > 0
           ? downloadBytes

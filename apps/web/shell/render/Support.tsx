@@ -280,8 +280,7 @@ export function Toasts({ state, dispatch, report }: Pick<Props, 'state' | 'dispa
       case 'done':
         content = (
           <span>
-            <strong>Ready. </strong>The models are saved on this device, so you won’t download them
-            again.
+            <strong>Ready. </strong>The models are saved on this device.
           </span>
         );
         break;
@@ -304,7 +303,12 @@ export function Toasts({ state, dispatch, report }: Pick<Props, 'state' | 'dispa
     ) : (
       <>
         {downloads.phase === 'failed' ? (
-          <Button color="inherit" onClick={() => dispatch(msg('DownloadNow', photoOffer))}>
+          // Retry resumes the download that failed, within its approved scope: a failed face-model
+          // download never becomes an approval of the photo encoder (fm-9kr8).
+          <Button
+            color="inherit"
+            onClick={() => dispatch(msg('DownloadNow', downloads.scope === 'photo'))}
+          >
             Try again
           </Button>
         ) : (
