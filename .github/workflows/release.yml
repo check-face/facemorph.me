@@ -189,17 +189,19 @@ jobs:
 
   functional:
     needs: build
-    name: functional cases (${{ matrix.shard }}/3, Chromium, CPU)
-    # Every operated case of the verify.functional manifest (apps/web/test/verify/cases/verify-functional.ts), run on
-    # this run's artifact: the manifest names each case's e2e file, and the files are dealt to three shards (fm-ejwq).
+    name: functional cases (${{ matrix.shard }}/4, Chromium, CPU)
+    # Every operated case of the verify.functional manifest (apps/web/test/verify/cases/verify-functional.ts), plus the
+    # operated suites of the other product beads (OPERATED below: consent, morph, faces, blend), run on this run's
+    # artifact and dealt to four shards, so one release is the evidence for every bead it ships.
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     env:
       CHECK: functional:${{ matrix.shard }}
+      OPERATED: consent-requests dialogs encoder-setup morph-intent morph-guards tiles tooltip-hits blend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -208,7 +210,7 @@ jobs:
           cache: npm
       # The suites import the packages' built entry points (stylegan-js, browser-model-manager), and shell.e2e runs in
       # Chromium, Firefox and WebKit; the system libraries get a bounded apt attempt that fails here, visibly.
-      - run: npm ci && npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host --if-present
+      - run: npm ci && npm run build # the packages' entry points, and apps/web/dist for the check pages
       - run: npx playwright install chromium firefox webkit
       - run: sudo env "PATH=$PATH" timeout 600 npx playwright install-deps chromium firefox webkit
       - uses: actions/download-artifact@v4
@@ -234,8 +236,9 @@ jobs:
         run: |
           files=$(node --input-type=module -e "
             import { VERIFY_FUNCTIONAL as m } from './test/verify/cases/verify-functional.ts';
-            const all = [...new Set(m.cases.map((c) => c.test.file))].sort();
-            console.log(all.filter((_, i) => i % 3 === ${{ matrix.shard }} - 1).map((f) => 'test/e2e/' + f).join(' '));")
+            const extra = process.env.OPERATED.split(' ').map((f) => f + '.e2e.ts');
+            const all = [...new Set([...m.cases.map((c) => c.test.file), ...extra])].sort();
+            console.log(all.filter((_, i) => i % 4 === ${{ matrix.shard }} - 1).map((f) => 'test/e2e/' + f).join(' '));")
           echo "shard ${{ matrix.shard }}: $files"
           node --test --test-concurrency=1 --test-timeout=2400000 $files
       - name: Record the failure

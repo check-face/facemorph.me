@@ -92,6 +92,8 @@ test(
           viewport: { width, height: 900 },
           hasTouch: touch,
           isMobile: touch,
+          // Desktop in the light scheme, phone in the dark one: the modal is operated in both (fm-9kr8).
+          colorScheme: touch ? 'dark' : 'light',
           ignoreHTTPSErrors: true,
         });
         const page = await context.newPage();
@@ -1123,6 +1125,8 @@ test(
           viewport: { width, height: 900 },
           hasTouch: touch,
           isMobile: touch,
+          // Desktop in the light scheme, phone in the dark one: the modal is operated in both (fm-9kr8).
+          colorScheme: touch ? 'dark' : 'light',
           ignoreHTTPSErrors: true,
         });
         await context.addInitScript(() => {
@@ -1309,6 +1313,8 @@ test(
           viewport: { width, height: 900 },
           hasTouch: touch,
           isMobile: touch,
+          // Desktop in the light scheme, phone in the dark one: the modal is operated in both (fm-9kr8).
+          colorScheme: touch ? 'dark' : 'light',
           ignoreHTTPSErrors: true,
         });
         const page = await context.newPage();
@@ -1607,6 +1613,8 @@ test(
           viewport: { width, height: 900 },
           hasTouch: touch,
           isMobile: touch,
+          // Desktop in the light scheme, phone in the dark one: the modal is operated in both (fm-9kr8).
+          colorScheme: touch ? 'dark' : 'light',
           ignoreHTTPSErrors: true,
         });
         const page = await profile.context.newPage();

@@ -19,6 +19,9 @@ import { TIMING_SEGMENTS, timingCommands } from './release-checks.mjs';
 
 const REPO = resolve(import.meta.dirname, '../..');
 const LAB = join(REPO, 'tools/device-lab');
+// The other product beads' operated suites the release's functional shards run beside the manifest (release.yml).
+const OPERATED =
+  'consent-requests dialogs encoder-setup morph-intent morph-guards tiles tooltip-hits blend';
 const STAMP = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15); // run.ts refuses an existing label dir
 
 /** The release checks for one artifact, in release.yml's order and names. Pure. */
@@ -44,7 +47,7 @@ export function checks({ artifact, runtimeSha, runtimeDir, out, url, control }) 
         FACEMORPH_REQUIRE_RUNTIME: '1',
         FACEMORPH_RUNTIME_DIR: runtimeDir,
       },
-      cmd: `node --test --test-concurrency=1 --test-timeout=2400000 $(node --input-type=module -e "import { VERIFY_FUNCTIONAL as m } from './test/verify/cases/verify-functional.ts'; console.log([...new Set(m.cases.map((c) => 'test/e2e/' + c.test.file))].sort().join(' '))")`,
+      cmd: `node --test --test-concurrency=1 --test-timeout=2400000 $(node --input-type=module -e "import { VERIFY_FUNCTIONAL as m } from './test/verify/cases/verify-functional.ts'; const extra = '${OPERATED}'.split(' ').map((f) => f + '.e2e.ts'); console.log([...new Set([...m.cases.map((c) => c.test.file), ...extra])].sort().map((f) => 'test/e2e/' + f).join(' '))")`,
     },
     {
       name: 'engine',
