@@ -39,7 +39,11 @@ export function timingCommands({
     `node scripts/verify/not-worse/run.ts --control ${CONTROL} --control-digest ${controlDigest}`,
     `--build ${build} --build-digest ${digest ?? treeDigest(build)} --build-source ${source ?? 'local'}`,
     `--segment ${segment}`,
-    whole ? '--pairs 3 --max-pairs 7' : `--pairs 1 --pair-index ${pair}`,
+    // Morph's 32-frame video is about 85 s a run: three pairs decide it (operator, 28 October 2026), where face and
+    // photo add pairs up to seven while the stop rule says more.
+    whole
+      ? `--pairs 3 --max-pairs ${segment === 'morph' ? 3 : 7}`
+      : `--pairs 1 --pair-index ${pair}`,
     `--provider cpu --browser chromium --runtime ${runtimeDir} --label ${name} --out ${out}`,
   ].join(' ');
   const cmds = ['node scripts/import/fetch-control.mjs --dest .cache/control', run];

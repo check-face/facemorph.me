@@ -44,7 +44,7 @@ test('a CI segment job without a pair index runs three pairs and the stop rule, 
     label: 'L',
   });
   assert.match(ci[1], /--exclusive gpu-timing --wait 3600 /);
-  assert.match(ci[1], /--segment morph --pairs 3 --max-pairs 7 /);
+  assert.match(ci[1], /--segment morph --pairs 3 --max-pairs 3 /);
   assert.equal(ci[2], 'node scripts/verify/not-worse/median-check.mjs o/L --expect morph');
 });
 

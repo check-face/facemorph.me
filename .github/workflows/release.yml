@@ -188,16 +188,18 @@ jobs:
           retention-days: 14
 
   functional:
-    # After the timing jobs, on eris: the photo-encoding suites need eris's CPU (GitHub's 4-core runners took over
-    # 20 min per encode-heavy case, run 40647651423), and running after timing keeps each timing job alone on its cores.
-    needs: [build, timing]
-    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    # On triton, in the Playwright image (triton's Ubuntu 20.04 cannot run the browsers natively): separate machines
+    # from eris, so the suites run beside the timing jobs instead of after them, and each shard runs its files at once.
+    needs: [build]
     name: functional cases (${{ matrix.shard }}/4, Chromium, CPU)
     # Every operated case of the verify.functional manifest (apps/web/test/verify/cases/verify-functional.ts), plus the
     # operated suites of the other product beads (OPERATED below: consent, morph, faces, blend), run on this run's
     # artifact and dealt to four shards, so one release is the evidence for every bead it ships.
-    runs-on: [self-hosted, eris-build]
-    timeout-minutes: 90
+    runs-on: [self-hosted, triton]
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -207,14 +209,9 @@ jobs:
       OPERATED: consent-requests dialogs encoder-setup morph-intent morph-guards tiles tooltip-hits blend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-      # The suites import the packages' built entry points (stylegan-js, browser-model-manager), and shell.e2e runs in
-      # Chromium, Firefox and WebKit (eris has their system libraries).
+      # The image carries Node 24 and the Chromium, Firefox and WebKit of the pinned Playwright, with their libraries.
+      # The suites import the packages' built entry points (stylegan-js, browser-model-manager).
       - run: npm ci && npm run build # the packages' entry points, and apps/web/dist for the check pages
-      - run: npx playwright install chromium firefox webkit
       - uses: actions/download-artifact@v4
         with:
           name: ${{ env.ARTIFACT }}
@@ -242,7 +239,7 @@ jobs:
             const all = [...new Set([...m.cases.map((c) => c.test.file), ...extra])].sort();
             console.log(all.filter((_, i) => i % 4 === ${{ matrix.shard }} - 1).map((f) => 'test/e2e/' + f).join(' '));")
           echo "shard ${{ matrix.shard }}: $files"
-          node --test --test-concurrency=1 --test-timeout=2400000 $files
+          node --test --test-concurrency=5 --test-timeout=2400000 $files
       - name: Record the failure
         if: failure() || cancelled()
         run: |
