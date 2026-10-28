@@ -59,7 +59,8 @@ export function Modal({
   children: ReactNode;
   faceId?: string;
   backReturnsToDialog?: boolean;
-  /** The control that asked, when the modal opens after asynchronous checks may have moved focus. */
+  /** The control that asked, when the modal opens after asynchronous checks may have moved focus;
+   * `|` separates fallbacks, tried in order. */
   returnTo?: string | undefined;
 }) {
   const root = useRef<HTMLDivElement>(null);
@@ -76,8 +77,10 @@ export function Modal({
       ? document.querySelector<HTMLElement>(
           `[data-next-face="${CSS.escape(faceId)}"] [aria-label="Change mode"]`,
         )
-      : ((returnTo ? document.querySelector<HTMLElement>(returnTo) : null) ??
-        document.activeElement);
+      : (returnTo
+          ?.split('|')
+          .map((selector) => document.querySelector<HTMLElement>(selector))
+          .find(Boolean) ?? document.activeElement);
     const inert: { element: HTMLElement; previous: boolean }[] = [];
     let branch: Element | null = root.current;
     while (branch?.parentElement) {
@@ -558,9 +561,10 @@ function CropPreview({ crop }: { crop: CropChoice }) {
 export function DownloadDialog({ state, dispatch }: { state: State; dispatch: Dispatch }) {
   const gate = state.Gate;
   const photo = gate?.[0] === 'photo';
-  const [selection, setSelection] = useState<{ gate: typeof gate; bundle: DownloadBundle } | null>(
-    null,
-  );
+  const [selection, setSelection] = useState<{
+    gate: typeof gate;
+    bundle: DownloadBundle;
+  } | null>(null);
   const bundle = selection?.gate === gate ? selection.bundle : photo ? 'photo' : 'route';
   const decision = downloadDecision({
     downloads: state.Downloads,
@@ -605,8 +609,10 @@ export function DownloadDialog({ state, dispatch }: { state: State; dispatch: Di
           ? '.next-primary-action'
           : gate[1].type === 'RunFace'
             ? // The face's field, not its Generate: once the approved job starts that button is the face's
-              // Cancel, and an Enter there would cancel what was just approved.
-              `[data-next-face="${CSS.escape(gate[1].args[0])}"] input[type="text"]`
+              // Cancel, and an Enter there would cancel what was just approved. A photo face's field is
+              // disabled, so it returns to its Generate.
+              `[data-next-face="${CSS.escape(gate[1].args[0])}"] input[type="text"]:not(:disabled)|` +
+              `[data-next-face="${CSS.escape(gate[1].args[0])}"] .next-face-generate`
             : undefined
       }
     >
