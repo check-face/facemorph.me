@@ -525,6 +525,42 @@ class Session {
       [box.x + box.width / 2, box.y + box.height / 2, files] as const,
     );
   }
+  /**
+   * The batch view several files open (fm-id4c, fm-q5b9): once every file shows its faces, an operated pick of
+   * each file's first offered face in file order, then the operated OK. Returns the files that offered a face.
+   */
+  async pickAll() {
+    const batch = this.page.locator('.next-batch');
+    await batch.waitFor();
+    await this.page.waitForFunction(
+      () =>
+        (
+          window as unknown as {
+            __elmish: {
+              model: { Batch?: { groups: { status: string; detection: string }[] } };
+            };
+          }
+        ).__elmish.model.Batch?.groups.every(
+          (g) => g.status !== 'loading' && g.detection !== 'running',
+        ),
+      null,
+      { timeout: 120_000, polling: 100 },
+    );
+    const firsts = await batch
+      .locator('[data-next-batch-file]')
+      .evaluateAll((groups) =>
+        groups.map(
+          (g) =>
+            g.querySelector('[data-next-candidate]')?.getAttribute('data-next-candidate') ?? null,
+        ),
+      );
+    const picked = firsts.filter((c): c is string => c !== null);
+    for (const candidate of picked)
+      await this.operate(batch.locator(`[data-next-candidate="${candidate}"]`));
+    await this.operate(batch.locator('.next-batch-ok'));
+    await batch.waitFor({ state: 'detached' });
+    return picked.length;
+  }
   async save(index: number) {
     const download = this.page.waitForEvent('download');
     await this.operate(
@@ -1153,7 +1189,6 @@ test(
         // N confirmations one after another; each OK confirms once and runs one e4e attempt, with no detection.
         for (const n of [2, 3, 5])
           await run(`sequence-${n}`, async () => {
-            const mark = await d.mark();
             const before = await readModel(d.page);
             // Five different photos, so every confirmed crop has its own tensor.
             const photos = [
@@ -1171,6 +1206,11 @@ test(
                 base64: b64(p),
               })),
             );
+            // Several photos open the batch view: each one's first face in file order, then OK. Any detection
+            // there proposes crops before confirmation; the counters start at OK.
+            await d.shots(`sequence-${n}-batch`);
+            assert.equal(await d.pickAll(), n, 'every photo offers a face');
+            const mark = await d.mark();
             for (let i = 0; i < n; i++) {
               await d.confirmation();
               if (i === 0) await d.shots(`sequence-${n}-first`);
@@ -1457,6 +1497,7 @@ test(
               const before = await readModel(r.page);
               const files = Array.from({ length: n }, (_, i) => pool[i % pool.length]!);
               const photos = files.filter((f) => f.kind === 'missing').length;
+              const damaged = n > 1 ? files.filter((f) => f.kind === 'damaged').length : 0;
               await r.drop(
                 r.page.getByRole('heading', { name: 'What is this?' }),
                 files.map((f, i) => ({
@@ -1465,6 +1506,15 @@ test(
                   base64: b64(f.path),
                 })),
               );
+              // Several files open the batch view; a damaged still offers no face there (only Use as photo).
+              if (n > 1) {
+                await r.shots(`${tag}-drop-${n}-batch`);
+                assert.equal(
+                  await r.pickAll(),
+                  n - damaged,
+                  'every file but a damaged still offers a face',
+                );
+              }
               for (let i = 0; i < photos; i++) {
                 await r.confirmation();
                 if (i === 0) await r.shots(`${tag}-drop-${n}-confirmation`);
@@ -1501,7 +1551,7 @@ test(
               const reused = before.inputs.some(
                 (i) => i.mode !== 'photo' && i.mode !== 'project' && !i.value.trim(),
               );
-              assert.equal(m.inputs.length, before.inputs.length + n - (reused ? 1 : 0));
+              assert.equal(m.inputs.length, before.inputs.length + n - damaged - (reused ? 1 : 0));
               const matching = files.filter((f) => f.kind === 'matching').length;
               assert.equal(
                 m.inputs.filter((i) => i.mode === 'project').length -

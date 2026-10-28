@@ -207,6 +207,26 @@ export const VERIFY_FUNCTIONAL: OperatedManifest = {
       },
     },
     {
+      // fm-q5b9, fm-id4c item 12: several files open one batch view.
+      id: 'photo-batch-view',
+      steps: [
+        'r-a2-b1-corrupt-omitted',
+        'cancel-unchanged',
+        'ok-click-order',
+        'damaged-use-as-photo-explicit',
+        'other-model-held',
+        'encoding-refused-saved-subset',
+        'single-still-direct',
+        'paste-opens-view',
+      ],
+      rows: ['photo.paste-drop', 'reopen-still', 'recovery-damaged'],
+      widths: BOTH,
+      test: {
+        file: 'batch.e2e.ts',
+        title: 'the batch view: recovered stills beside crop candidates, Cancel, OK in click order',
+      },
+    },
+    {
       id: 'remove-down-to-one',
       steps: [
         'matrix-counts',
