@@ -169,7 +169,19 @@ function computeRequest(id,phase){
 function taskGate(id,admitted){return createExecutionGate(admitted?{acquire:()=>computeRequest(id,'acquire'),release:()=>computeRequest(id,'release')}:{});}
 async function gatedTask(id,admitted,run){
  const gate=taskGate(id,admitted);executionGate=gate;currentId=id;
- try{const result=await run();await gate.drain();return result;}finally{gate.close();executionGate=null;}
+ if(cancelledTasks.has(id))gate.close();
+ try{const result=await run();await gate.drain();return result;}finally{gate.close();executionGate=null;cancelledTasks.delete(id);}
+}
+// The host cancels a job without terminating this worker when it holds the encoder (fm-bpvz). Closing the job's
+// gate aborts its in-flight fetches and refuses every further read and inference, so the job ends after at most
+// the step already running, while the retained shards, the encoder runtime and the verified-asset ledger stay.
+const cancelledTasks=new Set();
+function cancelTasks(ids){
+ for(const id of ids){
+  cancelledTasks.add(id);
+  for(const [key,ack] of [...rawAcks])if(key.startsWith(id+':'))ack();
+ }
+ if(cancelledTasks.has(currentId))executionGate?.close();
 }
 const compute=work=>executionGate?executionGate.compute(work):Promise.resolve().then(work);
 const read=work=>executionGate?executionGate.read(work):Promise.resolve().then(work);
@@ -425,6 +437,7 @@ self.onmessage=({data})=>{
  }
  const {id,type,...request}=data;if(type==='raw-frame-ack'){rawAcks.get(id+':'+request.index)?.();return;}
  if(type==='grants'){grants=mergeGrants(grants,request.grants);return;}
+ if(type==='cancel'){cancelTasks(Array.isArray(request.ids)?request.ids:[]);return;}
  if(type==='qualify'&&request.resume){startResumeDrain(id,request.computeAdmission);return;}
  foreground.push(()=>gatedTask(id,request.computeAdmission,async()=>{
   try{

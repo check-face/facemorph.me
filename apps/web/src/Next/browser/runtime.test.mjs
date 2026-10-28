@@ -143,6 +143,69 @@ test('A machine with memory to spare keeps the encoder between the photo and its
   assert.ok(lifecycle.includes('encode-aligned:retain'),lifecycle.join(' '));
  }finally{runtime.dispose();if(old)Object.defineProperty(globalThis,'navigator',old);else delete globalThis.navigator;}
 });
+// fm-bpvz: Cancel ended the job by terminating the worker, which threw away the resident encoder and its verified
+// ledger, so the next photo re-read and re-hashed the 1.1 GB encoder. A device that holds the encoder now cancels the
+// job inside the worker and the next photo runs on the same worker; one that tears down still terminates at once.
+function cancellableEncoder(lifecycle,{answerCancel=true}={}){
+ let hung=true;const pendingEncode=new Set();
+ return ()=>{lifecycle.push('start');return {postMessage(message){
+  if(message.type==='cancel'){lifecycle.push('cancel:'+message.ids.filter(id=>pendingEncode.has(id)).length);
+   if(answerCancel)for(const id of message.ids)if(pendingEncode.delete(id))queueMicrotask(()=>this.onmessage({data:{id,type:'error',error:{name:'AbortError',message:'Execution cancelled'}}}));return;}
+  lifecycle.push(message.type+(message.retain===true?':retain':message.retain===false?':discard':''));
+  if(message.type==='encode-aligned'&&hung){hung=false;pendingEncode.add(message.id);return;}
+  const result=message.type==='encode-aligned'?{values:new Float32Array(9216).fill(.1),shape:[1,18,512],space:'w-plus',encoderProvider:'wasm',encoderQualification:{passed:true,manifestSha256:pin(8)}}
+   :['generate','synthesize'].includes(message.type)?{blob:new Blob(['mock-png'],{type:'image/png'}),values:new Float32Array(9216).fill(.1),space:'w-plus',shape:[1,18,512]}
+   :{deviceValidated:true};
+  queueMicrotask(()=>this.onmessage({data:{id:message.id,type:'complete',result}}));},
+  terminate(){lifecycle.push('terminate');}};};
+}
+function cancelRuntime(workerFactory){
+ return createBrowserRuntime({manifestSha256:'0'.repeat(64),preferredRoute:'cpu',
+  manifest:{...testManifest(),alignmentSha256:pin(9),encoderStream:{...asset(8,1024),sourceEncoderSha256:pin(7),preprocessingSha256:pin(9),phoneAdmitted:true,maxWasmBytes:268435456}},
+  alignPhoto:async()=>({tensor:new Float32Array(196608),faceCount:1,didAlign:true,alignmentWorkerTerminated:true,
+   provenance:{preprocessingSha256:pin(9),facePolicy:'exactly-one-face-v1'}}),workerFactory});
+}
+async function cancelDuringEncode(runtime,lifecycle){
+ const cancel=new AbortController(),first=runtime.encodePhoto(new Blob(['photo-one']),{signal:cancel.signal});
+ for(let i=0;i<400&&!lifecycle.includes('encode-aligned:retain')&&!lifecycle.includes('encode-aligned:discard');i++)await new Promise(r=>setTimeout(r,5));
+ cancel.abort();await assert.rejects(first,error=>error.name==='AbortError');
+}
+test('Cancel keeps a resident encoder: the job is cancelled in the worker and the next photo reuses it (fm-bpvz)',async()=>{
+ globalThis.__FACEMORPH_HOLD_ENCODER__=true;
+ const lifecycle=[];const runtime=cancelRuntime(cancellableEncoder(lifecycle));
+ try{
+  await cancelDuringEncode(runtime,lifecycle);
+  assert.ok(lifecycle.includes('cancel:1'),lifecycle.join(' '));
+  assert.equal(lifecycle.filter(x=>x==='terminate').length,0,lifecycle.join(' '));
+  await runtime.encodePhoto(new Blob(['photo-two']));
+  assert.equal(lifecycle.filter(x=>x==='start').length,1,'one worker, so the encoder it holds is not read again: '+lifecycle.join(' '));
+  assert.equal(lifecycle.filter(x=>x==='initialize').length,1,lifecycle.join(' '));
+  assert.equal(lifecycle.filter(x=>x==='terminate').length,0,lifecycle.join(' '));
+  assert.equal(lifecycle.filter(x=>x==='encode-aligned:retain').length,2,lifecycle.join(' '));
+ }finally{runtime.dispose();delete globalThis.__FACEMORPH_HOLD_ENCODER__;}
+});
+test('Cancel still terminates a worker that does not end the cancelled job within the bound (fm-bpvz)',async()=>{
+ globalThis.__FACEMORPH_HOLD_ENCODER__=true;
+ const lifecycle=[];const runtime=cancelRuntime(cancellableEncoder(lifecycle,{answerCancel:false}));
+ try{
+  await cancelDuringEncode(runtime,lifecycle);
+  assert.ok(lifecycle.includes('cancel:1'),lifecycle.join(' '));
+  const started=Date.now();
+  await runtime.encodePhoto(new Blob(['photo-two']));
+  assert.ok(Date.now()-started>=4000,'the next job waited for the bounded drain');
+  assert.equal(lifecycle.filter(x=>x==='terminate').length,1,lifecycle.join(' '));
+  assert.equal(lifecycle.filter(x=>x==='start').length,2,lifecycle.join(' '));
+ }finally{runtime.dispose();delete globalThis.__FACEMORPH_HOLD_ENCODER__;}
+});
+test('Cancel on a device that tears the encoder down terminates the worker at once, as before (fm-bpvz)',async()=>{
+ globalThis.__FACEMORPH_HOLD_ENCODER__=false;
+ const lifecycle=[];const runtime=cancelRuntime(cancellableEncoder(lifecycle));
+ try{
+  await cancelDuringEncode(runtime,lifecycle);
+  assert.ok(!lifecycle.some(x=>x.startsWith('cancel:')),lifecycle.join(' '));
+  assert.ok(lifecycle.includes('terminate'),lifecycle.join(' '));
+ }finally{runtime.dispose();delete globalThis.__FACEMORPH_HOLD_ENCODER__;}
+});
 test('A phone claiming 8 GB is not trusted with it until one has been measured holding it',async()=>{
  const lifecycle=[];const runtime=photoRuntime(lifecycle);
  const old=Object.getOwnPropertyDescriptor(globalThis,'navigator');

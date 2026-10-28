@@ -56,7 +56,37 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
   try{return await attempt;}finally{if(configPending===attempt)configPending=null;}
  }
 
- function stop(reason=abortError()){unmark();worker?.terminate();worker=null;synthesisRuns=0;validated=false;for(const task of pending.values()){clearTimeout(task.timer);if(task.computeHeld)void Promise.resolve().then(()=>task.admission?.release()).catch(()=>{});task.reject(reason);}pending.clear();}
+ function stop(reason=abortError()){unmark();worker?.terminate();worker=null;settleDrain();synthesisRuns=0;validated=false;for(const task of pending.values()){clearTimeout(task.timer);if(task.computeHeld)void Promise.resolve().then(()=>task.admission?.release()).catch(()=>{});task.reject(reason);}pending.clear();}
+ // Cancel ends the job without throwing away a worker that holds the photo encoder (fm-bpvz). Terminating it was
+ // the only way to stop an inference, but it also discarded the gigabyte of encoder shards it held and its ledger
+ // of verified assets, so the next photo re-read and re-hashed all of them from Cache Storage. On a device that
+ // keeps the encoder resident (holdEncoder), the job's tasks are settled at once and the worker is told to cancel
+ // them: its execution gate closes, which aborts in-flight fetches and refuses every further read or inference,
+ // so at most the one inference step already running finishes. The next job waits for that and reuses the
+ // worker. A worker that has not answered within CANCEL_DRAIN_MS is terminated exactly as before; a device that
+ // tears the encoder down between phases (phones, unknown memory) still terminates at once.
+ const CANCEL_DRAIN_MS=5000;
+ let drain=null;
+ function settleDrain(){if(!drain)return;clearTimeout(drain.timer);const {resolve}=drain;drain=null;resolve();}
+ function cancelWork(reason=abortError()){
+  const cancelled=[...pending].filter(([,task])=>!task.background);
+  if(!worker||disposed||!holdEncoder()||cancelled.some(([,task])=>task.operation==='initialize')){stop(reason);return;}
+  if(!cancelled.length)return;
+  unmark();const owner=worker;
+  if(!drain){let resolve;const settled=new Promise(r=>{resolve=r;});drain={owner,ids:new Set(),settled,resolve,timer:null};}
+  for(const [id,task] of cancelled){clearTimeout(task.timer);pending.delete(id);drain.ids.add(id);if(task.computeHeld)void Promise.resolve().then(()=>task.admission?.release()).catch(()=>{});task.reject(reason);}
+  try{owner.postMessage({id:0,type:'cancel',ids:[...drain.ids]});}catch{stop(reason);return;}
+  clearTimeout(drain.timer);drain.timer=setTimeout(()=>{if(drain?.owner===owner)stop(reason);},CANCEL_DRAIN_MS);
+ }
+ // Messages for a cancelled task: answer what the worker waits on, so its closing gate never hangs, and count
+ // its final reply as the end of the drain.
+ function cancelledReply(data){
+  if(!drain||worker!==drain.owner||!drain.ids.has(data.id))return;
+  const owner=worker;
+  if(data.type==='compute-request'){try{owner.postMessage({type:'compute-response',token:data.token,...(data.phase==='acquire'?{error:{name:'AbortError',message:'Execution cancelled'}}:{})});}catch{}return;}
+  if(data.type==='frame'){if(data.rgba)try{owner.postMessage({id:data.id,type:'raw-frame-ack',index:data.index});}catch{}return;}
+  if(data.type==='complete'||data.type==='error'){drain.ids.delete(data.id);if(!drain.ids.size)settleDrain();}
+ }
  // An operation that may acquire model bytes gets a wider stall window: on phone-class
  // storage the silent tail of a cold acquire (Cache.put commit, sha verify) legitimately
  // runs minutes without emitting a single event, and the inference watchdog must not kill
@@ -77,10 +107,10 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
  // ends. A stall is the worker saying nothing for the stall window, so any message keeps every pending operation
  // alive (fm-5klw: a slow emulator morph was stopped by its preempted canary's own timer).
  function alive(){for(const task of pending.values())task.reset();}
- function send(type,payload={},progress,stall=stallMs,onFrame){return new Promise((resolve,reject)=>{const id=++sequence;if(type!=='initialize'&&!payload.resume)mark(type,id);const task={resolve,reject,progress,operation:type,onFrame,admission:computeAdmission,waitingCompute:false};const timeout=()=>{if(hidden()||task.waitingCompute){task.timer=setTimeout(timeout,stall);return;}stop(Error('Generation stopped responding. Your saved work is safe.'));};task.timer=setTimeout(timeout,stall);task.reset=()=>{clearTimeout(task.timer);task.timer=setTimeout(timeout,stall);};pending.set(id,task);try{worker.postMessage({id,type,...payload,computeAdmission:Boolean(task.admission)});}catch(error){clearTimeout(task.timer);pending.delete(id);reject(error);}});}
- async function start(progress){if(worker)return;await config();worker=workerFactory();worker.onmessage=({data})=>{const task=pending.get(data.id);if(!task)return;alive();if(data.type==='compute-request'){
+ function send(type,payload={},progress,stall=stallMs,onFrame){return new Promise((resolve,reject)=>{const id=++sequence;if(type!=='initialize'&&!payload.resume)mark(type,id);const task={resolve,reject,progress,operation:type,onFrame,admission:computeAdmission,waitingCompute:false,background:payload.resume===true};const timeout=()=>{if(hidden()||task.waitingCompute){task.timer=setTimeout(timeout,stall);return;}stop(Error('Generation stopped responding. Your saved work is safe.'));};task.timer=setTimeout(timeout,stall);task.reset=()=>{clearTimeout(task.timer);task.timer=setTimeout(timeout,stall);};pending.set(id,task);try{worker.postMessage({id,type,...payload,computeAdmission:Boolean(task.admission)});}catch(error){clearTimeout(task.timer);pending.delete(id);reject(error);}});}
+ async function start(progress){while(drain)await drain.settled;if(worker)return;await config();worker=workerFactory();worker.onmessage=({data})=>{const task=pending.get(data.id);if(!task){cancelledReply(data);return;}alive();if(data.type==='compute-request'){
   const owner=worker;task.waitingCompute=true;
-  const respond=error=>{task.waitingCompute=false;if(worker!==owner||!pending.has(data.id)){if(!error&&data.phase==='acquire')void Promise.resolve().then(()=>task.admission.release()).catch(()=>{});return;}if(!error)task.computeHeld=data.phase==='acquire';task.reset();try{owner.postMessage({type:'compute-response',token:data.token,...(error?{error:{name:error.name||'Error',message:String(error.message||error)}}:{})});}catch{}};
+  const respond=error=>{task.waitingCompute=false;if(worker!==owner||!pending.has(data.id)){if(!error&&data.phase==='acquire')void Promise.resolve().then(()=>task.admission.release()).catch(()=>{});if(worker===owner)try{owner.postMessage({type:'compute-response',token:data.token,...(data.phase==='acquire'?{error:{name:'AbortError',message:'Execution cancelled'}}:{})});}catch{}return;}if(!error)task.computeHeld=data.phase==='acquire';task.reset();try{owner.postMessage({type:'compute-response',token:data.token,...(error?{error:{name:error.name||'Error',message:String(error.message||error)}}:{})});}catch{}};
   Promise.resolve().then(()=>{if(!['acquire','release'].includes(data.phase)||!task.admission)throw Error('Invalid compute admission request');return task.admission[data.phase]();}).then(()=>respond(),respond);return;
  }if(data.type==='frame'){
  if(data.rgba){const owner=worker;Promise.resolve().then(()=>task.onFrame?.(data.index,data.blob,data.rgba)).then(()=>owner.postMessage({id:data.id,type:'raw-frame-ack',index:data.index})).catch(error=>stop(error));}
@@ -156,7 +186,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
  globalThis.document?.addEventListener?.('visibilitychange',()=>{
   if(!hidden())for(const task of pending.values())task.reset?.();
  });
- async function operation(fn,{signal,onProgress:progress}={}){if(disposed)throw Error('Runtime disposed');if(active)throw Error('Another generation is still running.');if(!prefetchExplicit)stopPrefetch();if(signal?.aborted)throw signal.reason||abortError();const controller=new AbortController();active=controller;const abort=()=>{controller.abort(signal?.reason||abortError());stop(controller.signal.reason);};signal?.addEventListener('abort',abort,{once:true});try{return await fn(progress,controller.signal);}finally{signal?.removeEventListener('abort',abort);active=null;}}
+ async function operation(fn,{signal,onProgress:progress}={}){if(disposed)throw Error('Runtime disposed');if(active)throw Error('Another generation is still running.');if(!prefetchExplicit)stopPrefetch();if(signal?.aborted)throw signal.reason||abortError();const controller=new AbortController();active=controller;const abort=()=>{controller.abort(signal?.reason||abortError());cancelWork(controller.signal.reason);};signal?.addEventListener('abort',abort,{once:true});try{return await fn(progress,controller.signal);}finally{signal?.removeEventListener('abort',abort);active=null;}}
  async function cache(){try{originals ||= await openOriginals();return originals;}catch{return null;}}
  // Tells the product which route was actually admitted, so the interface can say when this
  // device is on the slow path instead of leaving a visitor watching an unexplained wait.
@@ -315,7 +345,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
    if(!active)throw Error('A confirmed crop is encoded only inside a runtime operation.');
    if(!ctx.hold){const admitted=validated;stop();validated=admitted;}
    // Cancelling a running slot stops its encode now; the operation and its admission stay.
-   const halt=()=>{const admitted=validated;stop(abortError());validated=admitted;};signal?.addEventListener('abort',halt,{once:true});
+   const halt=()=>{const admitted=validated;cancelWork(abortError());validated=admitted;};signal?.addEventListener('abort',halt,{once:true});
    try{
     await start(progress);let encoded;
     // The worker takes the tensor's buffer; the slot keeps its derived input whole for a retry.
@@ -563,7 +593,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
   if(blob.size>25*1024*1024)throw Error('Choose an image smaller than 25 MB.');const tryAlign=options.tryAlign??true;if(typeof tryAlign!=='boolean')throw Error('Alignment selection must be a boolean.');return cachedGenerate({kind:'photo',sha256:await digest(await blob.arrayBuffer()),tryAlign,facePolicy:'exactly-one-face-v1'},async()=>{if(!alignPhoto)throw Error('Browser face alignment is not installed in this bundle.');const acquireStall=ACQUIRE_STALL;const hold=holdEncoder();if(!hold){const admitted=validated;stop();validated=admitted;}emit({stage:'alignment'},progress);const alignmentStarted=performance.now();const prepared=await alignPhoto(blob,{signal,onProgress:event=>emit(event,progress),tryAlign,requireSingleFace:true});emit({stage:'alignment-complete',elapsedMs:performance.now()-alignmentStarted,scope:'Photo preprocessing wall time including verified alignment assets'},progress);if(prepared.provenance?.preprocessingSha256!==manifest.alignmentSha256||prepared.alignmentWorkerTerminated!==true||prepared.faceCount!==1||prepared.provenance?.facePolicy!=='exactly-one-face-v1'||(tryAlign&&prepared.didAlign!==true))throw Error('Photo preprocessing identity or worker lifetime mismatch.');if(signal.aborted)throw signal.reason;await start(progress);const encoded=await send('encode-aligned',{tensor:prepared.tensor,qualifiedEncoderSha256:encoderValidatedSha256??qualifiedEncoder(),retain:hold},progress);if(manifest.encoderStream){if(encoded.encoderQualification?.passed!==true||encoded.encoderQualification.manifestSha256!==manifest.encoderStream.sha256){stop();throw Error('The photo encoder did not pass its pinned device correctness check.');}encoderValidatedSha256=manifest.encoderStream.sha256;rememberEncoder(encoderValidatedSha256);}if(!hold){const stillAdmitted=validated;stop();validated=stillAdmitted;}if(signal.aborted)throw signal.reason;await start(progress);const face=await send('synthesize',{values:encoded.values,raw:options.raw===true},progress);return {...face,encoderProvider:encoded.encoderProvider,encoderStats:encoded.encoderStats,encoderQualification:encoded.encoderQualification,preprocessing:prepared.provenance,faceCount:prepared.faceCount,didAlign:prepared.didAlign};},progress,signal,true,async()=>{if(!alignPhoto)throw Error('Browser face alignment is not installed in this bundle.');if(!manifest.encoder&&!manifest.encoderStream)throw Error('The photo encoder bundle is unavailable.');
   // Admitted by capability before any detector or model request (fm-lt2p), never by a phone label.
   const {decision}=await admissionFor('photo-encode',preferredRoute,progress);if(decision.status==='refused')throw new AdmissionRefused(decision);});},options)),
- cancel:()=>{active?.abort(abortError());stop();},
+ cancel:()=>{active?.abort(abortError());cancelWork();},
  cancelPrefetch:stopPrefetch,
  // The confirmed-crop queue for several crops (fm-fy2.8): face.batch renders tiles on these and never reimplements
  // slots, attempt identities or pixel ownership. Each call that runs attempts is one runtime operation.
