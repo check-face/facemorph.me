@@ -106,6 +106,23 @@ export function codecMissingBytes(state: State, message: Msg | null | undefined)
     ? codec.bytes
     : 0;
 }
+/**
+ * What a failed approved download kept and what it still needs (fm-9kr8), against the figure its consent showed:
+ * the bridge re-measures the verified files after a failure, so the remaining bytes are what Try again fetches.
+ */
+export function downloadKept(
+  state: State,
+): { readonly kept: string; readonly total: string; readonly remaining: string } | null {
+  const total = state.ApprovedBytes;
+  const d = state.Downloads;
+  if (!total || !d.known || state.KeptPending) return null;
+  const missing =
+    (d.routeReady ? 0 : d.routeBytes) +
+    (state.DownloadConsent.has('photo') && !d.photoReady ? d.photoBytes : 0);
+  const remaining = Math.min(total, missing);
+  const unit = (bytes: number) => (bytes > 0 ? downloadMegabytes(bytes) : '0 MB');
+  return { kept: unit(total - remaining), total: unit(total), remaining: unit(remaining) };
+}
 export const megabytes = (bytes: number): string =>
   bytes >= 1024 ** 3
     ? `${(bytes / 1024 ** 3).toFixed(1)} GB`

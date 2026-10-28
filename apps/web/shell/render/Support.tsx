@@ -8,8 +8,9 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'rea
 import { msg } from '../../src/controller/msg.ts';
 import type { State } from '../../src/controller/state.ts';
 import { testingInvited } from '../../src/controller/init.ts';
+import { isAcquisitionFailure } from '../../src/controller/reducers/jobs.ts';
 import type { Dispatch } from './Dialogs.tsx';
-import { downloadMegabytes as megabytes } from '../../src/controller/derived.ts';
+import { downloadKept, downloadMegabytes as megabytes } from '../../src/controller/derived.ts';
 import { Explain } from './Explain.tsx';
 import { refusalForText } from '../../src/admission/route-admission.ts';
 import { setUsageStats, switchState } from '../facade/usage-stats.ts';
@@ -68,6 +69,8 @@ export function TestingInvite({
 export function ErrorBox({ state, dispatch, report, reference }: Props) {
   if (state.Error === null) return null;
   const refusal = refusalForText(state.Error);
+  // A failed model download says what it kept and what Try again still fetches, in the consent's unit (fm-9kr8).
+  const kept = isAcquisitionFailure(state.Error) ? downloadKept(state) : null;
   const inMorphStatus =
     state.LastRun?.type === 'Run' &&
     state.LastRun.args[0] === 'morph' &&
@@ -75,6 +78,11 @@ export function ErrorBox({ state, dispatch, report, reference }: Props) {
   return (
     <div className="next-error box" role="alert">
       {!inMorphStatus && <p>{state.Error}</p>}
+      {kept && (
+        <p className="next-error-bytes">
+          {`Kept ${kept.kept} of ${kept.total}; ${kept.remaining} remaining.`}
+        </p>
+      )}
       {refusal && (
         <p className="next-error-help">
           <a href={refusal.helpAnchor} data-next-reason={refusal.reasonKey}>

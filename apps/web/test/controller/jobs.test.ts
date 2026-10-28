@@ -169,3 +169,62 @@ test('a file outside the approval asks again for the run that needed it; other f
   assert.equal(failed.state.Gate, null);
   assert.equal(failed.state.Error, 'The local generation engine stopped.');
 });
+// fm-9kr8: a model download that fails after approval says what failed in plain words; the error box adds what was
+// kept and what remains against the consent's own figure, as the bridge re-measured the verified files; storage is
+// worded as storage; other failures are untouched.
+test('acquisition failures are plain, count kept and remaining bytes, and keep Try again (fm-9kr8)', async () => {
+  const { downloadKept } = await import('../../src/controller/derived.ts');
+  const { isAcquisitionFailure } = await import('../../src/controller/reducers/jobs.ts');
+  const MiB = 1024 * 1024;
+  const running = {
+    ...state,
+    Busy: true,
+    JobId: 11,
+    LastRun: msg('RunFace', 'face-1'),
+    ApprovedBytes: 158 * MiB,
+    DownloadConsent: new Set(['route']),
+  };
+  const fault = reduce(
+    msg(
+      'Failed',
+      11,
+      'The model download server had a temporary fault (HTTP 500). Parts already downloaded are kept: try again in a few minutes.',
+    ),
+    running,
+  )!.state;
+  assert.match(fault.Error!, /^The model download server had a temporary fault \(HTTP 500\)/);
+  assert.ok(isAcquisitionFailure(fault.Error));
+  assert.ok(fault.LastRun, 'Try again stays offered');
+  assert.equal(
+    downloadKept(fault),
+    null,
+    'no kept figure until the verified files are re-measured',
+  );
+  // The bridge's re-measured inventory after the failure: 136 MB still missing.
+  const measured = reduce(
+    msg('DownloadsChanged', {
+      ...fault.Downloads,
+      known: true,
+      routeReady: false,
+      routeBytes: 136 * MiB,
+    }),
+    fault,
+  )!.state;
+  assert.deepEqual(downloadKept(measured), { kept: '22 MB', total: '158 MB', remaining: '136 MB' });
+  const damaged = reduce(msg('Failed', 11, 'Asset integrity mismatch'), running)!.state;
+  assert.match(damaged.Error!, /^A downloaded model file arrived damaged, so it was not used\./);
+  assert.doesNotMatch(damaged.Error!, /integrity/i, 'plain words');
+  const full = reduce(
+    msg(
+      'Failed',
+      11,
+      'Not enough browser storage to save this model. Free some storage and try again.',
+    ),
+    running,
+  )!.state;
+  assert.match(full.Error!, /ran out of browser storage/);
+  assert.doesNotMatch(full.Error!, /device cannot|not supported|capab/i, 'storage, not capability');
+  const other = reduce(msg('Failed', 11, 'The local generation engine stopped.'), running)!.state;
+  assert.equal(other.Error, 'The local generation engine stopped.');
+  assert.equal(isAcquisitionFailure(other.Error), false);
+});

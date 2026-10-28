@@ -121,6 +121,12 @@ export function gate(message: Msg, state: State): Transition | null {
       const optionalPhoto = scope !== 'photo' && bundle === 'photo';
       // The codec belongs to Generate, which every bundle includes: approving the decision approves its bytes.
       const codec = codecMissingBytes(state, pending) > 0;
+      const downloads = state.Downloads;
+      const approvedBytes = downloads.known
+        ? (downloads.routeReady ? 0 : downloads.routeBytes) +
+          (bundle === 'photo' && !downloads.photoReady ? downloads.photoBytes : 0) +
+          codecMissingBytes(state, pending)
+        : undefined;
       return {
         state: queuedPreparation({
           ...state,
@@ -137,6 +143,7 @@ export function gate(message: Msg, state: State): Transition | null {
             ...(bundle === 'photo' ? ['route'] : []),
             ...(codec ? ['codec'] : []),
           ]),
+          ...(approvedBytes ? { ApprovedBytes: approvedBytes } : {}),
           ModelToastHidden: true,
         }),
         effects: preparation
@@ -182,6 +189,7 @@ export function gate(message: Msg, state: State): Transition | null {
       const next = {
         ...(settled ? withoutOwner : state),
         Downloads: downloads,
+        KeptPending: false,
         ...(downloads.photoApprovalRequired
           ? {
               DownloadConsent: new Set(

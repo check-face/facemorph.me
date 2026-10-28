@@ -27,7 +27,8 @@ export async function measure(assets, cache, extraBytes = 0) {
   let present = 0, total = extraBytes;
   for (const asset of assets) {
     total += asset.size;
-    if (await cache.has(asset)) present += asset.size;
+    // Chunks an interrupted download already stored count as present (fm-9kr8): they are not fetched again.
+    present += cache.heldBytes ? await cache.heldBytes(asset) : (await cache.has(asset)) ? asset.size : 0;
   }
   return { present, total, ready: assets.length > 0 && extraBytes === 0 && present === total };
 }

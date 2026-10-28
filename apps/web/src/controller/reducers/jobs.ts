@@ -14,6 +14,34 @@ import { enqueue, without, sameInputs, settingsKey, schedule, runFace } from './
 
 /** The manager's refusal texts for a file outside every approved grant (acquisition/grants.ts GrantRefused). */
 const GRANT_REFUSAL = /not covered by an approved download|needs more data than was approved/;
+/**
+ * A model download that failed after approval (fm-9kr8), said in plain words. The manager keeps every verified
+ * chunk, so Try again fetches only the rest; the error box adds what is kept and what remains (derived.ts downloadKept).
+ */
+export function acquisitionFailure(error: string): string | null {
+  const damaged = /integrity mismatch|exceeds declared size/i.test(error);
+  const storage = /QuotaExceeded|browser storage to save/i.test(error);
+  if (
+    !damaged &&
+    !storage &&
+    !/model download|model file could not be downloaded|stopped receiving data/i.test(error)
+  )
+    return null;
+  return damaged ? ACQUISITION_DAMAGED : storage ? ACQUISITION_STORAGE : error;
+}
+/** A result made while the model could not be saved (fm-9kr8): said as storage, never as a device limit. */
+export const MODEL_NOT_KEPT =
+  'This device could not keep the downloaded model because browser storage is full, so it downloads again next time.';
+export const ACQUISITION_DAMAGED =
+  'A downloaded model file arrived damaged, so it was not used. Parts already downloaded are kept.';
+export const ACQUISITION_STORAGE =
+  'This device ran out of browser storage while saving the model. Free some storage, then try again. Parts already saved are kept.';
+/** Whether an error box shows a failed model download, so it can say what is kept and what remains. */
+export const isAcquisitionFailure = (error: string | null): boolean =>
+  !!error &&
+  (error === ACQUISITION_DAMAGED ||
+    error === ACQUISITION_STORAGE ||
+    /model download|model file could not be downloaded|stopped receiving data/i.test(error));
 
 export interface JobFacts {
   readonly measurements?: Measurements;
@@ -201,7 +229,10 @@ export function jobs(message: Msg, state: State, facts: JobFacts = {}): Transiti
             sameInputs(state.RunInputs, state.Inputs) && state.RunSettings === settingsKey(state)
               ? result.videoUrl
               : '',
-          Status: result.message,
+          Status:
+            state.Downloads.modelNotKept && !result.errorMessage
+              ? `${result.message} ${MODEL_NOT_KEPT}`.trim()
+              : result.message,
           Error: result.errorMessage || null,
           FailureToast: Boolean(result.errorMessage) && !state.Debug,
           Stage: result.errorMessage ? 'error' : 'done',
@@ -268,11 +299,14 @@ export function jobs(message: Msg, state: State, facts: JobFacts = {}): Transiti
           ],
         };
       }
+      const said = acquisitionFailure(error) ?? error;
       return schedule({
         ...state,
+        // The bridge re-measures the verified files after a failed job; until then the kept figure is not known.
+        KeptPending: isAcquisitionFailure(said),
         Busy: false,
-        Error: error,
-        Status: state.LastRun?.type === 'Run' && state.LastRun.args[0] === 'morph' ? error : '',
+        Error: said,
+        Status: state.LastRun?.type === 'Run' && state.LastRun.args[0] === 'morph' ? said : '',
         Stage: 'error',
         Fraction: state.Fraction,
         Warn: null,

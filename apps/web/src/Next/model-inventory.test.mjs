@@ -49,3 +49,13 @@ test('the route set counts the correctness canaries and sample indices the worke
   assert.equal(sizes('cpu'), 136 + 7 + 3 + 2);
   assert.equal(sizes('webgpu'), 216 + 7 + 3 + 2);
 });
+// fm-9kr8: chunks an interrupted download already stored count as present, so the inventory (and the failure's
+// remaining figure) is what is still to transfer; a cache without partial knowledge keeps whole-asset presence.
+test('measure counts stored chunks of a partly downloaded asset', async () => {
+  const { measure } = await import('./model-inventory.mjs');
+  const a = { sha256: 'a'.repeat(64), size: 100 }, b = { sha256: 'b'.repeat(64), size: 50 };
+  const partial = { has: async asset => asset === b, heldBytes: async asset => (asset === b ? 50 : 30) };
+  assert.deepEqual(await measure([a, b], partial), { present: 80, total: 150, ready: false });
+  const whole = { has: async asset => asset === b };
+  assert.deepEqual(await measure([a, b], whole), { present: 50, total: 150, ready: false });
+});

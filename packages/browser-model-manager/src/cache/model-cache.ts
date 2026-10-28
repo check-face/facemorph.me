@@ -117,6 +117,11 @@ export interface ModelCache {
   acquire(input: AssetInput, options: AcquireOptions): Promise<AssetHandle>;
   readonly records: RecordAccess;
   has(input: AssetInput | string): Promise<boolean>;
+  /**
+   * Bytes of this asset already stored on the device, counting each stored chunk of a partly downloaded asset
+   * (fm-9kr8): what an interrupted download kept, so an inventory can say what is still to transfer.
+   */
+  heldBytes(input: AssetInput): Promise<number>;
   peek(input: AssetInput | string): Promise<Response | null>;
 }
 
@@ -1631,6 +1636,15 @@ export function createModelCache({
       return false;
     }
   }
+  async function heldBytes(input: AssetInput): Promise<number> {
+    const asset = input as Asset;
+    if (await has(asset)) return asset.size;
+    if (!usesShards(asset)) return 0;
+    let held = 0;
+    for (const unit of unitsOf(asset))
+      if (await shards!.has(unit.sha256, unit.size).catch(() => false)) held += unit.size;
+    return held;
+  }
   async function peek(input: AssetInput | string): Promise<Response | null> {
     const asset = typeof input === 'string' ? null : (input as Asset);
     const sha256 = asset ? asset.sha256 : (input as string);
@@ -1709,7 +1723,7 @@ export function createModelCache({
     }
   }
   const local: LocalReader = Object.freeze({ allowRepair: false as const, read: readLocal });
-  return { acquire, records, has, peek, local };
+  return { acquire, records, has, heldBytes, peek, local };
 }
 
 export async function createBrowserModelCache(

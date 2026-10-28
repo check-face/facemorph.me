@@ -91,6 +91,8 @@ function progress(event){
  if(stage==='original-cache-hit')analytics.operationResult?.('original-cache','hit');
  if(stage==='cache-unavailable')analytics.operationResult?.('original-cache','failed',undefined,{reason:'unavailable'});
  if(stage==='models-download'){Object.assign(downloads,{phase:'downloading',scope:event.scope,loaded:Number(event.loaded)||0,total:Number(event.total)||downloads.total});announceDownloads();return;}
+ // A model file the browser refused to save (fm-9kr8): the result still works, and the page says it was not kept.
+ if((stage==='cache-trouble'&&['quota-exceeded','save-failed'].includes(event.cacheStatus))||stage==='cache-unavailable-detail'){if(!downloads.modelNotKept){downloads.modelNotKept=true;announceDownloads();}}
  lastStage=stage;
  reportStorage();
  const loaded=loadedBytes(event),fraction=event.total>0&&Number.isFinite(loaded)?loaded/event.total:0;
@@ -330,7 +332,7 @@ function inspectionCache(planned,cache){
   const held=await cache.peek(asset);
   return held||asset.sha256!==stream.sha256||descriptorFor!==stream.sha256||descriptorText===null?held:{text:async()=>descriptorText};
  };
- return {has:asset=>cache.has(asset),peek};
+ return {has:asset=>cache.has(asset),heldBytes:asset=>cache.heldBytes?cache.heldBytes(asset):cache.has(asset).then(held=>held?asset.size:0),peek};
 }
 async function refreshInventory(){
  try{
@@ -346,6 +348,7 @@ async function refreshInventory(){
   const codecParts=[planned.manifest.codec?.wasm,planned.manifest.codec?.module].filter(a=>a&&Number.isSafeInteger(a.size));
   const codec=codecParts.length===2?await measure(codecParts,cache):null;
   Object.assign(downloads,{known:true,routeReady:route.ready,photoReady:photo.ready,photoAvailable:planned.photoAvailable===true,
+  if(route.ready)downloads.modelNotKept=false;
    routeBytes:Math.max(0,route.total-route.present),photoBytes:Math.max(0,photo.total-photo.present),
    ...(codec?{codecReady:codec.ready,codecBytes:Math.max(0,codec.total-codec.present)}:{})});
   announceDownloads();

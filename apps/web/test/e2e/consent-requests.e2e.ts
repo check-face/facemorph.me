@@ -138,6 +138,25 @@ test(
           await chooseCpu(page);
           await page.waitForTimeout(2000); // anything an arrival would fetch has had time to start
           assert.deepEqual(models, [], `${name}: no model request on arrival`);
+          // Optional preparation sits in the Processing group above the first face (fm-9kr8); choosing the
+          // provider above started nothing, and no face card carries a preparation control of its own.
+          const prepare = page
+            .getByRole('group', { name: 'Processing' })
+            .getByRole('button', { name: 'Prepare encoder' });
+          assert.ok(await prepare.isVisible(), `${name}: Prepare encoder beside the selector`);
+          const [prepareBox, firstFace] = await Promise.all([
+            prepare.boundingBox(),
+            tiles.nth(0).boundingBox(),
+          ]);
+          assert.ok(
+            prepareBox && firstFace && prepareBox.y + prepareBox.height <= firstFace.y,
+            `${name}: Prepare encoder is above the first face`,
+          );
+          assert.equal(
+            await tiles.getByRole('button', { name: /Prepare encoder/ }).count(),
+            0,
+            `${name}: no per-card preparation`,
+          );
 
           // The question is asked; while it is open, and after Cancel, nothing is fetched.
           await tiles.nth(0).locator('.next-field input').fill('consent first'); // setup
@@ -174,6 +193,33 @@ test(
             assert.deepEqual(models, [], `${name}: no model request after ${exit}`);
             assert.ok(await focusedOnGenerate(), `${name}: ${exit} returns focus to Generate`);
           }
+
+          // Create morph asks the same question first, with only the Generate row; Escape starts nothing
+          // and returns focus to Create morph (fm-9kr8).
+          await tiles.nth(1).locator('.next-field input').fill('consent morph'); // setup
+          const morph = page.locator('.next-primary-action');
+          await operate(morph);
+          await dialog.waitFor({ timeout: 60_000 });
+          assert.deepEqual(
+            await dialog
+              .locator('[data-download-purpose]')
+              .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-download-purpose'))),
+            ['generate'],
+            `${name}: Morph asks only for Generate`,
+          );
+          assert.deepEqual(
+            models,
+            [],
+            `${name}: no model request while the Morph question is open`,
+          );
+          await page.keyboard.press('Escape');
+          await dialog.waitFor({ state: 'detached' });
+          await page.waitForTimeout(1000);
+          assert.deepEqual(models, [], `${name}: no model request after the Morph question`);
+          assert.ok(
+            await morph.evaluate((el) => el === document.activeElement),
+            `${name}: focus back on Create morph`,
+          );
 
           // Approval: the face is made from this route's files only.
           await operate(tiles.nth(0).locator('.next-face-generate'));
@@ -1224,6 +1270,633 @@ test(
       }
     } finally {
       await browser.close();
+      await site.stop();
+    }
+  },
+);
+
+// fm-9kr8: choosing Generate from a fresh-photo consent. Cold profile, built app, Chromium on the CPU route, 1280 px
+// mouse and 390 px touch. The photo is chosen through the face card's own chooser and confirmed; in the consent the
+// person picks Generate: no photo-side file (detector, encoder) is requested, the face says encoding needs the photo
+// encoder and keeps the photo, another face generates normally, and Resume encoding asks again (no chooser) and,
+// approved, encodes that same photo.
+test(
+  'Generate chosen from a photo request: nothing for photos is fetched, the photo is held and later encoded',
+  { timeout: 2_400_000 },
+  async (t) => {
+    if (!existsSync(join(runtime, 'manifest.json'))) {
+      const reason = `untested: no acquired runtime at ${runtime}; owner fm-9kr8`;
+      if (process.env['FACEMORPH_REQUIRE_RUNTIME'] === '1') throw Error(reason);
+      t.skip(reason);
+      return;
+    }
+    const artifact = readIdentity(out);
+    assert.deepEqual(artifact.findings, []);
+    const site = await startControl({
+      runtime,
+      artifact: join(out, 'deploy-next'),
+      source: artifact.identity.deploySource.buildId,
+    });
+    const browser = await chromium.launch({ args: [...chromiumArgs, '--disable-features=WebGPU'] });
+    mkdirSync(results, { recursive: true });
+    try {
+      for (const [name, width, touch] of [
+        ['desktop', 1280, false],
+        ['phone', 390, true],
+      ] as const) {
+        const context = await browser.newContext({
+          ...(touch ? devices['iPhone 13'] : {}),
+          viewport: { width, height: 900 },
+          hasTouch: touch,
+          isMobile: touch,
+          ignoreHTTPSErrors: true,
+        });
+        const page = await context.newPage();
+        const errors: string[] = [];
+        const models: string[] = [];
+        let choosers = 0;
+        page.on('pageerror', (error) => errors.push(error.message));
+        page.on('filechooser', () => choosers++);
+        context.on('request', (request) => {
+          const path = new URL(request.url()).pathname;
+          if (MODEL.test(path)) models.push(path);
+        });
+        const operate = async (control: Locator) =>
+          assert.ok((await press(page, control, { touch })).inside, `${name}: ${control}`);
+        try {
+          const manifestResponse = page.waitForResponse('**/runtime/manifest.json');
+          await page.goto(ORIGIN);
+          const manifest = (await (await manifestResponse).json()) as Record<string, unknown>;
+          type Asset = { url: string; chunks?: { url: string }[] };
+          const route = new Set(
+            (routeAssets(manifest, 'cpu', 'ort') as Asset[]).flatMap((a) =>
+              [a.url, ...(a.chunks ?? []).map((c) => c.url)].map((u) => new URL(u).pathname),
+            ),
+          );
+          const photoSide = () => models.filter((p) => !route.has(p));
+          const tiles = page.locator('section.next-face');
+          await tiles.nth(1).waitFor();
+          for (const control of [
+            page.locator('.next-model-toast').getByRole('button', { name: 'Not now' }),
+            page.getByRole('button', { name: 'Ask me later' }),
+          ])
+            if (
+              await control.waitFor({ timeout: 5000 }).then(
+                () => true,
+                () => false,
+              )
+            )
+              await operate(control);
+          await chooseCpu(page);
+          const photoTile = tiles.nth(0);
+          await operate(photoTile.getByRole('button', { name: 'Change mode', exact: true }));
+          const entry = page.getByRole('menuitem', { name: 'Encode image', exact: true });
+          await entry.evaluate(async (el) => {
+            const panel = el.closest('.MuiPaper-root');
+            await Promise.allSettled(
+              (panel?.getAnimations({ subtree: true }) ?? []).map((a) => a.finished),
+            );
+          });
+          const chooser = page.waitForEvent('filechooser');
+          await operate(entry);
+          await (await chooser).setFiles(join(REPO, 'tests/crop/fixtures/no-face.jpg'));
+          const crop = page.locator('.next-crop-dialog.next-encode-dialog');
+          await crop.locator('.next-encode-preview img').waitFor({ timeout: 120_000 });
+          await operate(crop.getByRole('button', { name: 'OK', exact: true }));
+          const dialog = page.locator('.next-download-dialog');
+          await dialog.waitFor({ timeout: 120_000 });
+          assert.deepEqual(models, [], `${name}: nothing requested before the decision`);
+          await operate(dialog.getByRole('radio', { name: 'Generate', exact: true }));
+          assert.deepEqual(
+            await dialog
+              .locator('[data-download-purpose]')
+              .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-download-purpose'))),
+            ['generate'],
+          );
+          assert.match(await dialog.innerText(), /Encoding needs the photo encoder/);
+          await operate(page.locator('.next-download-accept'));
+          await dialog.waitFor({ state: 'detached' });
+          // The photo is paused and held; the face returns to useful generation.
+          const paused = photoTile.getByText(
+            'Encoding needs the photo encoder. Your chosen photo is kept in this tab.',
+          );
+          await paused.waitFor({ timeout: 60_000 });
+          await page.screenshot({ path: join(results, `${name}-photo-paused.png`) });
+          // Another face generates normally, under the Generate approval alone.
+          await tiles.nth(1).locator('.next-field input').fill('generate only'); // setup
+          await operate(tiles.nth(1).locator('.next-face-generate'));
+          await page.waitForFunction(
+            () =>
+              document.querySelectorAll('section.next-face')[1]?.getAttribute('data-next-state') ===
+              'filled',
+            null,
+            { timeout: 600_000 },
+          );
+          await page.waitForFunction(
+            () => !document.querySelector('.next-product[data-next-busy=true]'),
+          );
+          assert.ok(models.length > 0, `${name}: the face model was fetched for Generate`);
+          assert.deepEqual(
+            photoSide(),
+            [],
+            `${name}: no detector or encoder request after Generate`,
+          );
+          assert.ok(await paused.isVisible(), `${name}: the photo is still held`);
+          // Resume: no chooser, the same consent asks for the encoder, and the held photo is encoded.
+          const chosen = choosers;
+          await operate(photoTile.getByRole('button', { name: 'Resume encoding', exact: true }));
+          await dialog.waitFor({ timeout: 120_000 });
+          assert.deepEqual(
+            await dialog
+              .locator('[data-download-purpose]')
+              .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-download-purpose'))),
+            ['generate', 'encode'],
+          );
+          assert.deepEqual(photoSide(), [], `${name}: still nothing for photos before approval`);
+          await operate(page.locator('.next-download-accept'));
+          // The verified encoder description can revise the photo scope; that revision is asked again and approved.
+          let revisions = 0;
+          for (const deadline = Date.now() + 1_200_000; ;) {
+            if (
+              await page.evaluate(
+                () =>
+                  // A photo face keeps its photo state; its encoded face is the tile's image.
+                  !!document
+                    .querySelectorAll('section.next-face')[0]
+                    ?.querySelector('[aria-label^="Generated face"], img[alt^="Generated face"]'),
+              )
+            )
+              break;
+            assert.ok(Date.now() < deadline, `${name}: the held photo was not encoded`);
+            const accept = page.locator('.next-download-accept');
+            if (await accept.isVisible()) {
+              revisions++;
+              assert.ok(revisions <= 2, `${name}: at most one revised photo decision`);
+              await operate(accept);
+            }
+            await page.waitForTimeout(500);
+          }
+          assert.equal(choosers, chosen, `${name}: Resume did not open the chooser again`);
+          assert.ok(photoSide().length > 0, `${name}: the approved encoder was fetched`);
+          await page.screenshot({ path: join(results, `${name}-photo-resumed.png`) });
+          assert.deepEqual(errors, []);
+          console.log(
+            `fm-9kr8 generate-only ${name}`,
+            JSON.stringify({
+              route: models.filter((p) => route.has(p)).length,
+              photo: photoSide().length,
+              revisions,
+            }),
+          );
+        } catch (error) {
+          await page
+            .screenshot({ path: join(results, `${name}-generate-only-FAILED.png`), fullPage: true })
+            .catch(() => {});
+          throw error;
+        } finally {
+          await context.close();
+        }
+      }
+    } finally {
+      await browser.close();
+      await site.stop();
+    }
+  },
+);
+
+// fm-9kr8: acquisition failure after approval. The real pinned runtime server sits behind a local HTTPS proxy that
+// answers HTTP 500 for one face-model chunk and serves another chunk with one byte flipped, until the test heals
+// it. Cold profile, built app, Chromium CPU, 1280 px mouse and 390 px touch: the failure is said in plain words
+// where the face is made, with downloaded and remaining bytes in the consent's unit; the operated Retry completes
+// the face; every chunk verified before the failure is not downloaded again; a face already made is unchanged.
+async function faultServer() {
+  const directory = mkdtempSync(join(tmpdir(), 'facemorph-consent-fault-'));
+  execFileSync(
+    'openssl',
+    [
+      'req',
+      '-x509',
+      '-newkey',
+      'rsa:2048',
+      '-nodes',
+      '-days',
+      '1',
+      '-subj',
+      '/CN=next.facemorph.me',
+      '-keyout',
+      join(directory, 'key'),
+      '-out',
+      join(directory, 'cert'),
+    ],
+    { stdio: 'ignore' },
+  );
+  const faults = { fail: new Set<string>(), corrupt: new Set<string>() };
+  const log: { path: string; status: number; bytes: number; complete: boolean }[] = [];
+  const server = createServer(
+    { key: readFileSync(join(directory, 'key')), cert: readFileSync(join(directory, 'cert')) },
+    (request, response) => {
+      const path = new URL(request.url!, ORIGIN).pathname;
+      const entry = { path, status: 0, bytes: 0, complete: false };
+      log.push(entry);
+      if (faults.fail.has(path)) {
+        entry.status = 500;
+        response.writeHead(500, {
+          'content-type': 'text/plain',
+          'cache-control': 'no-store',
+          // The mirror is another origin: as the real one does, it lets the page read its answers.
+          'access-control-allow-origin': '*',
+        });
+        response.end('injected fault');
+        return;
+      }
+      const upstream = requestHttps(
+        {
+          hostname: '127.0.0.1',
+          port: PORT,
+          path: request.url,
+          method: request.method,
+          headers: { ...request.headers, host: 'next.facemorph.me' },
+          rejectUnauthorized: false,
+        },
+        (source) => {
+          entry.status = source.statusCode!;
+          response.writeHead(source.statusCode!, {
+            ...source.headers,
+            'access-control-allow-origin': source.headers['access-control-allow-origin'] ?? '*',
+          });
+          let first = true;
+          source.on('data', (chunk: Buffer) => {
+            let body = chunk;
+            if (first && faults.corrupt.has(path) && body.length) {
+              body = Buffer.from(body);
+              body[0] = body[0]! ^ 0xff;
+            }
+            first = false;
+            entry.bytes += body.length;
+            response.write(body);
+          });
+          source.on('end', () => {
+            entry.complete = true;
+            response.end();
+          });
+          source.on('error', (error) => response.destroy(error));
+        },
+      );
+      upstream.on('error', (error) => response.destroy(error));
+      request.pipe(upstream);
+    },
+  );
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  return {
+    faults,
+    log,
+    port: (server.address() as AddressInfo).port,
+    async close() {
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve());
+        server.closeAllConnections();
+      });
+      rmSync(directory, { recursive: true, force: true });
+    },
+  };
+}
+
+test(
+  'acquisition failure: plain words and bytes where the face is made, and Retry downloads only what is missing',
+  { timeout: 1_800_000 },
+  async (t) => {
+    if (!existsSync(join(runtime, 'manifest.json'))) {
+      const reason = `untested: no acquired runtime at ${runtime}; owner fm-9kr8`;
+      if (process.env['FACEMORPH_REQUIRE_RUNTIME'] === '1') throw Error(reason);
+      t.skip(reason);
+      return;
+    }
+    const artifact = readIdentity(out);
+    assert.deepEqual(artifact.findings, []);
+    const manifest = JSON.parse(readFileSync(join(runtime, 'manifest.json'), 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    type Asset = { url: string; chunks?: { url: string }[] };
+    const chunks = (routeAssets(manifest, 'cpu', 'ort') as Asset[]).flatMap((a) =>
+      (a.chunks ?? []).map((c) => new URL(c.url).pathname),
+    );
+    assert.ok(chunks.length >= 6, 'the face model is chunked');
+    const site = await startControl({
+      runtime,
+      artifact: join(out, 'deploy-next'),
+      source: artifact.identity.deploySource.buildId,
+    });
+    try {
+      for (const [name, width, touch] of [
+        ['desktop', 1280, false],
+        ['phone', 390, true],
+      ] as const) {
+        const server = await faultServer();
+        const failing = chunks[2]!,
+          corrupt = chunks[4]!;
+        server.faults.fail.add(failing);
+        server.faults.corrupt.add(corrupt);
+        const profile = await launchFreshChromiumProfile({
+          args: [
+            ...chromiumArgs.filter((arg) => !arg.startsWith('--host-resolver-rules=')),
+            // The model mirror the app retries a refused chunk from is the same local server, never the internet.
+            `--host-resolver-rules=MAP next.facemorph.me:443 127.0.0.1:${server.port}, MAP models.facemorph.me:443 127.0.0.1:${server.port}`,
+            '--disable-features=WebGPU',
+          ],
+          viewport: { width, height: 900 },
+          hasTouch: touch,
+          isMobile: touch,
+          ignoreHTTPSErrors: true,
+        });
+        const page = await profile.context.newPage();
+        const errors: string[] = [];
+        page.on('pageerror', (error) => errors.push(error.message));
+        const operate = async (control: Locator) =>
+          assert.ok((await press(page, control, { touch })).inside, `${name}: ${control}`);
+        try {
+          await page.goto(ORIGIN);
+          const tiles = page.locator('section.next-face');
+          await tiles.nth(1).waitFor();
+          for (const control of [
+            page.locator('.next-model-toast').getByRole('button', { name: 'Not now' }),
+            page.getByRole('button', { name: 'Ask me later' }),
+          ])
+            if (
+              await control.waitFor({ timeout: 5000 }).then(
+                () => true,
+                () => false,
+              )
+            )
+              await operate(control);
+          await chooseCpu(page);
+          await tiles.nth(0).locator('.next-field input').fill('fault first'); // setup
+          await operate(tiles.nth(0).locator('.next-face-generate'));
+          const dialog = page.locator('.next-download-dialog');
+          await dialog.waitFor();
+          const row = await dialog.locator('[data-download-purpose="generate"]').innerText();
+          const figure = /^Generate: ([\d,]+ MB);/.exec(row)?.[1];
+          assert.ok(figure, row);
+          await operate(page.locator('.next-download-accept'));
+          // The failure is said in plain words with the downloaded and remaining bytes in the modal's unit, and
+          // Try again is offered; first the damaged chunk, then (healed) the chunk the server keeps refusing.
+          const errorBox = page.locator('.next-error');
+          const said = async (pattern: RegExp, label: string) => {
+            await page
+              .waitForFunction(
+                (source) =>
+                  new RegExp(source).test(document.querySelector('.next-error')?.textContent ?? ''),
+                pattern.source,
+                { timeout: 600_000 },
+              )
+              .catch(async (error: unknown) => {
+                await page.screenshot({
+                  path: join(results, `${name}-fault-${label}-FAILED.png`),
+                  fullPage: true,
+                });
+                console.log(
+                  `fm-9kr8 fault ${name} ${label} FAILED`,
+                  JSON.stringify({
+                    error: await errorBox.innerText().catch(() => ''),
+                    status: await page.locator('[role="status"]').allInnerTexts(),
+                    log: server.log.slice(-20),
+                  }),
+                );
+                throw error;
+              });
+            const text = await errorBox.locator('p').first().innerText();
+            assert.match(text, pattern, `${name} ${label}: ${text}`);
+            assert.doesNotMatch(
+              text,
+              /integrity|sha|chunk|asset/i,
+              `${name} ${label}: plain words`,
+            );
+            // Kept and remaining, against the consent's own figure, once the verified files are re-measured.
+            const mb = (value: string) => Number(value.replace(/[^\d]/g, ''));
+            const counted = await page.waitForFunction(
+              () => {
+                const line = document.querySelector('.next-error-bytes')?.textContent ?? '';
+                const m = /^Kept ([\d,]+ MB) of ([\d,]+ MB); ([\d,]+ MB) remaining\.$/.exec(line);
+                return m && m[1] !== '0 MB' ? [m[1], m[2], m[3]] : null;
+              },
+              null,
+              { timeout: 30_000 },
+            );
+            const [kept, total, remaining] = (await counted.jsonValue()) as [
+              string,
+              string,
+              string,
+            ];
+            assert.equal(total, figure, `${name} ${label}: the modal's figure`);
+            assert.ok(
+              Math.abs(mb(kept) + mb(remaining) - mb(total)) <= 1,
+              `${name} ${label}: ${kept} + ${remaining} = ${total}`,
+            );
+            await page.screenshot({ path: join(results, `${name}-fault-${label}.png`) });
+            return `${text} Kept ${kept} of ${total}; ${remaining} remaining.`;
+          };
+          const damaged = await said(/^A downloaded model file arrived damaged/, 'damaged');
+          server.faults.corrupt.clear();
+          await operate(errorBox.getByRole('button', { name: 'Try again', exact: true }));
+          const refused = await said(
+            /^The model download server had a temporary fault \(HTTP 500\)/,
+            'http-500',
+          );
+          server.faults.fail.clear();
+          const resumedAt = server.log.length;
+          await operate(errorBox.getByRole('button', { name: 'Try again', exact: true }));
+          await page.waitForFunction(
+            () =>
+              document.querySelectorAll('section.next-face')[0]?.getAttribute('data-next-state') ===
+              'filled',
+            null,
+            { timeout: 600_000 },
+          );
+          // Try again downloads only what the app said remained: the bytes crossing the network after the last
+          // Try again are that remaining figure, so no file verified before the failures was fetched again.
+          const remaining = /; ([\d,]+) MB remaining\.$/.exec(refused)![1]!.replace(/,/g, '');
+          const MiB = 1024 * 1024;
+          const resumed = server.log
+            .slice(resumedAt)
+            .filter((r) => MODEL.test(r.path))
+            .reduce((n, r) => n + r.bytes, 0);
+          assert.ok(
+            Math.abs(resumed - Number(remaining) * MiB) <= MiB,
+            `${name}: Try again fetched ${resumed} bytes for ${remaining} MB remaining`,
+          );
+          await page.screenshot({ path: join(results, `${name}-fault-recovered.png`) });
+          console.log(
+            `fm-9kr8 fault ${name}`,
+            JSON.stringify({
+              figure,
+              damaged,
+              refused,
+              chunkRequests: server.log.filter((r) => chunks.includes(r.path)).length,
+              chunks: chunks.length,
+              resumedBytes: resumed,
+            }),
+          );
+          assert.deepEqual(errors, []);
+        } finally {
+          await profile.close();
+          await server.close();
+        }
+      }
+    } finally {
+      await site.stop();
+    }
+  },
+);
+
+// fm-9kr8: a real browser storage quota that runs out on the model cache write. Chromium's own quota for the
+// origin is lowered (Storage.overrideQuotaForOrigin) below the face model, so its Cache Storage write fails with a
+// real QuotaExceededError. Cold profile, built app, Chromium CPU, 1280 px mouse and 390 px touch.
+test(
+  'storage quota: the model cache write fails with a real QuotaExceededError, worded as storage, and Save works',
+  { timeout: 1_800_000 },
+  async (t) => {
+    if (!existsSync(join(runtime, 'manifest.json'))) {
+      const reason = `untested: no acquired runtime at ${runtime}; owner fm-9kr8`;
+      if (process.env['FACEMORPH_REQUIRE_RUNTIME'] === '1') throw Error(reason);
+      t.skip(reason);
+      return;
+    }
+    const artifact = readIdentity(out);
+    assert.deepEqual(artifact.findings, []);
+    const site = await startControl({
+      runtime,
+      artifact: join(out, 'deploy-next'),
+      source: artifact.identity.deploySource.buildId,
+    });
+    try {
+      for (const [name, width, touch] of [
+        ['desktop', 1280, false],
+        ['phone', 390, true],
+      ] as const) {
+        // A real on-disk profile: an incognito context keeps a fixed in-memory quota the override cannot lower.
+        const profile = await launchFreshChromiumProfile({
+          args: [...chromiumArgs, '--disable-features=WebGPU'],
+          ...(touch ? devices['iPhone 13'] : {}),
+          viewport: { width, height: 900 },
+          hasTouch: touch,
+          isMobile: touch,
+          ignoreHTTPSErrors: true,
+          acceptDownloads: true,
+        });
+        const context = profile.context;
+        const page = await context.newPage();
+        const errors: string[] = [];
+        page.on('pageerror', (error) => errors.push(error.message));
+        await context.addInitScript(() => {
+          const seen: string[] = ((globalThis as { __statusSeen?: string[] }).__statusSeen = []);
+          new MutationObserver(() => {
+            const text = [...document.querySelectorAll('[role="status"], [role="alert"]')]
+              .map((el) => el.textContent ?? '')
+              .join(' | ');
+            if (text && seen.at(-1) !== text && seen.length < 400) seen.push(text);
+          }).observe(document, { subtree: true, childList: true, characterData: true });
+        });
+        const operate = async (control: Locator) =>
+          assert.ok((await press(page, control, { touch })).inside, `${name}: ${control}`);
+        try {
+          await page.goto(ORIGIN);
+          const cdp = await context.newCDPSession(page);
+          await cdp.send(
+            'Storage.overrideQuotaForOrigin' as never,
+            { origin: new URL(page.url()).origin, quotaSize: 40 * 1024 * 1024 } as never,
+          );
+          await page.reload();
+          // The browser's own enforced quota (estimate() reports a fixed figure under automation).
+          const quota = (await cdp.send(
+            'Storage.getUsageAndQuota' as never,
+            { origin: new URL(page.url()).origin } as never,
+          )) as unknown as { quota: number; overrideActive: boolean };
+          assert.ok(
+            quota.overrideActive && quota.quota <= 40 * 1024 * 1024,
+            `${name}: the lowered quota applies`,
+          );
+          const tiles = page.locator('section.next-face');
+          await tiles.nth(1).waitFor();
+          for (const control of [
+            page.locator('.next-model-toast').getByRole('button', { name: 'Not now' }),
+            page.getByRole('button', { name: 'Ask me later' }),
+          ])
+            if (
+              await control.waitFor({ timeout: 5000 }).then(
+                () => true,
+                () => false,
+              )
+            )
+              await operate(control);
+          await chooseCpu(page);
+          await tiles.nth(0).locator('.next-field input').fill('quota first'); // setup
+          await operate(tiles.nth(0).locator('.next-face-generate'));
+          const dialog = page.locator('.next-download-dialog');
+          await dialog.waitFor();
+          const warning = await dialog
+            .locator('.next-download-storage')
+            .innerText()
+            .catch(() => '');
+          await operate(page.locator('.next-download-accept'));
+          await page.waitForFunction(
+            () =>
+              document.querySelectorAll('section.next-face')[0]?.getAttribute('data-next-state') ===
+                'filled' || !!document.querySelector('.next-error'),
+            null,
+            { timeout: 600_000 },
+          );
+          await page.waitForFunction(
+            () => !document.querySelector('.next-product[data-next-busy=true]'),
+          );
+          const statuses = await page.evaluate(
+            () => (globalThis as { __statusSeen?: string[] }).__statusSeen ?? [],
+          );
+          const filled = (await tiles.nth(0).getAttribute('data-next-state')) === 'filled';
+          let saved = false;
+          if (filled) {
+            const download = page.waitForEvent('download', { timeout: 60_000 });
+            await operate(tiles.nth(0).getByRole('button', { name: 'Save image', exact: true }));
+            saved = (await (await download).path()) !== null;
+          }
+          await page.screenshot({ path: join(results, `${name}-quota.png`), fullPage: true });
+          console.log(
+            `fm-9kr8 quota ${name}`,
+            JSON.stringify({
+              quota: quota.quota,
+              after: await cdp.send(
+                'Storage.getUsageAndQuota' as never,
+                { origin: new URL(page.url()).origin } as never,
+              ),
+              warning,
+              filled,
+              saved,
+              statuses: statuses.filter((line) => /storage|kept|keep/i.test(line)).slice(0, 6),
+            }),
+          );
+          // The quota really refused the writes, the face was still made and saved, and the page says the
+          // model was not kept, as storage (never as a limit of the device).
+          const after = (await cdp.send(
+            'Storage.getUsageAndQuota' as never,
+            { origin: new URL(page.url()).origin } as never,
+          )) as unknown as { usage: number; quota: number };
+          assert.ok(
+            after.usage <= after.quota && after.usage < 158 * 1024 * 1024,
+            `${name}: storage refused`,
+          );
+          assert.ok(filled, `${name}: the face is made`);
+          assert.ok(saved, `${name}: Save works`);
+          const kept = statuses.find((line) =>
+            line.includes('could not keep the downloaded model'),
+          );
+          assert.ok(kept, `${name}: the page says the model was not kept`);
+          assert.match(kept, /browser storage is full/);
+          assert.doesNotMatch(kept, /cannot run|not supported|capab/i);
+          assert.deepEqual(errors, []);
+        } finally {
+          await profile.close();
+        }
+      }
+    } finally {
       await site.stop();
     }
   },
