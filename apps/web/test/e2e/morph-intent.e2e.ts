@@ -3,8 +3,6 @@
 // 390 px (touch): Create morph is pressed at its visible centre after elementFromPoint shows it there, a repeated
 // press while that morph runs starts nothing new (same job, nothing queued behind it), and Cancel stops it with no
 // video. By-name clicks are setup only. A screenshot per case.
-// Status 26 October: 2, 3 and 8 faces pass. At 64 faces Create morph never holds still while the faces generate
-// (the many-face row keeps reflowing), so the press times out; that layout is fm-id4c's and fm-8w99 waits on it.
 //   FACEMORPH_DEPLOY_OUT=<dir with deploy-next/> node --test test/e2e/morph-intent.e2e.ts
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync } from 'node:fs';
@@ -15,6 +13,7 @@ import { startControl, chromiumArgs, ORIGIN, REPO } from '../parity/control-serv
 import { readIdentity } from '../../../../scripts/import/build-next.mjs';
 import { press } from '../support/operate.ts';
 import { INSTALL_HOOK } from '../parity/elmish-probe.ts';
+import { STORE_HOOK, setFaces } from '../support/face-fixture.ts';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
 const out = resolve(process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO);
@@ -74,7 +73,7 @@ test(
             isMobile: touch,
             ignoreHTTPSErrors: true,
           });
-          await context.addInitScript(INSTALL_HOOK);
+          await context.addInitScript(`${INSTALL_HOOK}\n${STORE_HOOK}`);
           const page = await context.newPage();
           const errors: string[] = [];
           page.on('pageerror', (error) => errors.push(error.message));
@@ -97,14 +96,9 @@ test(
             await page.getByRole('button', { name: 'More options' }).click(); // setup
             await page.getByLabel('Processing mode').selectOption('cpu'); // setup
             await page.getByRole('button', { name: 'More options' }).click(); // setup: close
-            const tiles = page.locator('section.next-face');
-            while ((await tiles.count()) < count)
-              await page.getByRole('button', { name: 'Add face' }).click(); // setup
-            for (let i = 0; i < count; i++)
-              await tiles
-                .nth(i)
-                .locator('.next-field input')
-                .fill(`intent face ${i + 1}`); // setup
+            // Setup: the faces through the controller (the 150-face strip is virtualised, so tiles are not all in the
+            // DOM); words for most, seeds for every third.
+            await setFaces(page, count);
             // Accept: Create morph at its visible centre; the download question (first use) is answered.
             const create = page.locator('.next-primary-action');
             await operate(create);
@@ -128,8 +122,31 @@ test(
             const running = await model(page);
             assert.equal(running.Busy, true, `${at}: accepted`);
             await page.screenshot({ path: join(results, `${at}-accepted.png`) });
-            // A repeated press while that morph runs: the same job, nothing queued behind it.
-            await operate(create);
+            // A repeated press while that morph runs: the same job, nothing queued behind it. Create morph is
+            // disabled while it runs (no pointer events), so the real press at its visible centre lands on the
+            // morph controls' region around it; elementFromPoint shows that region there and the button disabled.
+            await create.scrollIntoViewIfNeeded();
+            const box = await create.boundingBox();
+            assert.ok(box && box.width > 0 && box.height > 0, `${at}: Create morph is visible`);
+            const [cx, cy] = [box.x + box.width / 2, box.y + box.height / 2];
+            const hit = await create.evaluate(
+              (el, [px, py]) => {
+                const at = document.elementFromPoint(px as number, py as number);
+                return {
+                  disabled: (el as HTMLButtonElement).disabled,
+                  region:
+                    !!at && (el === at || el.contains(at) || at === el.closest('.next-morph-slot')),
+                };
+              },
+              [cx, cy],
+            );
+            assert.deepEqual(
+              hit,
+              { disabled: true, region: true },
+              `${at}: repeated press at Create morph`,
+            );
+            if (touch) await page.touchscreen.tap(cx, cy);
+            else await page.mouse.click(cx, cy);
             await page.waitForTimeout(1000);
             const repeated = await model(page);
             assert.equal(repeated.JobId, running.JobId, `${at}: no second job`);
