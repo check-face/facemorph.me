@@ -196,6 +196,7 @@ export function createController(
   const revisions = new Map<string, number>();
   const photoSelections = new Map<string, number>();
   let photoSelectionSequence = 0;
+  let detections: Promise<void> = Promise.resolve();
   const handles = new Map<OperationHandle, number>();
   const pending = new Set<Promise<unknown>>();
   const photoTasks = createPhotoTasks();
@@ -800,7 +801,15 @@ export function createController(
         case 'detectBatchFaces':
           photoTask(
             [effect.file],
-            () => facade.detectFaces(effect.file),
+            // The on-device aligner prepares one photo at a time: detections run one after another.
+            () => {
+              const run = detections.then(() => facade.detectFaces(effect.file));
+              detections = run.then(
+                () => undefined,
+                () => undefined,
+              );
+              return run;
+            },
             (boxes) => store.dispatch(msg('BatchDetected', effect.token, effect.group, boxes)),
             () => store.dispatch(msg('BatchDetected', effect.token, effect.group, null)),
           );
