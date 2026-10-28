@@ -183,6 +183,23 @@ test('installs: npm ci only, no @latest, no npx <pkg>@<version>', () => {
   ]);
 });
 
+test('installs: only the dependency currency workflow may float, and only to latest', () => {
+  const bump = 'npx --yes npm-check-updates@latest --upgrade\n- run: npm install';
+  assert.deepEqual(checkInstalls([['.github/workflows/dependency.yml', bump]]), []);
+  assert.deepEqual(
+    checkInstalls([['.github/workflows/check.yml', bump]])
+      .map((v) => v.rule)
+      .sort(),
+    ['install-latest', 'install-npm-install'],
+  );
+  assert.deepEqual(
+    checkInstalls([['.github/workflows/dependency.yml', 'npx -y wrangler@4.149.0 deploy']]).map(
+      (v) => v.rule,
+    ),
+    ['install-npx-version'],
+  );
+});
+
 test('adapters are package sources importing the closure; they must declare their test', () => {
   const sources = new Map([
     [

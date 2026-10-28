@@ -59,6 +59,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # the interop gate compares with the previous commit
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -86,6 +88,17 @@ jobs:
       - run: npm run lint
       - name: Every test file is run by npm test
         run: node scripts/build/check-tests-listed.mjs
+      # The scaffold gates (fm-fy2.20, once scaffold.yml): every gate catches a seeded fault and passes the clean tree;
+      # formatting is stable; no floating installs; the packages pack.
+      - name: Scaffold gates
+        run: |
+          node scripts/build/check-scaffold.mjs
+          node scripts/build/format-stable.mjs
+          node scripts/build/seeded-gates.mjs
+          node scripts/build/interop-check.mjs --base HEAD~1
+          for w in packages/stylegan-js packages/browser-model-manager packages/cloudflare-model-host packages/model-conv; do
+            npm pack -w "$w" --dry-run > /dev/null
+          done
       - name: The checks wrote nothing
         run: git diff --exit-code
 

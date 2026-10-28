@@ -185,15 +185,20 @@ export function checkRoots(scope, roots) {
   return violations;
 }
 
+// The one workflow whose job is to float: the dependency currency bump moves every dependency to its latest release
+// and reinstalls to rewrite the lockfile (operator, 24 October 2026). It may use @latest and npm install, nothing else.
+export const FLOATING = ['.github/workflows/dependency.yml'];
+
 // No floating installs anywhere CI or scripts run: npm ci only, no @latest, no npx <pkg>@<version>.
-export function checkInstalls(files) {
+export function checkInstalls(files, floating = FLOATING) {
   const violations = [];
   for (const [path, text] of files) {
-    if (/@latest\b/.test(text))
+    const floats = floating.includes(path);
+    if (!floats && /@latest\b/.test(text))
       violations.push({ rule: 'install-latest', detail: `${path} uses @latest` });
     if (/\bnpx\s+(-y\s+)?[@\w./-]+@\d/.test(text))
       violations.push({ rule: 'install-npx-version', detail: `${path} runs npx <pkg>@<version>` });
-    if (/\bnpm\s+(install|i)\b/.test(text))
+    if (!floats && /\bnpm\s+(install|i)\b/.test(text))
       violations.push({
         rule: 'install-npm-install',
         detail: `${path} runs npm install (CI uses npm ci)`,
