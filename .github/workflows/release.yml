@@ -191,7 +191,7 @@ jobs:
 
   functional:
     # On triton, in the Playwright image (triton's Ubuntu 20.04 cannot run the browsers natively): separate machines
-    # from eris, so the suites run beside the timing jobs instead of after them, and each shard runs its files at once.
+    # from eris, so the suites run beside the timing jobs instead of after them, three files at a time.
     needs: [build]
     name: functional cases (${{ matrix.shard }}/4, Chromium, CPU)
     # Every operated case of the verify.functional manifest (apps/web/test/verify/cases/verify-functional.ts), plus the
@@ -201,7 +201,9 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble
       options: --ipc=host
-    timeout-minutes: 45
+      env:
+        HOME: /root # Firefox refuses a $HOME the container user does not own
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -213,6 +215,7 @@ jobs:
       - uses: actions/checkout@v4
       # The image carries Node 24 and the Chromium, Firefox and WebKit of the pinned Playwright, with their libraries.
       # The suites import the packages' built entry points (stylegan-js, browser-model-manager).
+      - run: apt-get update -qq && apt-get install -y -qq unzip >/dev/null # fetch-control unzips the pinned control
       - run: npm ci && npm run build # the packages' entry points, and apps/web/dist for the check pages
       # A self-hosted workspace keeps artifact/ between runs, and the download only adds files.
       - run: rm -rf artifact
@@ -245,7 +248,7 @@ jobs:
             const all = [...new Set([...m.cases.map((c) => c.test.file), ...extra])].sort();
             console.log(all.filter((_, i) => i % 4 === ${{ matrix.shard }} - 1).map((f) => 'test/e2e/' + f).join(' '));")
           echo "shard ${{ matrix.shard }}: $files"
-          node --test --test-concurrency=5 --test-timeout=2400000 $files
+          node --test --test-concurrency=3 --test-timeout=2400000 $files
       - name: Record the failure
         if: failure() || cancelled()
         run: |
