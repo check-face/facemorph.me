@@ -604,7 +604,9 @@ export function DownloadDialog({ state, dispatch }: { state: State; dispatch: Di
         gate[1].type === 'Run' && gate[1].args[0] === 'morph'
           ? '.next-primary-action'
           : gate[1].type === 'RunFace'
-            ? `[data-next-face="${CSS.escape(gate[1].args[0])}"] .next-face-generate`
+            ? // The face's field, not its Generate: once the approved job starts that button is the face's
+              // Cancel, and an Enter there would cancel what was just approved.
+              `[data-next-face="${CSS.escape(gate[1].args[0])}"] input[type="text"]`
             : undefined
       }
     >
