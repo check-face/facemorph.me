@@ -22,6 +22,8 @@ import { FORMATS_HREF, NOTICES_HREF, helpTopics } from '../../shell/render/help.
 import { MODEL_LICENCES } from '../../shell/render/model-licences.ts';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
+// The built artifact: deploy-next/ under FACEMORPH_DEPLOY_OUT, as the other built-app suites take it.
+const built = resolve(process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO);
 const results = join(REPO, 'apps/web/test-results/help');
 const NOTICES = join(REPO, 'hosting/next/notices');
 /** The runtime's WebAssembly SIMD probe module (apps/web/src/Next/browser/admission.mjs). */
@@ -73,12 +75,12 @@ test(
       t.skip(reason);
       return;
     }
-    const artifact = readIdentity(REPO);
+    const artifact = readIdentity(built);
     assert.deepEqual(artifact.findings, []);
     assert.equal(artifact.identity?.label, 'destination');
     const site = await startControl({
       runtime,
-      artifact: resolve(REPO, 'deploy-next'),
+      artifact: resolve(built, 'deploy-next'),
       source: artifact.identity.deploySource.buildId,
     });
     const browser = await chromium.launch({ args: [...chromiumArgs, '--disable-features=WebGPU'] });

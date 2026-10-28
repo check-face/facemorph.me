@@ -28,7 +28,7 @@ export type EverydayEffect =
         | 'sendReportOnce';
     }
   | {
-      readonly type: 'invalidateFace' | 'invalidatePhotoSelections' | 'publicPreview';
+      readonly type: 'invalidateFace' | 'invalidatePhotoSelections' | 'publicPreview' | 'pickName';
       readonly id: string;
     }
   | {
@@ -136,6 +136,9 @@ export function rejection(effect: Effect, error: unknown, input?: Input): Msg {
     case 'loadNames':
       // The open picker owns this failure: shown inside the dialog, which stays dismissible.
       return msg('NamesFailed', text);
+    case 'pickName':
+      // A published result that cannot be fetched or checked is that face's error; nothing is synthesized instead.
+      return msg('PhotoRefused', effect.id, text);
     case 'exportProject':
       return msg('Notice', text);
     case 'classifyStills':

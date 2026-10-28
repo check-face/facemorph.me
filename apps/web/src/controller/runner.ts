@@ -47,6 +47,7 @@ const commands = new Set<Effect['type']>([
   'dispatch',
   'loadNames',
   'publicPreview',
+  'pickName',
   'sliderFrames',
   'checkCachedFace',
   'execute',
@@ -707,6 +708,17 @@ export function createController(
         case 'closeNamesFocus':
           helpers.closeNamesFocus();
           break;
+        case 'pickName': {
+          // The text is read here, at dispatch, never carried in the effect.
+          const input = inputOf(state, effect.id);
+          if (!input || input.mode !== 'text') break;
+          task(
+            facade.pickName({ id: input.id, value: input.value }),
+            (selection) => store.dispatch(msg('NamePicked', input.id, input.value, selection)),
+            (error) => store.dispatch(rejection(effect, error)),
+          );
+          break;
+        }
         case 'loadNames':
           task(
             facade.loadNames(),

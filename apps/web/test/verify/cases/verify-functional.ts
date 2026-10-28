@@ -123,6 +123,27 @@ export const VERIFY_FUNCTIONAL: OperatedManifest = {
       },
     },
     {
+      id: 'names-static-result',
+      steps: [
+        'pick-first-name',
+        'no-model-request',
+        'no-inference-job',
+        'one-result-one-index-fetch',
+        'save-recovers-latent',
+        'release-runtime-identity',
+        'typed-equals-picked',
+        'capitalised-differs',
+        'edit-enables-generate',
+      ],
+      rows: ['names.open-pick', 'names.edit-picked', 'names.exact-text'],
+      widths: BOTH,
+      test: {
+        file: 'names.e2e.ts',
+        title:
+          'a picked name shows its published result with no model request or inference, and is the typed name',
+      },
+    },
+    {
       id: 'names-outside-hosts',
       steps: ['open-names', 'pick-first', 'listed-hosts-only'],
       rows: ['names.open-pick'],
@@ -287,12 +308,6 @@ export const UNTESTED: readonly {
   readonly part: string;
   readonly reason: string;
 }[] = [
-  {
-    rows: ['names.open-pick', 'names.edit-picked', 'names.exact-text'],
-    part: 'name selection with zero model-host requests and no inference start; picker identity equals typed identity',
-    reason:
-      'the built app still runs ChooseName -> RunFace (synthesis on selection); the static-result path is folded fm-fy2.18 scope, now owned by fm-8w99',
-  },
   {
     rows: ['testing-bulk-generate'],
     part: '?testing bulk Generate operated on the release artifact',

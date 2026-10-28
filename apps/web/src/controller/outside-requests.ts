@@ -22,8 +22,9 @@ export const OUTSIDE_REQUESTS: readonly OutsideRequest[] = [
   },
   {
     host: 'facemorph-name-catalogue.cdilga.workers.dev',
-    purpose: "A catalogue name's published latent (W+), checked against its digest before use.",
-    trigger: 'Generating a face for a name that is in the published catalogue.',
+    purpose:
+      "A picked name's published result: one recovery-bearing WebP, checked against its digest before use.",
+    trigger: 'Picking a name in Browse names. Never while typing, and never for typed text.',
   },
   {
     host: 'www.googletagmanager.com',

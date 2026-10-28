@@ -133,8 +133,11 @@ before(async () => {
     createHash('sha256').update(lines).digest('hex'),
     'goldens were recorded from another control: record them again',
   );
-  assert.ok(existsSync(new URL('dist/index.html', app)), 'no dist/: run `npm run build` first');
-  site = await serve(new URL('dist', app).pathname);
+  // The built artifact: deploy-next/ under FACEMORPH_DEPLOY_OUT, else this build's dist/.
+  const built = process.env['FACEMORPH_DEPLOY_OUT'];
+  const dir = built ? `${built}/deploy-next` : new URL('dist', app).pathname;
+  assert.ok(existsSync(`${dir}/index.html`), `no ${dir}/index.html: run the build first`);
+  site = await serve(dir);
   mkdirSync(results, { recursive: true });
 });
 after(async () => {

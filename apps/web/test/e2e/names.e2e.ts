@@ -788,6 +788,221 @@ test(
 );
 
 test(
+  'a picked name shows its published result with no model request or inference, and is the typed name',
+  { skip: skipped, timeout: 1_200_000 },
+  async (t) => {
+    if (!existsSync(join(runtime, 'manifest.json'))) {
+      const reason = `untested: no acquired runtime at ${runtime}; owner fm-ejwq; run on the runtime lane`;
+      if (process.env['FACEMORPH_REQUIRE_RUNTIME'] === '1') throw Error(reason);
+      t.skip(reason);
+      return;
+    }
+    const { startControl, chromiumArgs, ORIGIN } = await import('../parity/control-server.ts');
+    const { readIdentity } = await import('../../../../scripts/import/build-next.mjs');
+    const { INSTALL_HOOK } = await import('../parity/elmish-probe.ts');
+    const { recoverEnvelope } = await import('../../src/Next/image-envelope.mjs');
+    const artifact = readIdentity(resolve(SITE, '..'));
+    assert.deepEqual(artifact.findings, []);
+    const control = await startControl({
+      runtime,
+      artifact: SITE,
+      source: artifact.identity.deploySource.buildId,
+    });
+    const journey = await chromium.launch({
+      ...(chromiumPath ? { executablePath: chromiumPath } : {}),
+      args: [...chromiumArgs, '--disable-features=WebGPU'],
+    });
+    const MODEL = /^\/runtime\/(assets|chunks|encoder-stream|photo)\//;
+    const evidence: Record<string, unknown> = {};
+    try {
+      for (const [width, touch] of [
+        [1280, false],
+        [390, true],
+      ] as const) {
+        const ctx = await journey.newContext({
+          ...(touch ? devices['Pixel 7'] : {}),
+          viewport: { width, height: touch ? 844 : 900 },
+          hasTouch: touch,
+          isMobile: touch,
+          ignoreHTTPSErrors: true,
+          acceptDownloads: true,
+        });
+        await ctx.addInitScript(INSTALL_HOOK);
+        const page = await ctx.newPage();
+        const requests: URL[] = [];
+        ctx.on('request', (r) => requests.push(new URL(r.url())));
+        const model = () =>
+          page.evaluate(() => {
+            const m = (window as unknown as { __elmish: { model: Record<string, unknown> } })
+              .__elmish.model;
+            return { jobId: m['JobId'] as number, busy: m['Busy'] as boolean };
+          });
+        const latentOf = async (tile: number, label: string) => {
+          const saved = page.waitForEvent('download');
+          await operate(
+            page,
+            tileOf(page, tile).getByRole('button', { name: 'Save image', exact: true }),
+            touch,
+          );
+          const path = join(results, `${label}-${width}.webp`);
+          await (await saved).saveAs(path);
+          const envelope = await recoverEnvelope(
+            new Blob([readFileSync(path)], { type: 'image/webp' }),
+          );
+          assert.ok(envelope && !envelope.legacy, `${label}: a recovery-bearing file`);
+          return envelope as Extract<NonNullable<typeof envelope>, { blob: Blob }>;
+        };
+        const filled = (tile: number, timeout: number) =>
+          page.waitForFunction(
+            (i) =>
+              document.querySelectorAll('section.next-face')[i]?.getAttribute('data-next-state') ===
+              'filled',
+            tile,
+            { timeout },
+          );
+        try {
+          await openApp(page, ORIGIN);
+          await page.getByLabel('Processing mode').selectOption('cpu'); // setup
+          const before = await model();
+          const dialog = await openNames(page, touch, 0);
+          await loadedTiles(dialog);
+          const name = catalogue!.names[0]!;
+          const picked = requests.length;
+          let busy = false;
+          const watch = setInterval(() => {
+            model().then(
+              (m) => (busy ||= m.busy),
+              () => {},
+            );
+          }, 50);
+          await operate(page, dialog.getByRole('button', { name: name.name, exact: true }), touch);
+          await dialogOf(page).waitFor({ state: 'detached' });
+          await filled(0, 60_000);
+          clearInterval(watch);
+          const pick = requests.slice(picked);
+          assert.deepEqual(
+            pick.filter((u) => MODEL.test(u.pathname)).map(String),
+            [],
+            'a pick requests no model file',
+          );
+          assert.equal(await page.locator('.next-download-dialog').count(), 0, 'no model consent');
+          const after = await model();
+          assert.equal(after.jobId, before.jobId, 'no inference job started');
+          assert.equal(busy, false, 'never busy computing');
+          const results_ = pick.filter(
+            (u) => u.hostname === NAME_HOST && u.pathname.startsWith('/results/'),
+          );
+          assert.equal(results_.length, 1, 'one result fetch');
+          assert.equal(
+            pick.filter((u) => u.pathname.startsWith('/names-results/')).length,
+            1,
+            'one integrity lookup',
+          );
+          assert.equal(await tileOf(page, 0).locator('.next-field input').inputValue(), name.value);
+          await page.screenshot({ path: join(results, `static-pick-${width}.png`) });
+          const pickedEnvelope = await latentOf(0, 'picked');
+          assert.deepEqual(
+            requests.filter((u) => MODEL.test(u.pathname)).map(String),
+            [],
+            'Save of the picked result requests no model file either',
+          );
+          // The engine and catalogue identity it names are this release's runtime.
+          const served = await page.evaluate(async () => {
+            const bytes = await (await fetch('/runtime/manifest.json')).arrayBuffer();
+            const hash = await crypto.subtle.digest('SHA-256', bytes);
+            const m = JSON.parse(new TextDecoder().decode(bytes)) as { modelSourceSha256: string };
+            return {
+              sha: Array.from(new Uint8Array(hash), (x) => x.toString(16).padStart(2, '0')).join(
+                '',
+              ),
+              model: m.modelSourceSha256,
+            };
+          });
+          assert.equal(pickedEnvelope.provenance.manifestSha256, served.sha, 'release runtime');
+          assert.equal(pickedEnvelope.provenance.modelSha256, served.model, 'release model');
+          // Typing the same name and pressing Generate (the ordinary typed path, real CPU synthesis) is the same
+          // face: exactly the same W+.
+          const field = tileOf(page, 1).locator('.next-field input');
+          const typed = async (value: string, label: string) => {
+            await operate(page, field, touch);
+            await page.keyboard.press('ControlOrMeta+A');
+            await page.keyboard.press('Backspace');
+            await page.keyboard.type(value);
+            // The edit invalidates any earlier face of this tile before Generate.
+            await page.waitForFunction(
+              () =>
+                document
+                  .querySelectorAll('section.next-face')[1]
+                  ?.getAttribute('data-next-state') !== 'filled',
+            );
+            await operate(page, tileOf(page, 1).getByRole('button', { name: /^Generate/ }), touch);
+            const accept = page.locator('.next-download-accept');
+            if (
+              await accept.waitFor({ timeout: 8000 }).then(
+                () => true,
+                () => false,
+              )
+            )
+              await operate(page, accept, touch);
+            await filled(1, 600_000);
+            return latentOf(1, label);
+          };
+          const same = await typed(name.value, 'typed');
+          assert.deepEqual(
+            Array.from(same.latent.values),
+            Array.from(pickedEnvelope.latent.values),
+            'typed and picked are the same W+',
+          );
+          assert.equal(same.provenance.modelSha256, pickedEnvelope.provenance.modelSha256);
+          const capital = await typed(name.name, 'typed-capital');
+          assert.notDeepEqual(
+            Array.from(capital.latent.values),
+            Array.from(pickedEnvelope.latent.values),
+            'exact text: a capitalised name is another face',
+          );
+          // Editing the picked text drops its result and enables the ordinary Generate (R10).
+          const pickedField = tileOf(page, 0).locator('.next-field input');
+          await operate(page, pickedField, touch);
+          await page.keyboard.press('End');
+          await page.keyboard.type('s');
+          await page.waitForFunction(
+            () =>
+              document.querySelectorAll('section.next-face')[0]?.getAttribute('data-next-state') !==
+              'filled',
+          );
+          assert.equal(
+            await tileOf(page, 0)
+              .getByRole('button', { name: /^Generate/ })
+              .isEnabled(),
+            true,
+            'an edited pick is ordinary text with Generate',
+          );
+          evidence[String(width)] = {
+            name: name.value,
+            pickRequests: pick.map((u) => `${u.hostname}${u.pathname}`),
+            modelRequestsDuringPick: 0,
+            jobId: after.jobId,
+            runtimeManifestSha256: served.sha,
+            modelSha256: served.model,
+            latentSha256: pickedEnvelope.latentSha256,
+            typedEqualsPicked: true,
+          };
+          log(
+            `${width}: picked ${name.value} with ${pick.length} requests, no model or job; typed equals picked`,
+          );
+        } finally {
+          await ctx.close();
+        }
+      }
+    } finally {
+      writeFileSync(join(results, 'static-pick.json'), JSON.stringify(evidence, null, 1));
+      await journey.close();
+      await control.stop();
+    }
+  },
+);
+
+test(
   'a full journey contacts only outside hosts listed in outside-requests.ts',
   { skip: skipped, timeout: 600_000 },
   async (t) => {

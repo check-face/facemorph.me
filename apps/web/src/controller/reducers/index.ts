@@ -47,6 +47,7 @@ export const CASES = {
   PreviewLoaded: names,
   SearchNames: names,
   ChooseName: names,
+  NamePicked: names,
   CloseNames: names,
   MoreNames: names,
   Debug: reporting,

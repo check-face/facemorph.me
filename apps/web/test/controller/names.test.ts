@@ -2,6 +2,7 @@ import test, { before } from 'node:test';
 import assert from 'node:assert/strict';
 import { init } from '../../src/controller/init.ts';
 import { msg } from '../../src/controller/msg.ts';
+import type { PhotoSelection } from '../../shell/facade/records.ts';
 import { names } from '../../src/controller/reducers/names.ts';
 import { inputs } from '../../src/controller/reducers/inputs.ts';
 import { compareFields, fixture, fromGolden, replayStatus, verifyControl } from './scaffold.ts';
@@ -33,7 +34,7 @@ test('opening names resets query and pagination, loading only an empty catalogue
   assert.equal(closed.state.Browse, null);
   assert.deepEqual(closed.effects, [{ type: 'closeNamesFocus' }]);
 });
-test('choosing a name updates its slot and describes preview before generation', () => {
+test('choosing a name fills its slot and asks for its published result, never a generation', () => {
   const selected = names(msg('ChooseName', 'ada'), {
     ...state,
     Browse: 'face-2',
@@ -53,8 +54,12 @@ test('choosing a name updates its slot and describes preview before generation',
     { type: 'closeNamesFocus' },
     { type: 'invalidateFace', id: 'face-2' },
     { type: 'publicPreview', id: 'face-2' },
-    { type: 'dispatch', message: msg('RunFace', 'face-2') },
+    { type: 'pickName', id: 'face-2' },
   ]);
+  assert.ok(
+    selected.state.PreparingFaces.has('face-2'),
+    'the face shows Loading until the result is in',
+  );
   assert.equal(names(msg('ChooseName', 'ada'), state)!.state, state);
 });
 test('a pick for a face removed while its picker was open writes to no face', () => {
@@ -134,4 +139,42 @@ test('typing describes no request; only an explicit act describes an instant pic
     seed.effects.filter((e) => e.type === 'publicPreview'),
     [{ type: 'publicPreview', id: 'face-1' }],
   );
+});
+const face = {
+  id: 'face-2',
+  url: 'blob:ada',
+  raw: false,
+  label: 'ada',
+  sourceMode: 'text',
+  sourceFile: null,
+};
+const recovered = (faces: readonly (typeof face)[]) =>
+  ({ kind: 'recovered', output: { faces } }) as unknown as PhotoSelection;
+test('a published result installs as that face for the exact picked text, without a job', () => {
+  const picked = names(msg('ChooseName', 'ada'), { ...state, Browse: 'face-2' })!.state;
+  const done = names(msg('NamePicked', 'face-2', 'ada', recovered([face])), picked)!;
+  assert.deepEqual(done.state.Faces, [face]);
+  assert.equal(done.state.PreparingFaces.has('face-2'), false);
+  assert.equal(done.state.Inputs[1]!.value, 'ada');
+  assert.ok(
+    !done.effects.some((e) => e.type === 'execute' || e.type === 'dispatch'),
+    'no inference',
+  );
+});
+test('a result for text edited or a face removed since the pick installs nothing', () => {
+  const picked = names(msg('ChooseName', 'ada'), { ...state, Browse: 'face-2' })!.state;
+  const edited = {
+    ...picked,
+    Inputs: picked.Inputs.map((i) => (i.id === 'face-2' ? { ...i, value: 'adam' } : i)),
+  };
+  const late = names(msg('NamePicked', 'face-2', 'ada', recovered([face])), edited)!;
+  assert.deepEqual(late.state.Faces, edited.Faces);
+  assert.equal(late.state.PreparingFaces.has('face-2'), false);
+  const removed = { ...picked, Inputs: picked.Inputs.filter((i) => i.id !== 'face-2') };
+  assert.deepEqual(
+    names(msg('NamePicked', 'face-2', 'ada', recovered([face])), removed)!.state.Faces,
+    removed.Faces,
+  );
+  const superseded = names(msg('NamePicked', 'face-2', 'ada', { kind: 'superseded' }), picked)!;
+  assert.deepEqual(superseded.state.Faces, picked.Faces);
 });

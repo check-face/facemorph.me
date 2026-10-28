@@ -35,7 +35,7 @@ import {routeAssets,photoAssets,measure} from './model-inventory.mjs';
 import {createApprovalGenerations,resolveDiscoveredGrants} from './browser/bridge-grant.mjs';
 import {previewPhoto,cropPhoto} from './photo/crop.mjs';
 import {confirmCrop} from './photo/confirmed-crop.mjs';
-import {getPublicCatalogue,galleryTextUrl,publicNameLatent} from './public-previews.mjs';
+import {getPublicCatalogue,galleryTextUrl} from './public-previews.mjs';
 export {galleryTextUrl,gallerySeedUrl,publicPreview} from './public-previews.mjs';
 // The U-14 slider consumes frames through window.__nextFrames.get(key); wire the real store
 // here so the UI has exactly one integration point. Guarded so stripped-import test harnesses
@@ -699,7 +699,11 @@ export async function selectPhotoReported(request){
   // W+ shape; a blend's identity is its recipe digest, which the reader has already checked (fm-fy2.7).
   checkFaceModel(recovered,{modelSha256:m.modelSourceSha256,noiseSha256:m.noiseSha256});
   if(recovered.generationKind!=='blend'&&recovered.generationSha256&&await digest(JSON.stringify(generationIdentity(m,recovered.generationKind)))!==recovered.generationSha256)throw Error('This saved face uses a different model.');
-  if(selectionRevision!==revisionOf(request.id))return null;await register(request.id,recovered,'Saved face');analytics.operationResult?.('restore','completed');return {recovered:true,...snapshot('Saved face recovered without photo encoding.')};
+  if(selectionRevision!==revisionOf(request.id))return null;await register(request.id,recovered,request.name||'Saved face');
+  // A picked name's published result (fm-ejwq) is that text's face: it serves Generate, Save and Morph for the
+  // unchanged text, and an edit invalidates it like any other face.
+  if(request.name)faces.get(request.id).source={mode:'text',value:request.name,file:null};
+  analytics.operationResult?.('restore','completed');return {recovered:true,...snapshot(request.name?'Name shown from its published result.':'Saved face recovered without photo encoding.')};
  }
  warmPhotoTools();return Promise.resolve(photoStage('photo-select',()=>selectPhoto(request))).then(result=>{if(selectionRevision!==revisionOf(request.id)){if(result?.url)URL.revokeObjectURL(result.url);return null;}if(result)analytics.photoSelected({outcome:'ready'});return result;},error=>{analytics.photoSelected({outcome:'invalid'});throw error;});}
 export function previewPhotoReported(file,options){return photoStage('photo-preview',()=>previewPhoto(file,options));}
@@ -759,12 +763,11 @@ export function rememberSourcePhoto(id,file){const previous=photoSources.get(id)
 export function sourcePhotoUrl(id){return photoSources.get(id)||'';}
 let arrivalRevision=0;
 export function invalidateArrivalRestore(){arrivalRevision++;}
-async function namedLatent(item){
- if(item.mode!=='text'||typeof publicNameLatent!=='function')return null;
- try{return await publicNameLatent(item.value,manifest,{signal:active?.signal});}catch(error){checked();return null;}
-}
-async function generateNameOrSeed(service,item){const latent=await namedLatent(item);return latent?service.synthesize(latent,{signal:active.signal,raw:true}):service.generate({mode:item.mode,value:item.value,signal:active.signal},{raw:true});}
-export async function checkCachedFace(item){try{const service=await engine();if(await service.peekOriginal?.(item))return true;const latent=await namedLatent(item);return !!(latent&&await service.peekOriginal?.({mode:'latent',latent}));}catch{return false;}}
+// One canonical resolver (fm-ejwq, folded fm-fy2.18): typed text always maps through the engine, never through the
+// catalogue's separately derived latent, so a typed name is the same face as the published result the picker shows
+// (that publication ran this same typed path) whatever the catalogue's availability.
+async function generateNameOrSeed(service,item){return service.generate({mode:item.mode,value:item.value,signal:active.signal},{raw:true});}
+export async function checkCachedFace(item){try{const service=await engine();return !!await service.peekOriginal?.(item);}catch{return false;}}
 export async function restoreLastResult(){
  const revision=arrivalRevision;analytics.operationResult?.('restore','ready');let reason='missing';
  const session=typeof readSession==='function'?await readSession():null;

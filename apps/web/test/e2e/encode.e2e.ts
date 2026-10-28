@@ -31,7 +31,9 @@ test(
       t.skip(reason);
       return;
     }
-    const site = await serve(join(repo, 'apps/web/dist'), {
+    // The built artifact: deploy-next/ under FACEMORPH_DEPLOY_OUT, else this build's dist/.
+    const built = process.env['FACEMORPH_DEPLOY_OUT'];
+    const site = await serve(built ? join(built, 'deploy-next') : join(repo, 'apps/web/dist'), {
       '/runtime/': runtime,
       '/crop-inputs/': join(repo, 'tests/crop/fixtures'),
     });

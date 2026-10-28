@@ -15,6 +15,8 @@ import { INSTALL_HOOK } from '../parity/elmish-probe.ts';
 import { futureSchemaPng } from '../support/recovery-stills.ts';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
+// The built artifact: deploy-next/ under FACEMORPH_DEPLOY_OUT, as the other built-app suites take it.
+const built = resolve(process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO);
 const results = join(REPO, 'apps/web/test-results/still-entry');
 const stills = join(REPO, 'apps/web/test/fixtures/verify/stills');
 const MODEL = /^\/runtime\/(assets|chunks|encoder-stream|photo)\//;
@@ -70,12 +72,12 @@ test(
       t.skip(reason);
       return;
     }
-    const artifact = readIdentity(REPO);
+    const artifact = readIdentity(built);
     assert.deepEqual(artifact.findings, []);
     assert.equal(artifact.identity?.label, 'destination');
     const site = await startControl({
       runtime,
-      artifact: resolve(REPO, 'deploy-next'),
+      artifact: resolve(built, 'deploy-next'),
       source: artifact.identity.deploySource.buildId,
     });
     const browser = await chromium.launch({ args: [...chromiumArgs, '--disable-features=WebGPU'] });

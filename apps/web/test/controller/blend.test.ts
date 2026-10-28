@@ -159,8 +159,13 @@ test('slots are copies: editing a slot never changes a morph face, or the revers
     ['text', 'ada'],
   );
   assert.deepEqual(chosen.state.Inputs, s.Inputs);
+  // The pick asks for that name's published result for the slot (fm-ejwq), never a generation.
+  assert.ok(chosen.effects.some((e) => e.type === 'pickName' && e.id === slot));
   // The slot's own Generate is an ordinary face job aimed at the slot.
-  const generated = step({ ...chosen.state, PendingJobs: [], Busy: false }, msg('RunFace', slot));
+  const generated = step(
+    { ...chosen.state, PendingJobs: [], Busy: false, PreparingFaces: new Set<string>() },
+    msg('RunFace', slot),
+  );
   const execute = generated.effects.find((e) => e.type === 'execute');
   assert.ok(execute && execute.type === 'execute');
   assert.equal(execute.request.target, slot);

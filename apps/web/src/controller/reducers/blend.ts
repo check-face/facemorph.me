@@ -235,6 +235,7 @@ export function blendSlotTarget(message: Msg, state: State): string | null {
     case 'Photos':
     case 'CancelFace':
     case 'RunFace':
+    case 'NamePicked':
     case 'BrowseNames':
     case 'PreviewLoaded':
     case 'RequestCrop':

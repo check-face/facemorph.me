@@ -12,6 +12,7 @@ import {
 } from '../../src/controller/preferences.ts';
 import { nextScheduled as nextScheduledJs } from '../../src/Next/scheduler.mjs';
 import { diagnostics } from '../../src/Next/reporting.mjs';
+import { nameResultFile } from '../../src/Next/name-results.mjs';
 import { MULTIPLE_FACES_MESSAGE as multipleFacesJs } from '../../src/Next/photo/align-photo.mjs';
 import {
   editRevision,
@@ -174,6 +175,22 @@ export async function selectPhoto(request: {
   readonly files: readonly File[];
 }): Promise<PhotoSelection> {
   return readPhotoSelection(await bridge.selectPhotoReported(request));
+}
+/**
+ * A picked name (fm-ejwq): its published recovery-bearing result, installed without a model or inference as that
+ * face's result for the unchanged text. A name without a published result, or one that fails its checks, is an
+ * error: synthesis is never substituted; Generate remains the ordinary typed path.
+ */
+export async function pickName(request: {
+  readonly id: string;
+  readonly value: string;
+}): Promise<PhotoSelection> {
+  const file = await nameResultFile(request.value);
+  if (!file)
+    throw new Error('This name has no published picture. Press Generate to make this face.');
+  return readPhotoSelection(
+    await bridge.selectPhotoReported({ id: request.id, files: [file], name: request.value }),
+  );
 }
 export async function previewPhoto(
   file: Blob,
