@@ -102,6 +102,7 @@ export function FaceTile(p: FaceTileProps) {
     <section
       className={`next-face box${active ? ' next-face-active' : ''}`}
       data-next-face={item.id}
+      tabIndex={-1} // focus can return to the face itself, never into the tab order
       data-next-state={state(item, face, preview)}
       onDragOver={drag(false)}
       onDragLeave={drag(true)}

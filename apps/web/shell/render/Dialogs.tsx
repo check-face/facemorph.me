@@ -59,8 +59,8 @@ export function Modal({
   children: ReactNode;
   faceId?: string;
   backReturnsToDialog?: boolean;
-  /** The control that asked, when the modal opens after asynchronous checks may have moved focus;
-   * `|` separates fallbacks, tried in order. */
+  /** Where focus returns when the modal closes, when it opens after asynchronous checks may have moved focus.
+   * Resolved at close, so it can follow what the answer changed; `|` separates fallbacks, tried in order. */
   returnTo?: string | undefined;
 }) {
   const root = useRef<HTMLDivElement>(null);
@@ -73,14 +73,16 @@ export function Modal({
     if (returns) history.pushState({ ...history.state, facemorphDialog: token }, '');
   });
   useLayoutEffect(() => {
+    const resolve = () =>
+      returnTo
+        ?.split('|')
+        .map((selector) => document.querySelector<HTMLElement>(selector))
+        .find(Boolean);
     const previous = faceId
       ? document.querySelector<HTMLElement>(
           `[data-next-face="${CSS.escape(faceId)}"] [aria-label="Change mode"]`,
         )
-      : (returnTo
-          ?.split('|')
-          .map((selector) => document.querySelector<HTMLElement>(selector))
-          .find(Boolean) ?? document.activeElement);
+      : (resolve() ?? document.activeElement);
     const inert: { element: HTMLElement; previous: boolean }[] = [];
     let branch: Element | null = root.current;
     while (branch?.parentElement) {
@@ -99,7 +101,8 @@ export function Modal({
     target?.focus();
     return () => {
       for (const item of inert) item.element.inert = item.previous;
-      if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
+      const back = faceId ? previous : (resolve() ?? previous);
+      if (back instanceof HTMLElement && back.isConnected) back.focus();
     };
   }, [faceId, returnTo]);
   useEffect(() => {
@@ -608,11 +611,12 @@ export function DownloadDialog({ state, dispatch }: { state: State; dispatch: Di
         gate[1].type === 'Run' && gate[1].args[0] === 'morph'
           ? '.next-primary-action'
           : gate[1].type === 'RunFace'
-            ? // The face's field, not its Generate: once the approved job starts that button is the face's
-              // Cancel, and an Enter there would cancel what was just approved. A photo face's field is
-              // disabled, so it returns to its Generate.
-              `[data-next-face="${CSS.escape(gate[1].args[0])}"] input[type="text"]:not(:disabled)|` +
-              `[data-next-face="${CSS.escape(gate[1].args[0])}"] .next-face-generate`
+            ? // Declined, the face's Generate (or Retry) that asked; approved, that button is now the face's
+              // Cancel, where an Enter would cancel what was just approved, so the face itself. Never its
+              // field: focusing it opens a phone's keyboard over the page (release 40680693275).
+              `[data-next-face="${CSS.escape(gate[1].args[0])}"] .next-face-generate[aria-label^="Generate "]|` +
+              `[data-next-face="${CSS.escape(gate[1].args[0])}"] .next-face-generate[aria-label^="Retry "]|` +
+              `section[data-next-face="${CSS.escape(gate[1].args[0])}"]`
             : undefined
       }
     >

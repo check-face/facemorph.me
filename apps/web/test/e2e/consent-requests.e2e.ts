@@ -171,12 +171,11 @@ test(
           await dialog.waitFor({ state: 'detached' });
           await page.waitForTimeout(2000);
           assert.deepEqual(models, [], `${name}: no model request after Cancel`);
-          // Escape, the backdrop and Back each equal Cancel (fm-9kr8): nothing fetched, and focus is back in the
-          // face that asked: its field, since its Generate becomes Cancel once an approved job starts.
+          // Escape, the backdrop and Back each equal Cancel (fm-9kr8): nothing fetched, and focus is back on the
+          // Generate control that asked (never the face's field, which would open a phone's keyboard).
           const generate = tiles.nth(0).locator('.next-face-generate');
-          const faceField = tiles.nth(0).locator('input[type="text"]');
-          const focusedOnGenerate = () => faceField.evaluate((el) => el === document.activeElement);
-          assert.ok(await focusedOnGenerate(), `${name}: Cancel returns focus to the face's field`);
+          const focusedOnGenerate = () => generate.evaluate((el) => el === document.activeElement);
+          assert.ok(await focusedOnGenerate(), `${name}: Cancel returns focus to Generate`);
           for (const exit of ['Escape', 'backdrop', 'Back'] as const) {
             await operate(generate);
             await dialog.waitFor();
@@ -194,10 +193,7 @@ test(
             await dialog.waitFor({ state: 'detached' });
             await page.waitForTimeout(1000);
             assert.deepEqual(models, [], `${name}: no model request after ${exit}`);
-            assert.ok(
-              await focusedOnGenerate(),
-              `${name}: ${exit} returns focus to the face's field`,
-            );
+            assert.ok(await focusedOnGenerate(), `${name}: ${exit} returns focus to Generate`);
           }
 
           // Create morph asks the same question first, with only the Generate row; Escape starts nothing
