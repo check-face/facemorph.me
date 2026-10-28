@@ -397,6 +397,18 @@ function recordNumericalCell(cell: NumericalCell) {
   numericalCells.push(cell);
 }
 
+// Opening the local test page can fail at the network level while eris is busy with CI beside this job (net::ERR_TIMED_OUT
+// in runs 40602031941 and 40615911412, before any numerics). Only that is retried; every check after it is unchanged.
+async function open(page: Page, url: string) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await page.goto(url);
+    } catch (error) {
+      if (attempt === 3 || !/net::ERR_(TIMED_OUT|CONNECTION_\w+)/.test(String(error))) throw error;
+    }
+  }
+}
+
 async function runCell(
   t: { diagnostic(m: string): void },
   browser: Browser,
@@ -405,7 +417,7 @@ async function runCell(
 ) {
   const page = await (await browser.newContext({ ignoreHTTPSErrors: true })).newPage();
   page.setDefaultTimeout(3_000_000);
-  await page.goto(`${origin}/`);
+  await open(page, `${origin}/`);
   await page.waitForFunction(() => (window as unknown as { ready?: boolean }).ready === true);
   const out = await call<Out>(page, 'run', full31Manifest(), runtime!.sha256, scope);
   for (const c of out.checks)
@@ -490,7 +502,7 @@ for (const scope of ['ort', 'direct'] as const)
       const probe = await (await browser.newContext({ ignoreHTTPSErrors: true })).newPage();
       // Like the run page: a loaded machine can take over Playwright's 30 s default to open it (run 40602031941).
       probe.setDefaultTimeout(300_000);
-      await probe.goto(`${origin}/`);
+      await open(probe, `${origin}/`);
       await probe.waitForFunction(() => (window as unknown as { ready?: boolean }).ready === true);
       const adapter = await call<Adapter | null>(probe, 'adapter');
       if (
