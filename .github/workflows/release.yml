@@ -232,15 +232,19 @@ jobs:
     needs: build
     name: timing ${{ matrix.segment }}
     # One job per segment: three alternating pairs, control and build back to back on the same machine, then more pairs
-    # until the stop rule decides (scripts/verify/not-worse). One timing job per machine at a time (operator, 28 October
-    # 2026): the machine-wide timing lock makes a second job on eris wait. Triton's Ubuntu 20.04 has no Playwright
-    # Chromium (run 40583631410), so eris is the timing machine.
+    # until the stop rule decides (scripts/verify/not-worse). Each job holds its own fixed core set on eris (operator,
+    # 28 October 2026): two sets of six, morph (the longest, ~12 min) on one, face then photo on the other; a job waits for its set's lock.
+    # Control against control on an idle eris stayed within the rule in both sets at once (fm-fy2.11). Triton's Ubuntu
+    # 20.04 has no Playwright Chromium (run 40583631410), so eris is the timing machine.
     runs-on: [self-hosted, eris-build]
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
-        segment: [face, morph, photo]
+        include:
+          - { segment: face, cpus: 6-11 }
+          - { segment: morph, cpus: 0-5 }
+          - { segment: photo, cpus: 6-11 }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -269,7 +273,7 @@ jobs:
             import { timingCommands } from './scripts/ci/release-checks.mjs';
             const [fetch, run] = timingCommands({ segment: '${{ matrix.segment }}', pair: null, build: 'artifact/deploy-next',
               digest: process.env.DIGEST, source: 'run:${{ github.run_id }}', runtimeDir: process.env.FACEMORPH_RUNTIME_DIR,
-              out: process.env.RUNNER_TEMP + '/timing', label: 'release-${{ github.run_id }}-${{ matrix.segment }}' });
+              out: process.env.RUNNER_TEMP + '/timing', label: 'release-${{ github.run_id }}-${{ matrix.segment }}', cpus: '${{ matrix.cpus }}' });
             console.log([fetch, run].join(' && '))
           " > timing.sh
           cat timing.sh
@@ -308,8 +312,8 @@ jobs:
           set -e
           # The second wave's matrix: every segment's next pair indexes, each on its segment's runners.
           node -e '
-            const v = require("./timing-verdict.json"), runner = { face: ["self-hosted","eris-build"], morph: ["self-hosted","eris-build"], photo: ["self-hosted","eris-build"] };
-            const include = Object.entries(v.segments ?? {}).flatMap(([segment, s]) => (s.nextPairs ?? []).map((pair) => ({ segment, pair, runner: JSON.stringify(runner[segment]) })));
+            const v = require("./timing-verdict.json"), runner = { face: ["self-hosted","eris-build"], morph: ["self-hosted","eris-build"], photo: ["self-hosted","eris-build"] }, cpus = { face: "6-11", morph: "0-5", photo: "6-11" };
+            const include = Object.entries(v.segments ?? {}).flatMap(([segment, s]) => (s.nextPairs ?? []).map((pair) => ({ segment, pair, runner: JSON.stringify(runner[segment]), cpus: cpus[segment] })));
             require("fs").appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${JSON.stringify({ include })}\n`);'
           test "$code" != 1
       - name: Record the failure
@@ -361,7 +365,7 @@ jobs:
             import { timingCommands } from './scripts/ci/release-checks.mjs';
             console.log(timingCommands({ segment: '${{ matrix.segment }}', pair: ${{ matrix.pair }}, build: 'artifact/deploy-next',
               digest: process.env.DIGEST, source: 'run:${{ github.run_id }}', runtimeDir: process.env.FACEMORPH_RUNTIME_DIR,
-              out: process.env.RUNNER_TEMP + '/timing', label: 'release-${{ github.run_id }}-${{ matrix.segment }}-p${{ matrix.pair }}' }).join(' && '))
+              out: process.env.RUNNER_TEMP + '/timing', label: 'release-${{ github.run_id }}-${{ matrix.segment }}-p${{ matrix.pair }}', cpus: '${{ matrix.cpus }}' }).join(' && '))
           " > timing.sh
           bash -eo pipefail timing.sh
       - uses: actions/upload-artifact@v4
