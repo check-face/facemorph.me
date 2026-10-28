@@ -611,14 +611,22 @@ test(
             ).toString('base64');
             const gif = 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
             const refusal = 'Paste one PNG, JPEG or WebP image. Your text is unchanged.';
+            // Two pasted images open the batch view (fm-id4c): its CANCEL leaves the text and faces as they were.
+            assert.equal(
+              await pasteFiles([
+                { name: 'a.png', type: 'image/png', base64: png },
+                { name: 'b.png', type: 'image/png', base64: png },
+              ]),
+              'INPUT',
+            );
+            const batch = page.locator('.next-batch');
+            await batch.waitFor();
+            await shot('main-field-paste-two-images');
+            await hit(batch.getByRole('button', { name: 'CANCEL', exact: true }));
+            await batch.waitFor({ state: 'detached' });
+            assert.equal(await field.inputValue(), before, 'two-images: text unchanged');
+            noModels();
             for (const [caseName, files] of [
-              [
-                'two-images',
-                [
-                  { name: 'a.png', type: 'image/png', base64: png },
-                  { name: 'b.png', type: 'image/png', base64: png },
-                ],
-              ],
               ['unsupported-gif', [{ name: 'a.gif', type: 'image/gif', base64: gif }]],
             ] as const) {
               assert.equal(await pasteFiles([...files]), 'INPUT');
