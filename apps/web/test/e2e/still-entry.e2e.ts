@@ -243,6 +243,11 @@ test(
             [],
             `${name}: a recovered still requests no model`,
           );
+          assert.equal(
+            await page.locator('.next-download-dialog').count(),
+            0,
+            `${name}: a recovered still on a cold profile asks no download question (fm-9kr8)`,
+          );
           await shot('01-matching');
 
           // 2. other model: shown, Save is the opened bytes, Morph leaves it out, nothing is requested.

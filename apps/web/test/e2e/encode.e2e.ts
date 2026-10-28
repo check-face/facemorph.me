@@ -501,8 +501,29 @@ test(
               await shot('assets-absent-consent');
               await assertNoCardPreparation(page, 'cold: encoder and detector absent at consent');
               if (asked) {
+                // Only the rows a fresh photo needs (fm-9kr8): Generate and Encode, with the bundle that
+                // encodes chosen, and the explanatory question opened before any asset was requested.
+                assert.deepEqual(
+                  await gate
+                    .locator('[data-download-purpose]')
+                    .evaluateAll((rows) =>
+                      rows.map((row) => row.getAttribute('data-download-purpose')),
+                    ),
+                  ['generate', 'encode'],
+                );
+                assert.equal(
+                  await gate
+                    .getByRole('radio', { name: 'Generate and encode', exact: true })
+                    .isChecked(),
+                  true,
+                );
                 await hit(gate.getByRole('button', { name: 'Cancel', exact: true }));
                 await gate.waitFor({ state: 'detached' });
+                // Focus returns to the face that asked, not to the page.
+                assert.ok(
+                  await tiles.first().evaluate((tile) => tile.contains(document.activeElement)),
+                  'Cancel returns focus to the photo face',
+                );
               }
               await page.waitForTimeout(1000);
               page.off('request', record);

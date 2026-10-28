@@ -158,6 +158,8 @@
 
 .next-crop-dialog { position:fixed; inset:0; z-index:1300; background:#0009; display:grid; place-items:center; padding:1rem; }
 .next-crop-panel { max-width:420px; width:100%; max-height:90vh; overflow:auto; }
+/* Each bundle choice keeps its radio beside its own words at 320 px (fm-9kr8). */
+.next-download-dialog fieldset label { display:inline-flex; align-items:center; gap:.25rem; white-space:nowrap; margin-right:1rem; }
 .next-crop-view { position:relative; width:320px; aspect-ratio:1; max-width:100%; margin:0 auto; overflow:hidden; border-radius:6px; background:#222; touch-action:none; cursor:grab; }
 .next-crop-view:active { cursor:grabbing; }
 .next-crop-image { position:absolute; max-width:none; user-select:none; -webkit-user-drag:none; }

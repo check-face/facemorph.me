@@ -35,7 +35,8 @@ function initial(): State {
     })),
     Downloads: {
       ...state.Downloads,
-      known: true,
+      // An inventory still being checked renders labelled unknown figures (fm-9kr8).
+      known: !query.has('inventoryUnknown'),
       phase:
         query.get('phase') === 'done'
           ? 'done'
@@ -52,6 +53,17 @@ function initial(): State {
     },
     ModelToastHidden: true,
     ...(query.has('namesFailed') ? { Names: [] } : {}),
+    // A batch of photo faces for the consent's per-face and batch rows (fm-9kr8); never encoded here.
+    ...(Number(query.get('photoFaces')) > 0
+      ? {
+          Inputs: Array.from({ length: Number(query.get('photoFaces')) }, (_, i) => ({
+            id: `face-${i + 1}`,
+            mode: 'photo' as const,
+            value: `photo-${i + 1}.png`,
+            file: new Blob([], { type: 'image/png' }),
+          })),
+        }
+      : {}),
   };
 }
 
@@ -143,6 +155,9 @@ export function DialogCheck() {
           onClick={() => setState((s) => ({ ...s, Gate: ['photo', msg('RunFace', 'face-1')] }))}
         >
           Offer photo encoder
+        </button>
+        <button onClick={() => setState((s) => ({ ...s, Gate: ['photo', msg('Run', 'faces')] }))}>
+          Offer batch photo encoder
         </button>
         <button
           onClick={() =>

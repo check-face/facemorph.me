@@ -29,6 +29,131 @@ after(async () => {
 const last = (page: Page, type: string) =>
   page.waitForSelector(`output[data-dialog-message="${type}"]`);
 
+// fm-9kr8: batch rows and the narrow-width copy. With 1, 2, 3, 30, 64 and 150 photo faces the Encode row names the
+// per-face and the batch estimate (labelled unknown with no measurement) and the modal stays inside a 320 px
+// viewport with its decision reachable; at 320 px only the requested action's rows show, with no technical
+// breakdown, and an inventory still being checked renders labelled unknown figures, still usable. Light and dark.
+test('chromium: batch photo rows and the 320 px consent copy stay inside the modal', async () => {
+  const browser = await chromium.launch();
+  try {
+    for (const colorScheme of ['light', 'dark'] as const) {
+      const context = await browser.newContext({
+        viewport: { width: 320, height: 640 },
+        hasTouch: true,
+        isMobile: true,
+        colorScheme,
+      });
+      const page = await context.newPage();
+      const errors: string[] = [];
+      page.on('pageerror', (error) => errors.push(String(error)));
+      const technical = /sha|chunk|shard|wasm|onnx|manifest|webgpu|\bcpu\b|\bort\b|grant|bytes\b/i;
+      const fits = async (gate: ReturnType<Page['locator']>, label: string) => {
+        const outside = await gate.evaluate((root) => {
+          const width = document.documentElement.clientWidth;
+          return [...root.querySelectorAll<HTMLElement>('.next-crop-panel *')]
+            .filter((el) => el.getClientRects().length > 0)
+            .filter((el) => {
+              const box = el.getBoundingClientRect();
+              return box.left < -0.5 || box.right > width + 0.5;
+            })
+            .map((el) => el.outerHTML.slice(0, 120));
+        });
+        assert.deepEqual(outside, [], `${colorScheme} ${label}: everything inside 320 px`);
+        // Each bundle choice is one unbroken line: its radio never separates from its words.
+        const broken = await gate.evaluate((root) =>
+          [...root.querySelectorAll('fieldset label')]
+            .filter((el) => el.getClientRects().length !== 1)
+            .map((el) => el.textContent),
+        );
+        assert.deepEqual(broken, [], `${colorScheme} ${label}: bundle choices stay whole`);
+        assert.equal(
+          await page.evaluate(() => document.documentElement.scrollWidth <= 320),
+          true,
+          `${colorScheme} ${label}: no horizontal page scroll`,
+        );
+        // The decision is reachable: each button, scrolled into view, is the element at its own centre.
+        for (const name of ['Download and continue', 'Cancel']) {
+          const control = gate.getByRole('button', { name, exact: true });
+          await control.scrollIntoViewIfNeeded();
+          assert.ok(
+            await control.evaluate((el) => {
+              const box = el.getBoundingClientRect();
+              const at = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+              return !!at && (at === el || el.contains(at));
+            }),
+            `${colorScheme} ${label}: ${name} is reachable`,
+          );
+        }
+      };
+      for (const count of [1, 2, 3, 30, 64, 150]) {
+        await page.goto(`${site.origin}/render-check.html?dialogs&photoFaces=${count}`);
+        await page.getByRole('button', { name: 'Offer batch photo encoder', exact: true }).click(); // setup
+        const gate = page.getByRole('dialog', { name: 'Download the photo encoder?' });
+        await gate.waitFor();
+        const encode = await gate.locator('[data-download-purpose="encode"]').innerText();
+        assert.match(encode, /Encode time unknown per face/i, `${count}: per-face estimate`);
+        assert.ok(
+          encode
+            .toLowerCase()
+            .includes(
+              `batch encode time unknown for ${count.toLocaleString('en-US')} ${count === 1 ? 'face' : 'faces'}`,
+            ),
+          `${count}: batch estimate: ${encode}`,
+        );
+        await fits(gate, `${count} photo faces`);
+        if ([1, 150].includes(count))
+          await page.screenshot({
+            path: new URL(`batch-${count}-${colorScheme}.png`, results).pathname,
+          });
+      }
+      // The requested action's rows only, no technical breakdown, at 320 px.
+      for (const [trigger, rows] of [
+        ['Offer face model', ['generate']],
+        ['Offer photo encoder', ['generate', 'encode']],
+      ] as const) {
+        await page.goto(`${site.origin}/render-check.html?dialogs`);
+        await page.getByRole('button', { name: trigger, exact: true }).click(); // setup
+        const gate = page.locator('.next-download-dialog');
+        await gate.waitFor();
+        assert.deepEqual(
+          await gate
+            .locator('[data-download-purpose]')
+            .evaluateAll((items) =>
+              items.map((item) => item.getAttribute('data-download-purpose')),
+            ),
+          rows,
+        );
+        const text = await gate.locator('.next-crop-panel').innerText();
+        assert.doesNotMatch(text, technical, `${colorScheme} ${trigger}: no technical breakdown`);
+        await fits(gate, trigger);
+      }
+      // An inventory still being checked: labelled unknown, the decision still usable.
+      await page.goto(`${site.origin}/render-check.html?dialogs&inventoryUnknown`);
+      await page.getByRole('button', { name: 'Offer photo encoder', exact: true }).click(); // setup
+      const unknown = page.locator('.next-download-dialog');
+      await unknown.waitFor();
+      for (const purpose of ['generate', 'encode'])
+        assert.match(
+          await unknown.locator(`[data-download-purpose="${purpose}"]`).innerText(),
+          /Download size unknown; download time unknown/,
+        );
+      await page.screenshot({ path: new URL(`unknown-320-${colorScheme}.png`, results).pathname });
+      await fits(unknown, 'unknown inventory');
+      await press(
+        page,
+        unknown.getByRole('button', { name: 'Download and continue', exact: true }),
+        {
+          touch: true,
+        },
+      );
+      await last(page, 'GateAccept');
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+  } finally {
+    await browser.close();
+  }
+});
 test('chromium: consent discloses a download exceeding the actual browser storage quota', async () => {
   for (const width of [1280, 390])
     for (const colorScheme of ['light', 'dark'] as const) {
