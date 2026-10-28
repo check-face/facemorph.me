@@ -47,6 +47,12 @@ current coherent slice, then repair attributable failures; peers continue indepe
 work. A failed revision predating an already-landed fix is handled, pending verification,
 not a reason to repeat the repair or wait for green before doing useful work.
 Let running CI finish; the queue/path filters govern pending runs.
+Every push to main deploys to next.facemorph.me behind check.yml and the release go/no-go
+(operator, 28 October 2026), so the push is the validation: push each fix as soon as its
+fast local checks (format, lint, typecheck, the touched unit tests) pass, and let CI and
+the release run the browser, device and timing checks. Don't hold commits or re-run those
+suites locally first, and keep eris free of local browser runs while a release times.
+Fail forward, or roll back when next is broken for visitors.
 
 ## Preserve
 
