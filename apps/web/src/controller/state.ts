@@ -94,11 +94,6 @@ export interface State {
   readonly EncoderSetup?: 'requested' | 'active' | 'cancelled';
   /** Confirmed photo sources paused by a Generate-only decision; tab memory only. */
   readonly PausedPhotos?: ReadonlyMap<string, Input>;
-  /**
-   * The MP4 probe answer for one Morph press (fm-9kr8): `run` is that press's own message, so a later press probes
-   * again. When the video codec fallback must be downloaded, its bytes join the Generate row of the consent.
-   */
-  readonly MorphCodec?: { readonly run: Msg; readonly needed: boolean; readonly bytes: number };
   readonly ModelToastHidden: boolean;
   readonly DownloadConsent: ReadonlySet<string>;
   readonly Gate: readonly [string, Msg] | null;

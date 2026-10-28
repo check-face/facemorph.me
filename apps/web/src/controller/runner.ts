@@ -47,7 +47,6 @@ const commands = new Set<Effect['type']>([
   'dispatch',
   'loadNames',
   'publicPreview',
-  'pickName',
   'sliderFrames',
   'checkCachedFace',
   'execute',
@@ -105,40 +104,26 @@ export function operationProgress(
   };
 }
 
-type CodecAsset = { readonly url: string; readonly sha256: string; readonly size: number };
-/** The pinned codec's total bytes, learned from the manifest by the last availability check (0 until then). */
-let codecBytes = 0;
 /**
  * Where the FFmpeg fallback stands, read from the same-origin runtime manifest (not a model asset): absent
- * only when the manifest positively carries no codec; cached when the device's verified model store already
- * holds both its parts; in scope once the person approved its bytes in this tab; otherwise acquisition consent
- * asks for it (fm-9kr8). An unreadable manifest is not a refusal: the bridge decides.
+ * only when the manifest positively carries no codec; cached when Cache Storage already holds its wasm;
+ * otherwise acquisition consent asks for it. An unreadable manifest is not a refusal: the bridge decides.
  */
-async function ffmpegAvailability(approved: boolean): Promise<FfmpegAvailability> {
-  let codec: { wasm?: CodecAsset; module?: CodecAsset } | undefined;
+async function ffmpegAvailability(): Promise<FfmpegAvailability> {
+  let codec: { wasm?: { url?: unknown } } | undefined;
   try {
     const response = await fetch('/runtime/manifest.json', { credentials: 'omit' });
     if (!response.ok) return 'needs-consent';
-    codec = ((await response.json()) as { codec?: typeof codec }).codec;
+    codec = ((await response.json()) as { codec?: { wasm?: { url?: unknown } } }).codec;
   } catch {
     return 'needs-consent';
   }
   if (!codec) return 'absent';
-  const parts = [codec.wasm, codec.module].filter((part): part is CodecAsset =>
-    Number.isSafeInteger(part?.size),
-  );
-  codecBytes = parts.reduce((sum, part) => sum + part.size, 0);
-  if (approved) return 'in-scope';
+  const url = codec.wasm?.url;
   try {
-    const { createBrowserModelCache } = await import('../Next/Assets/model-cache.mjs');
-    const cache = await createBrowserModelCache({ readOnly: true });
-    if (
-      parts.length === 2 &&
-      (await Promise.all(parts.map((part) => cache.has(part)))).every(Boolean)
-    )
-      return 'cached';
+    if (typeof url === 'string' && globalThis.caches && (await caches.match(url))) return 'cached';
   } catch {
-    /* the model store is unavailable: the bytes would have to be downloaded */
+    /* Cache Storage unavailable */
   }
   return 'needs-consent';
 }
@@ -192,7 +177,7 @@ export function createController(
       probeMp4({
         fps: request.settings.fps,
         webcodecs: browserWebCodecs(),
-        ffmpeg: () => ffmpegAvailability(store.getState().DownloadConsent.has('codec')),
+        ffmpeg: ffmpegAvailability,
         quality: request.settings.quality ?? 'standard',
         deviceMemoryGiB:
           (globalThis.navigator as { deviceMemory?: number } | undefined)?.deviceMemory ?? null,
@@ -592,17 +577,7 @@ export function createController(
       () => checks(request).finally(() => (accepting = false)),
       (result) => {
         if (result.failure) refuseMorph(result.failure, null);
-        // The probe's codec answer goes to the one consent (fm-9kr8): fallback bytes the press must download
-        // are asked for in its Generate row before anything is fetched.
-        else
-          store.dispatch(
-            msg(
-              'MorphCodecChecked',
-              message,
-              result.route?.ok === true && result.route.needsConsent,
-              codecBytes,
-            ),
-          );
+        else store.dispatch(message);
         accepted();
       },
       (error) => {
@@ -732,17 +707,6 @@ export function createController(
         case 'closeNamesFocus':
           helpers.closeNamesFocus();
           break;
-        case 'pickName': {
-          // The text is read here, at dispatch, never carried in the effect.
-          const input = inputOf(state, effect.id);
-          if (!input || input.mode !== 'text') break;
-          task(
-            facade.pickName({ id: input.id, value: input.value }),
-            (selection) => store.dispatch(msg('NamePicked', input.id, input.value, selection)),
-            (error) => store.dispatch(rejection(effect, error)),
-          );
-          break;
-        }
         case 'loadNames':
           task(
             facade.loadNames(),

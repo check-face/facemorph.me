@@ -80,13 +80,9 @@ export interface Payloads {
   NamesFailed: readonly [string];
   SearchNames: readonly [string];
   ChooseName: readonly [string];
-  /** A picked name's published result for face `id` and the exact text it was picked for (fm-ejwq). */
-  NamePicked: readonly [string, string, PhotoSelection];
   CloseNames: readonly [];
   MoreNames: readonly [];
   CachedFaceChecked: readonly [Input, boolean];
-  /** The MP4 probe for this exact Morph press: whether the codec fallback is needed and its missing bytes. */
-  MorphCodecChecked: readonly [Msg, boolean, number];
   RestoredLast: readonly [Output];
   PreviewLoaded: readonly [string, InputMode, string, string];
   PinchToggle: readonly [boolean];
