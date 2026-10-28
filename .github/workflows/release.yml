@@ -510,7 +510,9 @@ jobs:
           retention-days: 14
 
   gate:
-    needs: [build, checked, journeys, functional, engine, timing-gate, timing-final]
+    needs: [build, checked, journeys, engine, timing-gate, timing-final]
+    # The functional shards report beside the deploy rather than gating it (operator, 28 October 2026): they are
+    # the beads' evidence, and a deploy that breaks next for visitors rolls back after verify.
     if: ${{ !cancelled() && (inputs.site || 'candidate') == 'candidate' }}
     name: go/no-go
     runs-on: ubuntu-latest
@@ -522,7 +524,7 @@ jobs:
         run: |
           node -e '
             const n = JSON.parse(process.env.RESULTS), bad = [];
-            for (const j of ["build", "checked", "journeys", "functional", "engine"]) if (n[j].result !== "success") bad.push(`${j}: ${n[j].result}`);
+            for (const j of ["build", "checked", "journeys", "engine"]) if (n[j].result !== "success") bad.push(`${j}: ${n[j].result}`);
             const t = n["timing-gate"], f = n["timing-final"];
             if (!(t.result === "success" && (t.outputs.verdict === "pass" || (t.outputs.verdict === "more" && f.result === "success"))))
               bad.push(`timing: ${t.outputs.verdict ?? t.result}${f.result === "skipped" ? "" : `, then ${f.result}`}`);

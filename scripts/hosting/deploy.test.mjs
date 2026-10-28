@@ -325,7 +325,7 @@ test('workflow: the deploy step needs every qualifying job and publishes only th
   assert.match(WORKFLOW, /^ {4}needs: \[build, gate\]$/m);
   assert.match(
     RELEASE,
-    /^ {2}gate:\n {4}needs: \[build, checked, journeys, functional, engine, timing-gate, timing-final\]$/m,
+    /^ {2}gate:\n {4}needs: \[build, checked, journeys, engine, timing-gate, timing-final\]$/m,
   );
   const verify = runOf('The artifact is the one built in this run and qualified above');
   // This run's build, or (site=promote) the digest the promoted green run recorded; nothing else is deployable.
