@@ -162,11 +162,6 @@ test(
         };
         // An invalid word still meets the existing download question first (gate before input checks);
         // it is answered Cancel, which acquires nothing.
-        const dismissQuestion = async (s: Session) => {
-          const dialog = s.page.locator('.next-download-dialog');
-          if (await dialog.isVisible())
-            await s.operate(dialog.getByRole('button', { name: 'Cancel' }));
-        };
         const refusal = async (s: Session, caseName: string, expected: RegExp) => {
           await morph(s);
           await s.page
@@ -239,32 +234,22 @@ test(
           await paste(s, 1, 'pasted word');
           await paste(s, 0, 'pasted word');
           await refusal(s, 'pasted-twice', /^Faces 1 and 2 are the same/);
+          // An input problem disables Create morph and names the face beside it (078de00): the empty and the very
+          // long word each get their own message, never the repeat's, and nothing is requested.
+          const held = async (caseName: string, expected: RegExp) => {
+            await shot(s, caseName);
+            assert.equal(await s.page.locator('.next-primary-action').isDisabled(), true, caseName);
+            const why = await s.page.locator('#next-morph-reason').innerText();
+            assert.match(why, expected, caseName);
+            assert.doesNotMatch(why, /are the same/, `${caseName} is not a repeat`);
+          };
           await type(s, 1, '');
-          await shot(s, 'empty-word');
-          assert.equal(
-            await s.page
-              .locator('.next-primary-action')
-              .isDisabled()
-              .catch(() => false),
-            false,
-          );
-          await morph(s);
-          await s.page.waitForTimeout(1000);
-          await dismissQuestion(s);
-          assert.doesNotMatch(await status(s).innerText(), /are the same/, 'empty is not a repeat');
+          await held('empty-word', /^Face 2: /);
           assert.deepEqual(s.models, [], 'empty refused before any model request');
           const long = 'x'.repeat(600);
           await type(s, 0, long);
           await type(s, 1, long);
-          await shot(s, 'very-long-words');
-          await morph(s);
-          await s.page.waitForTimeout(1000);
-          await dismissQuestion(s);
-          assert.doesNotMatch(
-            await status(s).innerText(),
-            /are the same/,
-            'too long is refused as too long',
-          );
+          await held('very-long-words', /^Face 1: /);
           assert.deepEqual(s.models, []);
           await s.context.close();
         }
