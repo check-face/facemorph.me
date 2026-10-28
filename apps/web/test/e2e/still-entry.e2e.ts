@@ -339,9 +339,11 @@ test(
           await page.keyboard.press('Escape');
           await dialog.waitFor({ state: 'detached' });
 
-          // 6. a mixed drop on the page: every file classified before any face changes, in drop order.
+          // 6. a mixed drop on the page: every file classified before any face changes, in drop order; several
+          // files open the batch view (fm-id4c, fm-q5b9), where the damaged still offers only an explicit Use as photo.
           before = modelRequests.length;
           const facesBefore = await tiles.count();
+          const inputsBefore = (await model(page)).inputs;
           const dropFiles = [files.mismatch, files.future, files.flipped];
           await page.evaluate(
             async (list) => {
@@ -358,16 +360,41 @@ test(
             },
             dropFiles.map((p, i) => [`drop-${i}.png`, [...readFileSync(p)]] as const),
           );
-          await page.waitForFunction(
-            (n) => document.querySelectorAll('section.next-face').length === n,
-            facesBefore + 3,
+          const batch = page.locator('.next-batch');
+          await batch.waitFor();
+          assert.deepEqual(
+            await batch
+              .locator('[data-next-batch-file]')
+              .evaluateAll((groups) => groups.map((g) => g.getAttribute('data-next-batch-role'))),
+            ['held', 'held', 'damaged'],
+            'classified in drop order',
           );
+          const damaged = batch.locator('[data-next-batch-file="f2"]');
+          assert.equal(await damaged.locator('[data-next-candidate]').count(), 0);
+          assert.equal(
+            await damaged.getByRole('button', { name: 'Use as photo' }).count(),
+            1,
+            'the damaged still offers Use as photo only as its own explicit action',
+          );
+          assert.equal((await model(page)).inputs.length, inputsBefore.length, 'no face changes');
+          await shot('06-mixed-drop-batch');
+          for (const candidate of ['f0#0', 'f1#0'])
+            await operate(batch.locator(`[data-next-candidate="${candidate}"]`));
+          await operate(batch.getByRole('button', { name: 'Add 2 faces' }));
+          await batch.waitFor({ state: 'detached' });
           await settled(page);
           m = await model(page);
-          const added = m.inputs.slice(facesBefore).map((i) => i.id);
+          const empty = inputsBefore.find(
+            (i) => i.mode !== 'photo' && i.mode !== 'project' && !i.value.trim(),
+          );
+          const added = m.inputs
+            .map((i) => i.id)
+            .filter((id) => id === empty?.id || !inputsBefore.some((old) => old.id === id));
+          assert.equal(m.inputs.length, facesBefore + (empty ? 1 : 2));
           assert.deepEqual(
             added.map((id) => m.held.find((h) => h.id === id)?.kind),
-            ['unknown-model', 'incompatible-schema', 'damaged'],
+            ['unknown-model', 'incompatible-schema'],
+            'held in pick order; the damaged still was not added',
           );
           assert.deepEqual(modelRequests.slice(before), []);
           await shot('06-mixed-drop');

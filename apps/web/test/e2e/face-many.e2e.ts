@@ -1141,459 +1141,517 @@ test(
         });
 
       if (CASES.has('admission'))
-        await t.test(
-          'available admission paths at 64 and 150 faces; batch OK remains fm-3peb',
-          async () => {
-            const rows: Record<string, unknown>[] = [];
-            const paths = [
-              'insertion +',
-              'Add face',
-              'multi-file drop',
-              'background drop',
-              'paste into new face',
-            ] as const;
-            type Entry = (typeof paths)[number];
-            type AdmissionWindow = Window & {
-              __fmStore: import('../../src/controller/store.ts').Store;
-              __admissionPhoto: Blob;
-              __admissionBase: import('../../src/controller/state.ts').Input[];
-              __admissionPasteBytes?: number;
-            };
-            record('admissionScope', {
-              status: 'partial acceptance; available paths tested below',
-              untested: [
-                {
-                  path: 'batch OK',
-                  owner: 'fm-3peb',
-                  reason:
-                    'React batch proposal is not implemented; fm-2rwl was merged into fm-3peb',
-                },
-              ],
-              paste:
-                'An operated Add face first creates the empty 65th/151st target. Native paste fills that target; paste is not claimed to insert a face.',
-              drops:
-                'Real decodable image Files enter a DataTransfer drop event on the visible face/background; graded buttons use real pointer/touch.',
+        await t.test('every admission path at 64 and 150 faces, batch OK included', async () => {
+          const rows: Record<string, unknown>[] = [];
+          const paths = [
+            'insertion +',
+            'Add face',
+            'multi-file drop',
+            'background drop',
+            'batch OK',
+            'paste into new face',
+          ] as const;
+          type Entry = (typeof paths)[number];
+          type AdmissionWindow = Window & {
+            __fmStore: import('../../src/controller/store.ts').Store;
+            __admissionPhoto: Blob;
+            __admissionBase: import('../../src/controller/state.ts').Input[];
+            __admissionPasteBytes?: number;
+          };
+          record('admissionScope', {
+            status: 'every entry path below',
+            batch:
+              'Several files open the batch view: the multi-file drop and a two-file pick through the face chooser are confirmed by operated picks and an operated OK; OK is the one admission check for every pick (a refused OK keeps the view and adds nothing).',
+            paste:
+              'An operated Add face first creates the empty 65th/151st target. Native paste fills that target; paste is not claimed to insert a face.',
+            drops:
+              'Real decodable image Files enter a DataTransfer drop event on the visible face/background; graded buttons use real pointer/touch.',
+          });
+          const snapshot = (page: Page) =>
+            page.evaluate(() => {
+              const s = (window as unknown as AdmissionWindow).__fmStore.getState();
+              return {
+                ids: s.Inputs.map((i) => i.id),
+                inputs: s.Inputs.map((i) => ({
+                  id: i.id,
+                  mode: i.mode,
+                  value: i.value,
+                  bytes: i.file?.size ?? 0,
+                })),
+                checks: s.StillChecks?.size ?? 0,
+              };
             });
-            const snapshot = (page: Page) =>
-              page.evaluate(() => {
-                const s = (window as unknown as AdmissionWindow).__fmStore.getState();
-                return {
-                  ids: s.Inputs.map((i) => i.id),
-                  inputs: s.Inputs.map((i) => ({
-                    id: i.id,
-                    mode: i.mode,
-                    value: i.value,
-                    bytes: i.file?.size ?? 0,
-                  })),
-                  checks: s.StillChecks?.size ?? 0,
-                };
-              });
-            const preparePhoto = async (page: Page) =>
-              page.evaluate(async () => {
-                const response = await fetch('/preview/hello-1024.webp');
-                if (!response.ok) throw Error('Usable photo fixture was not served');
-                const bitmap = await createImageBitmap(await response.blob());
-                const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-                canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
-                bitmap.close();
-                const photo = await canvas.convertToBlob({ type: 'image/png' });
-                const decoded = await createImageBitmap(photo);
-                if (decoded.width !== 1024 || decoded.height !== 1024)
-                  throw Error('Photo fixture did not decode');
-                decoded.close();
-                const w = window as unknown as AdmissionWindow;
-                w.__admissionPhoto = photo;
-                w.__admissionBase = [...w.__fmStore.getState().Inputs];
-                document.addEventListener(
-                  'paste',
-                  (event) => {
-                    w.__admissionPasteBytes = [...event.clipboardData!.items]
-                      .filter((i) => i.kind === 'file')
-                      .reduce((n, i) => n + (i.getAsFile()?.size ?? 0), 0);
-                  },
-                  { capture: true },
-                );
-                return { bytes: photo.size, width: canvas.width, height: canvas.height };
-              });
-            const add = async (s: Session) => {
-              const before = (await faceList(s.page)).length;
+          const preparePhoto = async (page: Page) =>
+            page.evaluate(async () => {
+              const response = await fetch('/preview/hello-1024.webp');
+              if (!response.ok) throw Error('Usable photo fixture was not served');
+              const bitmap = await createImageBitmap(await response.blob());
+              const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+              canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
+              bitmap.close();
+              const photo = await canvas.convertToBlob({ type: 'image/png' });
+              const decoded = await createImageBitmap(photo);
+              if (decoded.width !== 1024 || decoded.height !== 1024)
+                throw Error('Photo fixture did not decode');
+              decoded.close();
+              const w = window as unknown as AdmissionWindow;
+              w.__admissionPhoto = photo;
+              w.__admissionBase = [...w.__fmStore.getState().Inputs];
+              document.addEventListener(
+                'paste',
+                (event) => {
+                  w.__admissionPasteBytes = [...event.clipboardData!.items]
+                    .filter((i) => i.kind === 'file')
+                    .reduce((n, i) => n + (i.getAsFile()?.size ?? 0), 0);
+                },
+                { capture: true },
+              );
+              return { bytes: photo.size, width: canvas.width, height: canvas.height };
+            });
+          const add = async (s: Session) => {
+            const before = (await faceList(s.page)).length;
+            assert.ok(
+              (
+                await press(s.page, s.page.getByRole('button', { name: 'Add face', exact: true }), {
+                  touch: s.touch,
+                })
+              ).inside,
+            );
+            await s.page.waitForFunction(
+              (n) =>
+                (window as unknown as AdmissionWindow).__fmStore.getState().Inputs.length === n,
+              before + 1,
+            );
+          };
+          const seed = async (
+            s: Session,
+            count: number,
+            paste: boolean,
+            sessionBudget: boolean,
+          ) => {
+            const { page } = s;
+            await setFaces(page, count);
+            const original = await faceList(page);
+            if (paste) await add(s); // Explicit operated setup; the paste itself must not insert another face.
+            const saved = await page.evaluate(() =>
+              (window as unknown as AdmissionWindow).__fmStore
+                .getState()
+                .Inputs.map(({ id, mode, value }) => ({ id, mode, value, file: null })),
+            );
+            if (sessionBudget) {
+              // Store a Blob directly: valueBytes counts precisely its size, without object-key overhead.
+              await page.evaluate(
+                (bytes) =>
+                  new Promise<void>((resolve, reject) => {
+                    const request = indexedDB.open('checkface-originals-v1', 1);
+                    request.onupgradeneeded = () => request.result.createObjectStore('originals');
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => {
+                      const db = request.result;
+                      const tx = db.transaction('originals', 'readwrite');
+                      tx.objectStore('originals').put(
+                        new Blob([new Uint8Array(bytes)]),
+                        'last-generated-session-v2',
+                      );
+                      tx.oncomplete = () => {
+                        db.close();
+                        resolve();
+                      };
+                      tx.onerror = () => {
+                        db.close();
+                        reject(tx.error);
+                      };
+                    };
+                  }),
+                SESSION_LIMIT + 1,
+              );
+              await page.reload();
+              await page.waitForFunction(() => !!(window as unknown as AdmissionWindow).__fmStore);
+              await page.waitForTimeout(1500); // Existing runner measures the actual IndexedDB record at startup.
+              // Restore the exact controlled setup after reload, including the ID created by the operated Add.
+              await page.evaluate((inputs) => {
+                (window as unknown as AdmissionWindow).__fmStore.update((state) => ({
+                  state: { ...state, Inputs: inputs },
+                  effects: [],
+                }));
+              }, saved);
+            }
+            const fixture = await preparePhoto(page);
+            return {
+              original,
+              fixture,
+              target: paste ? saved.at(-1)!.id : saved[0]!.id,
+              baseline: saved.length,
+            };
+          };
+          const clipboard = async (page: Page) =>
+            page.evaluate(async () => {
+              const photo = (window as unknown as AdmissionWindow).__admissionPhoto;
+              await navigator.clipboard.write([new ClipboardItem({ 'image/png': photo })]);
+              const item = (await navigator.clipboard.read())[0]!;
+              return (await item.getType('image/png')).size;
+            });
+          const act = async (
+            s: Session,
+            path: Entry,
+            count: number,
+            target: string,
+            refused = false,
+          ) => {
+            const { page } = s;
+            if (path === 'insertion +') {
+              await reach(s, count - 1);
               assert.ok(
                 (
                   await press(
-                    s.page,
-                    s.page.getByRole('button', { name: 'Add face', exact: true }),
+                    page,
+                    page.getByRole('button', {
+                      name: `Add a face after Face ${count}`,
+                      exact: true,
+                    }),
                     { touch: s.touch },
                   )
                 ).inside,
               );
-              await s.page.waitForFunction(
-                (n) =>
-                  (window as unknown as AdmissionWindow).__fmStore.getState().Inputs.length === n,
-                before + 1,
+            } else if (path === 'Add face') {
+              assert.ok(
+                (
+                  await press(page, page.getByRole('button', { name: 'Add face', exact: true }), {
+                    touch: s.touch,
+                  })
+                ).inside,
               );
-            };
-            const seed = async (
-              s: Session,
-              count: number,
-              paste: boolean,
-              sessionBudget: boolean,
-            ) => {
-              const { page } = s;
-              await setFaces(page, count);
-              const original = await faceList(page);
-              if (paste) await add(s); // Explicit operated setup; the paste itself must not insert another face.
-              const saved = await page.evaluate(() =>
-                (window as unknown as AdmissionWindow).__fmStore
-                  .getState()
-                  .Inputs.map(({ id, mode, value }) => ({ id, mode, value, file: null })),
+            } else if (path === 'paste into new face') {
+              await reach(s, count);
+              const field = page.locator(
+                `section.next-face[data-next-face="${target}"] .next-field input`,
               );
-              if (sessionBudget) {
-                // Store a Blob directly: valueBytes counts precisely its size, without object-key overhead.
-                await page.evaluate(
-                  (bytes) =>
-                    new Promise<void>((resolve, reject) => {
-                      const request = indexedDB.open('checkface-originals-v1', 1);
-                      request.onupgradeneeded = () => request.result.createObjectStore('originals');
-                      request.onerror = () => reject(request.error);
-                      request.onsuccess = () => {
-                        const db = request.result;
-                        const tx = db.transaction('originals', 'readwrite');
-                        tx.objectStore('originals').put(
-                          new Blob([new Uint8Array(bytes)]),
-                          'last-generated-session-v2',
-                        );
-                        tx.oncomplete = () => {
-                          db.close();
-                          resolve();
-                        };
-                        tx.onerror = () => {
-                          db.close();
-                          reject(tx.error);
-                        };
-                      };
-                    }),
-                  SESSION_LIMIT + 1,
-                );
-                await page.reload();
-                await page.waitForFunction(
-                  () => !!(window as unknown as AdmissionWindow).__fmStore,
-                );
-                await page.waitForTimeout(1500); // Existing runner measures the actual IndexedDB record at startup.
-                // Restore the exact controlled setup after reload, including the ID created by the operated Add.
-                await page.evaluate((inputs) => {
-                  (window as unknown as AdmissionWindow).__fmStore.update((state) => ({
-                    state: { ...state, Inputs: inputs },
-                    effects: [],
-                  }));
-                }, saved);
-              }
-              const fixture = await preparePhoto(page);
-              return {
-                original,
-                fixture,
-                target: paste ? saved.at(-1)!.id : saved[0]!.id,
-                baseline: saved.length,
-              };
-            };
-            const clipboard = async (page: Page) =>
-              page.evaluate(async () => {
-                const photo = (window as unknown as AdmissionWindow).__admissionPhoto;
-                await navigator.clipboard.write([new ClipboardItem({ 'image/png': photo })]);
-                const item = (await navigator.clipboard.read())[0]!;
-                return (await item.getType('image/png')).size;
-              });
-            const act = async (s: Session, path: Entry, count: number, target: string) => {
-              const { page } = s;
-              if (path === 'insertion +') {
-                await reach(s, count - 1);
-                assert.ok(
-                  (
-                    await press(
-                      page,
-                      page.getByRole('button', {
-                        name: `Add a face after Face ${count}`,
-                        exact: true,
-                      }),
-                      { touch: s.touch },
-                    )
-                  ).inside,
-                );
-              } else if (path === 'Add face') {
-                assert.ok(
-                  (
-                    await press(page, page.getByRole('button', { name: 'Add face', exact: true }), {
-                      touch: s.touch,
-                    })
-                  ).inside,
-                );
-              } else if (path === 'paste into new face') {
-                await reach(s, count);
-                const field = page.locator(
-                  `section.next-face[data-next-face="${target}"] .next-field input`,
-                );
-                assert.ok((await press(page, field, { touch: s.touch })).inside);
-                await page.keyboard.press('Control+V'); // Native clipboard input; no synthetic paste dispatch.
-              } else {
-                const dt = await page.evaluateHandle(
-                  (n) => {
-                    const transfer = new DataTransfer();
-                    const photo = (window as unknown as AdmissionWindow).__admissionPhoto;
-                    for (let i = 0; i < n; i++)
-                      transfer.items.add(
-                        new File([photo], `admission-${i}.png`, { type: 'image/png' }),
-                      );
-                    return transfer;
-                  },
-                  path === 'multi-file drop' ? 2 : 1,
-                );
-                try {
-                  const target =
-                    path === 'multi-file drop'
-                      ? await reach(s, 0).then(() => page.locator('section.next-face').first())
-                      : page.locator('.next-tagline');
-                  await target.scrollIntoViewIfNeeded();
-                  await target.dispatchEvent('drop', { dataTransfer: dt });
-                } finally {
-                  await dt.dispose();
-                }
-              }
-            };
-            const forcePhoto = async (page: Page, bytes: number, excluded: string | null) =>
-              page.evaluate(
-                async ({ bytes, excluded }) => {
-                  const w = window as unknown as AdmissionWindow;
-                  const eligible = w.__admissionBase.filter((i) => i.id !== excluded).slice(-7);
-                  const files = eligible.map((input, index) => {
-                    const size =
-                      Math.floor(bytes / eligible.length) +
-                      (index === eligible.length - 1 ? bytes % eligible.length : 0);
-                    return [
-                      input.id,
-                      new File(
-                        [w.__admissionPhoto, new Uint8Array(size - w.__admissionPhoto.size)],
-                        `retained-${index}.png`,
-                        { type: 'image/png' },
-                      ),
-                    ] as const;
-                  });
-                  const decoded = await createImageBitmap(files[0]![1]);
-                  decoded.close();
-                  const byId = new Map(files);
-                  w.__fmStore.update((state) => ({
-                    state: {
-                      ...state,
-                      Inputs: w.__admissionBase.map((input) =>
-                        byId.has(input.id)
-                          ? {
-                              ...input,
-                              mode: 'photo',
-                              file: byId.get(input.id)!,
-                              value: byId.get(input.id)!.name,
-                            }
-                          : input,
-                      ),
-                      RunInputs: [],
-                      RunSettings: '',
-                    },
-                    effects: [],
-                  }));
-                  return files.reduce((sum, [, file]) => sum + file.size, 0);
-                },
-                { bytes, excluded },
-              );
-            for (const [width, touch] of (
-              [
-                [1280, false],
-                [390, true],
-              ] as const
-            ).filter(([w]) => !ONLY_WIDTHS || ONLY_WIDTHS.includes(w))) {
-              for (const count of [64, 150].filter(
-                (c) => !ONLY_COUNTS || ONLY_COUNTS.includes(c),
-              )) {
-                for (const path of paths) {
-                  const s = await open(browser, width, touch);
-                  try {
-                    const setup = await seed(s, count, path === 'paste into new face', false);
-                    if (path === 'paste into new face') await clipboard(s.page);
-                    await act(s, path, count, setup.target);
-                    await s.page.waitForFunction(
-                      (n) =>
-                        (window as unknown as AdmissionWindow).__fmStore.getState().Inputs
-                          .length === n,
-                      count + 1,
+              assert.ok((await press(page, field, { touch: s.touch })).inside);
+              await page.keyboard.press('Control+V'); // Native clipboard input; no synthetic paste dispatch.
+            } else if (path === 'batch OK') {
+              // Over the stored-session budget the view cannot open: the two-file pick itself is refused.
+              if (refused && sessionOver) await openBatch(s, target, false);
+              else await confirmBatch(s);
+            } else {
+              const dt = await page.evaluateHandle(
+                (n) => {
+                  const transfer = new DataTransfer();
+                  const photo = (window as unknown as AdmissionWindow).__admissionPhoto;
+                  for (let i = 0; i < n; i++)
+                    transfer.items.add(
+                      new File([photo], `admission-${i}.png`, { type: 'image/png' }),
                     );
-                    if (path === 'paste into new face') {
-                      await s.page.locator('.next-encode-ok').waitFor();
-                      assert.ok(
-                        (await press(s.page, s.page.locator('.next-encode-ok'), { touch })).inside,
-                      );
-                      await s.page.waitForFunction(
-                        (id) =>
-                          (window as unknown as AdmissionWindow).__fmStore
-                            .getState()
-                            .Inputs.some((i) => i.id === id && i.mode === 'photo' && !!i.file),
-                        setup.target,
-                      );
-                    } else if (path.includes('drop'))
-                      await s.page.locator('.next-encode-dialog').waitFor();
-                    const after = await faceList(s.page);
+                  return transfer;
+                },
+                path === 'multi-file drop' ? 2 : 1,
+              );
+              try {
+                const target =
+                  path === 'multi-file drop'
+                    ? await reach(s, 0).then(() => page.locator('section.next-face').first())
+                    : page.locator('.next-tagline');
+                await target.scrollIntoViewIfNeeded();
+                await target.dispatchEvent('drop', { dataTransfer: dt });
+              } finally {
+                await dt.dispose();
+              }
+              // An admitted drop opens the batch view; a refused one opens nothing.
+              if (path === 'multi-file drop' && !refused) await confirmBatch(s);
+            }
+          };
+          /** Two files through the target face's own chooser open the batch view (setup: the file input). */
+          let sessionOver = false;
+          const openBatch = async (s: Session, target: string, view = true) => {
+            const files = await s.page.evaluate(async () => {
+              const photo = (window as unknown as AdmissionWindow).__admissionPhoto;
+              return [...new Uint8Array(await photo.arrayBuffer())];
+            });
+            const buffer = Buffer.from(files);
+            await s.page.locator(`#photo-${target}`).setInputFiles([
+              { name: 'batch-0.png', mimeType: 'image/png', buffer },
+              { name: 'batch-1.png', mimeType: 'image/png', buffer },
+            ]);
+            if (view) await s.page.locator('.next-batch [data-next-candidate="f1#0"]').waitFor();
+          };
+          /** Operated picks of both files in the batch view, then its operated OK. */
+          const confirmBatch = async (s: Session) => {
+            const { page } = s;
+            for (const candidate of ['f0#0', 'f1#0']) {
+              const control = page.locator(`.next-batch [data-next-candidate="${candidate}"]`);
+              await control.waitFor();
+              assert.ok((await press(page, control, { touch: s.touch })).inside, candidate);
+            }
+            assert.ok(
+              (await press(page, page.locator('.next-batch-ok'), { touch: s.touch })).inside,
+              'batch OK',
+            );
+          };
+          const forcePhoto = async (page: Page, bytes: number, excluded: string | null) =>
+            page.evaluate(
+              async ({ bytes, excluded }) => {
+                const w = window as unknown as AdmissionWindow;
+                const eligible = w.__admissionBase.filter((i) => i.id !== excluded).slice(-7);
+                const files = eligible.map((input, index) => {
+                  const size =
+                    Math.floor(bytes / eligible.length) +
+                    (index === eligible.length - 1 ? bytes % eligible.length : 0);
+                  return [
+                    input.id,
+                    new File(
+                      [w.__admissionPhoto, new Uint8Array(size - w.__admissionPhoto.size)],
+                      `retained-${index}.png`,
+                      { type: 'image/png' },
+                    ),
+                  ] as const;
+                });
+                const decoded = await createImageBitmap(files[0]![1]);
+                decoded.close();
+                const byId = new Map(files);
+                w.__fmStore.update((state) => ({
+                  state: {
+                    ...state,
+                    Inputs: w.__admissionBase.map((input) =>
+                      byId.has(input.id)
+                        ? {
+                            ...input,
+                            mode: 'photo',
+                            file: byId.get(input.id)!,
+                            value: byId.get(input.id)!.name,
+                          }
+                        : input,
+                    ),
+                    RunInputs: [],
+                    RunSettings: '',
+                  },
+                  effects: [],
+                }));
+                return files.reduce((sum, [, file]) => sum + file.size, 0);
+              },
+              { bytes, excluded },
+            );
+          for (const [width, touch] of (
+            [
+              [1280, false],
+              [390, true],
+            ] as const
+          ).filter(([w]) => !ONLY_WIDTHS || ONLY_WIDTHS.includes(w))) {
+            for (const count of [64, 150].filter((c) => !ONLY_COUNTS || ONLY_COUNTS.includes(c))) {
+              for (const path of paths) {
+                const s = await open(browser, width, touch);
+                try {
+                  const setup = await seed(s, count, path === 'paste into new face', false);
+                  if (path === 'paste into new face') await clipboard(s.page);
+                  if (path === 'batch OK') await openBatch(s, setup.target);
+                  await act(s, path, count, setup.target);
+                  await s.page.waitForFunction(
+                    (n) =>
+                      (window as unknown as AdmissionWindow).__fmStore.getState().Inputs.length ===
+                      n,
+                    count + 1,
+                  );
+                  if (path === 'paste into new face') {
+                    await s.page.locator('.next-encode-ok').waitFor();
+                    assert.ok(
+                      (await press(s.page, s.page.locator('.next-encode-ok'), { touch })).inside,
+                    );
+                    await s.page.waitForFunction(
+                      (id) =>
+                        (window as unknown as AdmissionWindow).__fmStore
+                          .getState()
+                          .Inputs.some((i) => i.id === id && i.mode === 'photo' && !!i.file),
+                      setup.target,
+                    );
+                  } else if (path.includes('drop') || path === 'batch OK')
+                    await s.page.locator('.next-encode-dialog').waitFor();
+                  const after = await faceList(s.page);
+                  const batched = path === 'multi-file drop' || path === 'batch OK';
+                  assert.deepEqual(
+                    after
+                      .map((i) => i.id)
+                      .filter((id) => setup.original.some((old) => old.id === id)),
+                    setup.original.map((i) => i.id),
+                    'original face order is preserved',
+                  );
+                  if (batched)
+                    assert.equal(
+                      after.findIndex((i) => i.id === setup.target) + 1,
+                      after.findIndex((i) => !setup.original.some((old) => old.id === i.id)),
+                      'the second pick lands right after the originating face',
+                    );
+                  else
                     assert.deepEqual(
                       after.slice(0, count).map((i) => i.id),
                       setup.original.map((i) => i.id),
-                      'original face order is preserved',
+                      'the new face is added after the originals',
                     );
-                    assert.equal(after.length, count + 1);
-                    assert.equal(new Set(after.map((i) => i.id)).size, after.length);
-                    assert.deepEqual(
-                      (await faceTrace(s.page)).filter((e) => e.type === 'admissionRefused'),
-                      [],
-                    );
-                    assert.deepEqual(s.errors, []);
-                    rows.push({
-                      width,
-                      count,
-                      path,
-                      outcome: 'admitted',
-                      before: count,
-                      after: after.length,
-                      originalIds: setup.original.map((i) => i.id),
-                      newIds: after
-                        .filter((i) => !setup.original.some((old) => old.id === i.id))
-                        .map((i) => i.id),
-                      fixture: setup.fixture,
-                      pasteSetup:
-                        path === 'paste into new face'
-                          ? 'operated Add face created the target before native paste; paste inserted zero additional faces'
+                  assert.equal(after.length, count + 1);
+                  assert.equal(new Set(after.map((i) => i.id)).size, after.length);
+                  assert.deepEqual(
+                    (await faceTrace(s.page)).filter((e) => e.type === 'admissionRefused'),
+                    [],
+                  );
+                  assert.deepEqual(s.errors, []);
+                  rows.push({
+                    width,
+                    count,
+                    path,
+                    outcome: 'admitted',
+                    before: count,
+                    after: after.length,
+                    originalIds: setup.original.map((i) => i.id),
+                    newIds: after
+                      .filter((i) => !setup.original.some((old) => old.id === i.id))
+                      .map((i) => i.id),
+                    fixture: setup.fixture,
+                    pasteSetup:
+                      path === 'paste into new face'
+                        ? 'operated Add face created the target before native paste; paste inserted zero additional faces'
+                        : undefined,
+                  });
+                  await s.page.screenshot({
+                    path: join(
+                      results,
+                      `admission-ok-${count}-${width}-${paths.indexOf(path)}.png`,
+                    ),
+                  });
+                  record('admission', rows);
+                } finally {
+                  await s.context.close();
+                }
+              }
+              for (const budget of [
+                'BATCH_RETAINED_INPUT_BYTES',
+                'STORED_SESSION_BYTES',
+              ] as const) {
+                // Share a refusal context only where no modal/new target changes the baseline.
+                for (const group of [
+                  paths.filter((p) => p !== 'batch OK' && p !== 'paste into new face'),
+                  ['batch OK'] as const,
+                  ['paste into new face'] as const,
+                ]) {
+                  const s = await open(browser, width, touch);
+                  try {
+                    const paste = group[0] === 'paste into new face';
+                    const setup = await seed(s, count, paste, budget === 'STORED_SESSION_BYTES');
+                    const pasteBytes = paste ? await clipboard(s.page) : 0;
+                    for (const path of group) {
+                      // The view opens within the photo budget, which is then forced one over for OK itself.
+                      sessionOver = budget === 'STORED_SESSION_BYTES';
+                      if (path === 'batch OK' && !sessionOver) await openBatch(s, setup.target);
+                      const incoming =
+                        path === 'multi-file drop' || path === 'batch OK'
+                          ? setup.fixture.bytes * 2
+                          : path === 'background drop'
+                            ? setup.fixture.bytes
+                            : path === 'paste into new face'
+                              ? pasteBytes
+                              : 0;
+                      const retained =
+                        budget === 'BATCH_RETAINED_INPUT_BYTES'
+                          ? await forcePhoto(
+                              s.page,
+                              PHOTO_LIMIT + 1 - incoming,
+                              path === 'multi-file drop' || path === 'batch OK' || paste
+                                ? setup.target
+                                : null,
+                            )
+                          : 0;
+                      const before = await snapshot(s.page);
+                      const traced = (await faceTrace(s.page)).filter(
+                        (e) => e.type === 'admissionRefused',
+                      ).length;
+                      await act(s, path, count, setup.target, true);
+                      await s.page.waitForFunction(
+                        (n) =>
+                          (
+                            window as unknown as { __FACEMORPH_FACE_TRACE__: { type: string }[] }
+                          ).__FACEMORPH_FACE_TRACE__.filter((e) => e.type === 'admissionRefused')
+                            .length > n,
+                        traced,
+                      );
+                      const refusals = (await faceTrace(s.page))
+                        .filter((e) => e.type === 'admissionRefused')
+                        .slice(traced);
+                      assert.deepEqual(
+                        refusals.map((e) => e.id),
+                        [budget],
+                        'exactly one named refusal, before any partial insertion',
+                      );
+                      assert.deepEqual(
+                        await snapshot(s.page),
+                        before,
+                        'all face IDs/content/retained files and pending classifications unchanged',
+                      );
+                      const message = (
+                        path === 'batch OK' && !sessionOver
+                          ? await s.page.locator('.next-batch-refused').innerText()
+                          : await s.page.locator('.next-morph-slot .next-status').innerText()
+                      ).trim();
+                      const expected =
+                        budget === 'BATCH_RETAINED_INPUT_BYTES'
+                          ? 'Not added: photos for your faces can use at most 128 MB, and this would go over it. Choose fewer or smaller photos, or remove a photo face.'
+                          : 'Not added: a saved session can hold at most 32 MB, and this would go over it. Remove some faces first.';
+                      assert.equal(message, expected);
+                      const actualPaste = paste
+                        ? await s.page.evaluate(
+                            () => (window as unknown as AdmissionWindow).__admissionPasteBytes,
+                          )
+                        : 0;
+                      if (paste)
+                        assert.equal(
+                          actualPaste,
+                          pasteBytes,
+                          'native paste delivered the normalized real PNG bytes',
+                        );
+                      if (budget === 'BATCH_RETAINED_INPUT_BYTES')
+                        assert.equal(retained + incoming, PHOTO_LIMIT + 1);
+                      rows.push({
+                        width,
+                        count,
+                        path,
+                        outcome: 'refused',
+                        refusedAt:
+                          path === 'batch OK'
+                            ? sessionOver
+                              ? 'the two-file pick: the view cannot open over the session budget'
+                              : 'the operated batch OK'
+                            : undefined,
+                        budget,
+                        baselineFaces: setup.baseline,
+                        after: before.ids.length,
+                        requestedBytes:
+                          budget === 'BATCH_RETAINED_INPUT_BYTES'
+                            ? retained + incoming
+                            : SESSION_LIMIT + 1,
+                        retainedBytes: retained,
+                        incomingBytes: incoming,
+                        message,
+                        trace: refusals,
+                        pasteSetup: paste
+                          ? 'operated Add face created empty target before the budget was forced; native paste added/changed nothing'
                           : undefined,
-                    });
-                    await s.page.screenshot({
-                      path: join(
-                        results,
-                        `admission-ok-${count}-${width}-${paths.indexOf(path)}.png`,
-                      ),
-                    });
-                    record('admission', rows);
+                      });
+                      await s.page.screenshot({
+                        path: join(
+                          results,
+                          `admission-no-${budget}-${count}-${width}-${paths.indexOf(path)}.png`,
+                        ),
+                      });
+                      record('admission', rows);
+                    }
+                    assert.deepEqual(s.models, [], 'no model asset request for a refused entry');
+                    assert.deepEqual(s.errors, []);
                   } finally {
                     await s.context.close();
                   }
                 }
-                for (const budget of [
-                  'BATCH_RETAINED_INPUT_BYTES',
-                  'STORED_SESSION_BYTES',
-                ] as const) {
-                  // Share a refusal context only where no modal/new target changes the baseline.
-                  for (const group of [paths.slice(0, 4), paths.slice(4)]) {
-                    const s = await open(browser, width, touch);
-                    try {
-                      const paste = group[0] === 'paste into new face';
-                      const setup = await seed(s, count, paste, budget === 'STORED_SESSION_BYTES');
-                      const pasteBytes = paste ? await clipboard(s.page) : 0;
-                      for (const path of group) {
-                        const incoming =
-                          path === 'multi-file drop'
-                            ? setup.fixture.bytes * 2
-                            : path === 'background drop'
-                              ? setup.fixture.bytes
-                              : path === 'paste into new face'
-                                ? pasteBytes
-                                : 0;
-                        const retained =
-                          budget === 'BATCH_RETAINED_INPUT_BYTES'
-                            ? await forcePhoto(
-                                s.page,
-                                PHOTO_LIMIT + 1 - incoming,
-                                path === 'multi-file drop' || paste ? setup.target : null,
-                              )
-                            : 0;
-                        const before = await snapshot(s.page);
-                        const traced = (await faceTrace(s.page)).filter(
-                          (e) => e.type === 'admissionRefused',
-                        ).length;
-                        await act(s, path, count, setup.target);
-                        await s.page.waitForFunction(
-                          (n) =>
-                            (
-                              window as unknown as { __FACEMORPH_FACE_TRACE__: { type: string }[] }
-                            ).__FACEMORPH_FACE_TRACE__.filter((e) => e.type === 'admissionRefused')
-                              .length > n,
-                          traced,
-                        );
-                        const refusals = (await faceTrace(s.page))
-                          .filter((e) => e.type === 'admissionRefused')
-                          .slice(traced);
-                        assert.deepEqual(
-                          refusals.map((e) => e.id),
-                          [budget],
-                          'exactly one named refusal, before any partial insertion',
-                        );
-                        assert.deepEqual(
-                          await snapshot(s.page),
-                          before,
-                          'all face IDs/content/retained files and pending classifications unchanged',
-                        );
-                        const message = (
-                          await s.page.locator('.next-morph-slot .next-status').innerText()
-                        ).trim();
-                        const expected =
-                          budget === 'BATCH_RETAINED_INPUT_BYTES'
-                            ? 'Not added: photos for your faces can use at most 128 MB, and this would go over it. Choose fewer or smaller photos, or remove a photo face.'
-                            : 'Not added: a saved session can hold at most 32 MB, and this would go over it. Remove some faces first.';
-                        assert.equal(message, expected);
-                        const actualPaste = paste
-                          ? await s.page.evaluate(
-                              () => (window as unknown as AdmissionWindow).__admissionPasteBytes,
-                            )
-                          : 0;
-                        if (paste)
-                          assert.equal(
-                            actualPaste,
-                            pasteBytes,
-                            'native paste delivered the normalized real PNG bytes',
-                          );
-                        if (budget === 'BATCH_RETAINED_INPUT_BYTES')
-                          assert.equal(retained + incoming, PHOTO_LIMIT + 1);
-                        rows.push({
-                          width,
-                          count,
-                          path,
-                          outcome: 'refused',
-                          budget,
-                          baselineFaces: setup.baseline,
-                          after: before.ids.length,
-                          requestedBytes:
-                            budget === 'BATCH_RETAINED_INPUT_BYTES'
-                              ? retained + incoming
-                              : SESSION_LIMIT + 1,
-                          retainedBytes: retained,
-                          incomingBytes: incoming,
-                          message,
-                          trace: refusals,
-                          pasteSetup: paste
-                            ? 'operated Add face created empty target before the budget was forced; native paste added/changed nothing'
-                            : undefined,
-                        });
-                        await s.page.screenshot({
-                          path: join(
-                            results,
-                            `admission-no-${budget}-${count}-${width}-${paths.indexOf(path)}.png`,
-                          ),
-                        });
-                        record('admission', rows);
-                      }
-                      assert.deepEqual(s.models, [], 'no model asset request for a refused entry');
-                      assert.deepEqual(s.errors, []);
-                    } finally {
-                      await s.context.close();
-                    }
-                  }
-                }
               }
             }
-            t.diagnostic(
-              'Available entry paths graded with real image/clipboard bytes and operated controls. Batch OK is explicitly untested under fm-3peb; acceptance 12 remains incomplete.',
-            );
-          },
-        );
+          }
+          t.diagnostic(
+            'Every entry path graded with real image/clipboard bytes and operated controls, the batch view OK included.',
+          );
+        });
 
       if (CASES.has('start-over-generated'))
         await t.test(
