@@ -3,6 +3,7 @@ import type { CropState } from '../../shell/facade/helpers.ts';
 import type { StillEntry } from '../media/still-entry.ts';
 import type {
   Downloads,
+  Face,
   Input,
   InputMode,
   MorphKind,
@@ -79,9 +80,13 @@ export interface Payloads {
   NamesFailed: readonly [string];
   SearchNames: readonly [string];
   ChooseName: readonly [string];
+  /** A picked name's published result for face `id` and the exact text it was picked for (fm-ejwq). */
+  NamePicked: readonly [string, string, PhotoSelection];
   CloseNames: readonly [];
   MoreNames: readonly [];
   CachedFaceChecked: readonly [Input, boolean];
+  /** The MP4 probe for this exact Morph press: whether the codec fallback is needed and its missing bytes. */
+  MorphCodecChecked: readonly [Msg, boolean, number];
   RestoredLast: readonly [Output];
   PreviewLoaded: readonly [string, InputMode, string, string];
   PinchToggle: readonly [boolean];
@@ -103,6 +108,27 @@ export interface Payloads {
   ];
   /** The explicit Use as photo action on a held still: enters the confirmed-crop flow. */
   UseAsPhoto: readonly [string];
+  // ---- the blend view (fm-2kse) ----
+  /** The view opened (seeds the slots on first open) or closed (cancels a pending blend synthesis). */
+  BlendView: readonly [boolean];
+  /** A new empty slot at weight 1/N; the runner supplies its id. */
+  BlendAdd: readonly [];
+  BlendRemove: readonly [string];
+  /** A released slider or a committed keyboard step: one regeneration. */
+  BlendWeight: readonly [string, number];
+  /** Every weight at once (Shuffle weights), in slot order. */
+  BlendWeights: readonly [readonly number[]];
+  /** Every weight 1/N. */
+  BlendReset: readonly [];
+  /** Make it 1: every weight scaled in proportion. */
+  BlendNormalize: readonly [];
+  BlendRun: readonly [];
+  /** A slot's face finished as a blend dependency. */
+  BlendSlotReady: readonly [Face];
+  BlendCompleted: readonly [number, Face];
+  BlendFailed: readonly [number, string];
+  /** Cancelled or superseded: nothing to show. */
+  BlendSettled: readonly [number];
 }
 /** A classified file; held kinds carry their display URL ('' when it does not decode) and photo action. */
 export interface ClassifiedStill extends StillEntry<File> {

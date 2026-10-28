@@ -15,11 +15,15 @@ import {
   sliderPosition,
 } from './facade/bridge.ts';
 import { videoQualityPreference } from '../src/controller/preferences.ts';
+import { restoreBlend } from './session/blend-store.ts';
+import { settleArrival } from './blend-route.ts';
 
 const root = document.getElementById('elmish-app');
 if (!root) throw new Error('No #elmish-app element to mount the app into');
 const app = createRoot(root);
 function start() {
+  // `#blend` (fm-2kse): a deep link gets the main page under it in history before anything renders.
+  settleArrival(window);
   // These are build-verified facts from the pinned manifest. Opening model-free views never acquires
   // runtime bytes. The actual runtime still verifies its manifest/assets when computation is requested.
   const runtimeSha256: unknown = import.meta.env.FACEMORPH_RUNTIME_SHA256;
@@ -44,6 +48,7 @@ function start() {
       sliderPreference: sliderPreference(),
       sliderPosition: sliderPosition(),
       videoQuality: videoQualityPreference(),
+      blend: restoreBlend(),
     },
     { identity: { runtimeSha256, modelSha256 } },
   );

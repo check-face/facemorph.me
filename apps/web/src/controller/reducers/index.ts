@@ -8,6 +8,8 @@ import { photo, type PhotoFacts } from './photo.ts';
 import { crop } from './crop.ts';
 import { sameInputs } from './schedule.ts';
 import { commitUndo, NEXT_ACTIONS, undo, type UndoFacts } from './undo.ts';
+import { blend, blendSlotTarget, throughSlots, withSlotFaces, type BlendFacts } from './blend.ts';
+import { isBlendId } from '../blend.ts';
 import type { Msg } from '../msg.ts';
 import type { State } from '../state.ts';
 import { viewSnapshot, type Transition } from '../effects.ts';
@@ -15,7 +17,8 @@ import { retirePhotoRunInputs } from '../admission.ts';
 export type ControllerFacts = InputFacts &
   JobFacts &
   PhotoFacts &
-  UndoFacts & {
+  UndoFacts &
+  BlendFacts & {
     /** An already requested queued job resuming automatically, not a new user action. */
     readonly continuation?: boolean;
   };
@@ -44,6 +47,7 @@ export const CASES = {
   PreviewLoaded: names,
   SearchNames: names,
   ChooseName: names,
+  NamePicked: names,
   CloseNames: names,
   MoreNames: names,
   Debug: reporting,
@@ -96,11 +100,35 @@ export const CASES = {
   GateAccept: gate,
   ResumePhoto: gate,
   GateCancel: gate,
+  MorphCodecChecked: gate,
   Retry: jobs,
   RestoredLast: jobs,
+  BlendView: blend,
+  BlendAdd: blend,
+  BlendRemove: blend,
+  BlendWeight: blend,
+  BlendWeights: blend,
+  BlendReset: blend,
+  BlendNormalize: blend,
+  BlendRun: blend,
+  BlendSlotReady: blend,
+  BlendCompleted: blend,
+  BlendFailed: blend,
+  BlendSettled: blend,
 } satisfies Record<Msg['type'], ControllerReducer>;
 /** Compose guard priority and the classic remember-view wrapper around each pure transition. */
 export function reduce(message: Msg, state: State, facts: ControllerFacts = {}): Transition | null {
+  // A per-face message aimed at a blend slot (fm-2kse) runs the same reducers over the slots, never the morph faces.
+  if (blendSlotTarget(message, state) !== null)
+    return throughSlots(message, state, (lensed, projected) => reduce(lensed, projected, facts));
+  const result = reduceFaces(message, state, facts);
+  if (!result || !state.Blend || message.type !== 'Completed') return result;
+  // A slot's own Generate finishes as an ordinary face job: its face joins the slot, the morph video stays.
+  const slotJob = state.LastRun?.type === 'RunFace' && isBlendId(state.LastRun.args[0]);
+  const next = withSlotFaces(result.state, message.args[1].faces);
+  return { ...result, state: slotJob ? { ...next, VideoUrl: state.VideoUrl } : next };
+}
+function reduceFaces(message: Msg, state: State, facts: ControllerFacts): Transition | null {
   // A person's next action ends an open Undo notice first (fm-id4c): the hidden faces are released, then it applies.
   if (state.Undo && !facts.continuation && NEXT_ACTIONS.has(message.type)) {
     const committed = commitUndo(state);

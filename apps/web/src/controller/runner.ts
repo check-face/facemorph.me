@@ -30,6 +30,7 @@ import { subscribeProgress, subscribeDownloads } from './subscriptions.ts';
 import { storedSize } from '../../shell/session/app-storage.ts';
 import { createPhotoTasks } from './photo-tasks.ts';
 import { retirePhotoRunInputs } from './admission.ts';
+import { BLEND_RESULT } from './blend.ts';
 
 export interface RuntimeIdentity {
   readonly runtimeSha256: string;
@@ -46,6 +47,7 @@ const commands = new Set<Effect['type']>([
   'dispatch',
   'loadNames',
   'publicPreview',
+  'pickName',
   'sliderFrames',
   'checkCachedFace',
   'execute',
@@ -59,6 +61,7 @@ const commands = new Set<Effect['type']>([
   'previewPhoto',
   'cropPhoto',
   'chooseDetectedFace',
+  'runBlend',
 ]);
 export function orderedEffects(effects: readonly Effect[]): readonly Effect[] {
   return [
@@ -102,26 +105,40 @@ export function operationProgress(
   };
 }
 
+type CodecAsset = { readonly url: string; readonly sha256: string; readonly size: number };
+/** The pinned codec's total bytes, learned from the manifest by the last availability check (0 until then). */
+let codecBytes = 0;
 /**
  * Where the FFmpeg fallback stands, read from the same-origin runtime manifest (not a model asset): absent
- * only when the manifest positively carries no codec; cached when Cache Storage already holds its wasm;
- * otherwise acquisition consent asks for it. An unreadable manifest is not a refusal: the bridge decides.
+ * only when the manifest positively carries no codec; cached when the device's verified model store already
+ * holds both its parts; in scope once the person approved its bytes in this tab; otherwise acquisition consent
+ * asks for it (fm-9kr8). An unreadable manifest is not a refusal: the bridge decides.
  */
-async function ffmpegAvailability(): Promise<FfmpegAvailability> {
-  let codec: { wasm?: { url?: unknown } } | undefined;
+async function ffmpegAvailability(approved: boolean): Promise<FfmpegAvailability> {
+  let codec: { wasm?: CodecAsset; module?: CodecAsset } | undefined;
   try {
     const response = await fetch('/runtime/manifest.json', { credentials: 'omit' });
     if (!response.ok) return 'needs-consent';
-    codec = ((await response.json()) as { codec?: { wasm?: { url?: unknown } } }).codec;
+    codec = ((await response.json()) as { codec?: typeof codec }).codec;
   } catch {
     return 'needs-consent';
   }
   if (!codec) return 'absent';
-  const url = codec.wasm?.url;
+  const parts = [codec.wasm, codec.module].filter((part): part is CodecAsset =>
+    Number.isSafeInteger(part?.size),
+  );
+  codecBytes = parts.reduce((sum, part) => sum + part.size, 0);
+  if (approved) return 'in-scope';
   try {
-    if (typeof url === 'string' && globalThis.caches && (await caches.match(url))) return 'cached';
+    const { createBrowserModelCache } = await import('../Next/Assets/model-cache.mjs');
+    const cache = await createBrowserModelCache({ readOnly: true });
+    if (
+      parts.length === 2 &&
+      (await Promise.all(parts.map((part) => cache.has(part)))).every(Boolean)
+    )
+      return 'cached';
   } catch {
-    /* Cache Storage unavailable */
+    /* the model store is unavailable: the bytes would have to be downloaded */
   }
   return 'needs-consent';
 }
@@ -175,7 +192,7 @@ export function createController(
       probeMp4({
         fps: request.settings.fps,
         webcodecs: browserWebCodecs(),
-        ffmpeg: ffmpegAvailability,
+        ffmpeg: () => ffmpegAvailability(store.getState().DownloadConsent.has('codec')),
         quality: request.settings.quality ?? 'standard',
         deviceMemoryGiB:
           (globalThis.navigator as { deviceMemory?: number } | undefined)?.deviceMemory ?? null,
@@ -214,6 +231,16 @@ export function createController(
         : {}),
       ...(message.type === 'AddAt'
         ? { newFaceId: `face-${crypto.randomUUID().replaceAll('-', '')}` }
+        : {}),
+      // Blend slot ids (fm-2kse): one per morph face plus a spare when the view first opens, one per added slot.
+      ...((message.type === 'BlendView' && message.args[0] && !state.Blend) ||
+      message.type === 'BlendAdd'
+        ? {
+            blendIds: Array.from(
+              { length: message.type === 'BlendAdd' ? 1 : state.Inputs.length + 1 },
+              () => `blend-${crypto.randomUUID().replaceAll('-', '')}`,
+            ),
+          }
         : {}),
       ...(message.type === 'StartOver'
         ? {
@@ -311,6 +338,78 @@ export function createController(
       () => {},
       (error) => {
         throw error;
+      },
+    );
+  }
+  /** A morph face or a blend slot (fm-2kse) with this id. */
+  const inputOf = (state: State, id: string): Input | undefined =>
+    state.Inputs.find((input) => input.id === id) ??
+    state.Blend?.slots.find((slot) => slot.input.id === id)?.input;
+  /** The blend view's current parent intent; a newer one supersedes it inside the service. */
+  let blendHandle: OperationHandle | null = null;
+  function runBlend(effect: Extract<Effect, { type: 'runBlend' }>): void {
+    const state = store.getState();
+    const request: Extract<OperationRequest, { kind: 'blend' }> = {
+      kind: 'blend',
+      sources: effect.inputs.map(source),
+      weights: effect.weights,
+      target: BLEND_RESULT,
+      settings: {
+        kind: state.Kind,
+        width: state.Width,
+        pinch: state.Pinch,
+        frames: state.Frames,
+        fps: state.Fps,
+        quality: state.Quality ?? 'standard',
+      },
+      route: { ...identity, requested: effect.provider, fallbackScope: 'cpu-once' },
+    };
+    const handle = service.requestBlend(request);
+    blendHandle = handle;
+    const off = service.subscribe((event) => {
+      if (disposed || event.intent.requestId !== handle.requestId) return;
+      if (event.type === 'dependency-ready') {
+        const face = event.output.faces.find((item) => item.id === event.slot);
+        if (face) store.dispatch(msg('BlendSlotReady', face));
+      }
+    });
+    photoTask(
+      effect.inputs.flatMap((input) => (input.file ? [input.file] : [])),
+      () => handle.done,
+      (result) => {
+        off();
+        if (blendHandle === handle) blendHandle = null;
+        if (result.status === 'completed') {
+          for (const face of result.output.faces)
+            if (effect.inputs.some((input) => input.id === face.id))
+              store.dispatch(msg('BlendSlotReady', face));
+          const face = result.output.faces.find((item) => item.id === BLEND_RESULT);
+          store.dispatch(
+            face
+              ? msg('BlendCompleted', effect.revision, face)
+              : msg('BlendFailed', effect.revision, 'The blend returned no face.'),
+          );
+        } else if (result.status === 'failed')
+          store.dispatch(
+            msg(
+              'BlendFailed',
+              effect.revision,
+              result.cause.kind === 'admission' ? result.cause.refusal.text : result.cause.message,
+            ),
+          );
+        else store.dispatch(msg('BlendSettled', effect.revision));
+        measureStored();
+      },
+      (error) => {
+        off();
+        if (blendHandle === handle) blendHandle = null;
+        store.dispatch(
+          msg(
+            'BlendFailed',
+            effect.revision,
+            error instanceof Error ? error.message : String(error),
+          ),
+        );
       },
     );
   }
@@ -493,7 +592,17 @@ export function createController(
       () => checks(request).finally(() => (accepting = false)),
       (result) => {
         if (result.failure) refuseMorph(result.failure, null);
-        else store.dispatch(message);
+        // The probe's codec answer goes to the one consent (fm-9kr8): fallback bytes the press must download
+        // are asked for in its Generate row before anything is fetched.
+        else
+          store.dispatch(
+            msg(
+              'MorphCodecChecked',
+              message,
+              result.route?.ok === true && result.route.needsConsent,
+              codecBytes,
+            ),
+          );
         accepted();
       },
       (error) => {
@@ -596,8 +705,7 @@ export function createController(
           faceTrace?.push({ type: 'invalidateFace', id: effect.id, at: performance.now() });
           const revision = (revisions.get(effect.id) ?? 1) + 1;
           revisions.set(effect.id, revision);
-          if (state.Inputs.some((input) => input.id === effect.id))
-            service.revise(effect.id, revision as InputRevision);
+          if (inputOf(state, effect.id)) service.revise(effect.id, revision as InputRevision);
           else service.remove(effect.id);
           if (morphRefusal !== null && state.Status === morphRefusal) recheckNeighbours(state);
           break;
@@ -624,6 +732,17 @@ export function createController(
         case 'closeNamesFocus':
           helpers.closeNamesFocus();
           break;
+        case 'pickName': {
+          // The text is read here, at dispatch, never carried in the effect.
+          const input = inputOf(state, effect.id);
+          if (!input || input.mode !== 'text') break;
+          task(
+            facade.pickName({ id: input.id, value: input.value }),
+            (selection) => store.dispatch(msg('NamePicked', input.id, input.value, selection)),
+            (error) => store.dispatch(rejection(effect, error)),
+          );
+          break;
+        }
         case 'loadNames':
           task(
             facade.loadNames(),
@@ -709,7 +828,7 @@ export function createController(
           );
           break;
         case 'publicPreview': {
-          const input = state.Inputs.find((item) => item.id === effect.id);
+          const input = inputOf(state, effect.id);
           if (!input) break;
           const finish = (url: string) =>
             store.dispatch(msg('PreviewLoaded', input.id, input.mode, input.value, url));
@@ -852,6 +971,16 @@ export function createController(
           );
           break;
         }
+        case 'runBlend':
+          runBlend(effect);
+          break;
+        case 'cancelBlend':
+          if (blendHandle) service.cancel({ requestId: blendHandle.requestId });
+          blendHandle = null;
+          break;
+        case 'copyFace':
+          facade.copyFace(effect.from, effect.to);
+          break;
         default: {
           const absent: never = effect;
           throw new Error(`Unknown controller effect: ${String(absent)}`);

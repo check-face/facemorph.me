@@ -28,7 +28,7 @@ export type EverydayEffect =
         | 'sendReportOnce';
     }
   | {
-      readonly type: 'invalidateFace' | 'invalidatePhotoSelections' | 'publicPreview';
+      readonly type: 'invalidateFace' | 'invalidatePhotoSelections' | 'publicPreview' | 'pickName';
       readonly id: string;
     }
   | {
@@ -67,7 +67,18 @@ export type Effect =
       readonly budget: 'BATCH_RETAINED_INPUT_BYTES' | 'STORED_SESSION_BYTES';
     }
   /** Ends the Undo notice `seq` after its timeout (fm-id4c). */
-  | { readonly type: 'expireUndo'; readonly seq: number };
+  | { readonly type: 'expireUndo'; readonly seq: number }
+  /** The blend view (fm-2kse): one blend parent intent over the weighted slots; newest wins. */
+  | {
+      readonly type: 'runBlend';
+      readonly revision: number;
+      readonly inputs: readonly Input[];
+      readonly weights: readonly number[];
+      readonly provider: State['Provider'];
+    }
+  | { readonly type: 'cancelBlend' }
+  /** A seeded slot starts as a copy of a finished morph face (latent and pixels), under its own id. */
+  | { readonly type: 'copyFace'; readonly from: string; readonly to: string };
 export type PhotoEffect =
   | { readonly type: 'focusCropArea' | 'cancelPhotoRun' }
   | { readonly type: 'revokeUrl'; readonly url: string }
@@ -125,6 +136,9 @@ export function rejection(effect: Effect, error: unknown, input?: Input): Msg {
     case 'loadNames':
       // The open picker owns this failure: shown inside the dialog, which stays dismissible.
       return msg('NamesFailed', text);
+    case 'pickName':
+      // A published result that cannot be fetched or checked is that face's error; nothing is synthesized instead.
+      return msg('PhotoRefused', effect.id, text);
     case 'exportProject':
       return msg('Notice', text);
     case 'classifyStills':

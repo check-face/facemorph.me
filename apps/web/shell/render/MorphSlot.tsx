@@ -53,6 +53,8 @@ export interface MorphSettings {
 }
 
 export interface MorphSlotProps extends MorphSettings {
+  /** More options → Blend faces (fm-2kse): opens the blend view (`#blend`) over the same session. */
+  readonly onBlend?: () => void;
   /** More options → Start over (fm-id4c): two empty faces in one action, undoable. */
   readonly onStartOver?: () => void;
   readonly faces: number;
@@ -308,6 +310,16 @@ export function MorphSlot(p: MorphSlotProps) {
       {p.overflow && (
         <div id="next-overflow">
           <Overflow {...p} custom={custom} />
+          {p.onBlend && (
+            <Button
+              color="inherit"
+              variant="outlined"
+              className="next-blend-open"
+              onClick={p.onBlend}
+            >
+              Blend faces
+            </Button>
+          )}
           {p.onStartOver && (
             <Button
               color="inherit"
