@@ -30,7 +30,15 @@ export function appTheme(dark: boolean): Theme {
       body2: { fontSize: '1rem' },
     },
     // These tooltips contain labels only. An open touch popper must not intercept another face's controls.
-    components: { MuiTooltip: { defaultProps: { disableInteractive: true } } },
+    // Fixed positioning: a popper left at a stale place by a relayout (closing after a resize) never widens the page.
+    components: {
+      MuiTooltip: {
+        defaultProps: {
+          disableInteractive: true,
+          slotProps: { popper: { popperOptions: { strategy: 'fixed' } } },
+        },
+      },
+    },
   });
 }
 

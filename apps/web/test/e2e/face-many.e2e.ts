@@ -195,11 +195,24 @@ const overflow = (page: Page) =>
           `${el.tagName.toLowerCase()}.${[...el.classList].slice(0, 3).join('.')} ${el.scrollWidth}>${el.clientWidth}`,
         );
     }
+    // Diagnostics only: what reaches past the page's width when it scrolls sideways.
+    const wide =
+      root.scrollWidth > innerWidth
+        ? [...document.querySelectorAll<HTMLElement>('body *')]
+            .filter((el) => !el.closest('[data-next-strip]'))
+            .filter((el) => el.getBoundingClientRect().right > root.clientWidth + 0.5)
+            .slice(0, 8)
+            .map((el) => {
+              const r = el.getBoundingClientRect();
+              return `${el.tagName.toLowerCase()}.${[...el.classList].slice(0, 3).join('.')} ${Math.round(r.left)}..${Math.round(r.right)} ${(el.textContent ?? '').slice(0, 40)}`;
+            })
+        : [];
     return {
       scrollWidth: root.scrollWidth,
       innerWidth,
       height: root.scrollHeight,
       hidden: [...new Set(hidden)],
+      ...(wide.length ? { wide } : {}),
     };
   });
 
