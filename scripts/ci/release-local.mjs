@@ -34,6 +34,17 @@ export function checks({ artifact, runtimeSha, runtimeDir, out, url, control }) 
       journeys(b, 'faces', 'cold-face,warm-face,morph'),
       journeys(b, 'operated', 'operated'),
     ]),
+    // The verify.functional manifest's operated cases, every e2e file it names, on this artifact (release.yml functional).
+    {
+      name: 'functional',
+      cwd: join(REPO, 'apps/web'),
+      env: {
+        FACEMORPH_DEPLOY_OUT: site,
+        FACEMORPH_REQUIRE_RUNTIME: '1',
+        FACEMORPH_RUNTIME_DIR: runtimeDir,
+      },
+      cmd: `node --test --test-concurrency=1 --test-timeout=2400000 $(node --input-type=module -e "import { VERIFY_FUNCTIONAL as m } from './test/verify/cases/verify-functional.ts'; console.log([...new Set(m.cases.map((c) => 'test/e2e/' + c.test.file))].sort().join(' '))")`,
+    },
     {
       name: 'engine',
       cwd: REPO,

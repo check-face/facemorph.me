@@ -182,6 +182,67 @@ jobs:
           path: lane/
           retention-days: 14
 
+  functional:
+    needs: build
+    name: functional cases (${{ matrix.shard }}/3, Chromium, CPU)
+    # Every operated case of the verify.functional manifest (apps/web/test/verify/cases/verify-functional.ts), run on
+    # this run's artifact: the manifest names each case's e2e file, and the files are dealt to three shards (fm-ejwq).
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      CHECK: functional:${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci && npx playwright install chromium
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: artifact
+      - name: The artifact is the one built in this run
+        env:
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: |
+          got=$(node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; console.log(treeDigest('artifact/deploy-next'))")
+          test "$got" = "$DIGEST"
+      - uses: ./.github/actions/setup-runtime
+      - name: The manifest's cases in shard ${{ matrix.shard }}
+        working-directory: apps/web
+        env:
+          FACEMORPH_DEPLOY_OUT: ${{ github.workspace }}/artifact/deploy-next
+          FACEMORPH_REQUIRE_RUNTIME: '1'
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          files=$(node --input-type=module -e "
+            import { VERIFY_FUNCTIONAL as m } from './test/verify/cases/verify-functional.ts';
+            const all = [...new Set(m.cases.map((c) => c.test.file))].sort();
+            console.log(all.filter((_, i) => i % 3 === ${{ matrix.shard }} - 1).map((f) => 'test/e2e/' + f).join(' '));")
+          echo "shard ${{ matrix.shard }}: $files"
+          node --test --test-concurrency=1 --test-timeout=2400000 $files
+      - name: Record the failure
+        if: failure() || cancelled()
+        run: |
+          node scripts/ci/failures.mjs add --dir failures --check "$CHECK" --bundle "bundle-functional-${{ matrix.shard }}" \
+            --repro "$FETCH && cd apps/web && FACEMORPH_DEPLOY_OUT=/tmp/next-site-${{ github.run_id }}/deploy-next FACEMORPH_REQUIRE_RUNTIME=1 node --test test/e2e/<file>"
+      - uses: actions/upload-artifact@v4
+        if: failure() || cancelled()
+        with:
+          name: failure-functional-${{ matrix.shard }}
+          path: failures/
+      - uses: actions/upload-artifact@v4
+        if: failure() || cancelled()
+        with:
+          name: bundle-functional-${{ matrix.shard }}
+          path: apps/web/test-results/
+          retention-days: 14
+
   engine:
     if: inputs.site == 'candidate'
     name: engine numerics on the verified runtime (full31, CPU and browser routes)
@@ -413,7 +474,7 @@ jobs:
           retention-days: 14
 
   gate:
-    needs: [build, journeys, engine, timing-gate, timing-final]
+    needs: [build, journeys, functional, engine, timing-gate, timing-final]
     if: ${{ !cancelled() && inputs.site == 'candidate' }}
     name: go/no-go
     runs-on: ubuntu-latest
@@ -425,7 +486,7 @@ jobs:
         run: |
           node -e '
             const n = JSON.parse(process.env.RESULTS), bad = [];
-            for (const j of ["build", "journeys", "engine"]) if (n[j].result !== "success") bad.push(`${j}: ${n[j].result}`);
+            for (const j of ["build", "journeys", "functional", "engine"]) if (n[j].result !== "success") bad.push(`${j}: ${n[j].result}`);
             const t = n["timing-gate"], f = n["timing-final"];
             if (!(t.result === "success" && (t.outputs.verdict === "pass" || (t.outputs.verdict === "more" && f.result === "success"))))
               bad.push(`timing: ${t.outputs.verdict ?? t.result}${f.result === "skipped" ? "" : `, then ${f.result}`}`);
@@ -693,6 +754,7 @@ jobs:
       [
         build,
         journeys,
+        functional,
         engine,
         timing,
         timing-gate,
