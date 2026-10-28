@@ -144,6 +144,17 @@ async function setSlots(page: Page, n: number) {
  *  release that no blend was requested. Returns the blend requests made during the drag. */
 async function drag(page: Page, slider: Locator, from: number, to: number, touch: boolean) {
   await slider.scrollIntoViewIfNeeded();
+  // As a person would: bring the slider out from under the pinned result (phones) before touching it.
+  await slider.evaluate((el) => {
+    const pinned = document.querySelector('.next-blend-result')!.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    if (
+      getComputedStyle(document.querySelector('.next-blend-result')!).position === 'sticky' &&
+      r.top < pinned.bottom + 8 &&
+      pinned.top <= 1
+    )
+      scrollBy(0, r.top - pinned.bottom - 24);
+  });
   const box = (await slider.boundingBox())!;
   const at = (v: number) => ({ x: box.x + 8 + v * (box.width - 16), y: box.y + box.height / 2 });
   const start = at(from);
@@ -256,6 +267,7 @@ test(
         await openBlend();
         await page.locator('.next-blend').waitFor();
         const slot = (i: number) => page.locator('.next-blend-slot').nth(i);
+        const up = () => page.evaluate(() => scrollTo(0, 0));
         // Slot 1: typed words.
         const field = slot(0).locator('.next-field input');
         await operate(page, field, touch);
@@ -301,12 +313,6 @@ test(
         const crop = page.getByRole('dialog', { name: 'Encode an image', exact: true });
         await crop.waitFor();
         await operate(page, crop.getByRole('button', { name: 'OK', exact: true }), touch);
-        const slots = (await blendOf(page))!.slots;
-        assert.deepEqual(
-          slots.map((s) => s.input.mode),
-          ['text', 'text', 'photo'],
-        );
-        assert.equal(slots[0]!.input.value, 'ada lovelace');
         // Until the photo slot's face is encoded, answer the photo encoder's question whenever it is asked
         // (again once its schedule is discovered, or after the picked name's own generation).
         const encoded = (id: string) =>
@@ -315,11 +321,18 @@ test(
               (window as unknown as W).__fmStore.getState().Blend!.faces.some((f) => f.id === id),
             id,
           );
-        for (const end = Date.now() + 900_000; !(await encoded(slots[2]!.input.id));) {
+        const photoId = (await blendOf(page))!.slots[2]!.input.id;
+        for (const end = Date.now() + 900_000; !(await encoded(photoId));) {
           assert.ok(Date.now() < end, 'the photo slot was encoded in time');
           if (await accept.isVisible()) await operate(page, accept, touch);
           else await page.waitForTimeout(1000);
         }
+        const slots = (await blendOf(page))!.slots;
+        assert.deepEqual(
+          slots.map((s) => s.input.mode),
+          ['text', 'text', 'photo'],
+        );
+        assert.equal(slots[0]!.input.value, 'ada lovelace');
         // Blend, then the result with Save.
         await operate(page, page.locator('.next-blend-action'), touch);
         if (
@@ -378,6 +391,7 @@ test(
         assert.ok(computed(events, keyed[1]!), 'the newer blend finished');
         assert.ok(!computed(events, keyed[0]!), 'the older blend was superseded, never installed');
         // Reset: 1/N, the sum shown.
+        await up(); // a person scrolls back up to the controls under the pinned result
         await operate(
           page,
           page.locator('.next-blend').getByRole('button', { name: 'Reset' }),
@@ -398,12 +412,14 @@ test(
           /Weights add up to 1\.67\. Faces usually look most natural at 1\./,
         );
         await waitBlend(page);
+        await up(); // a person scrolls back up to the controls under the pinned result
         await operate(page, page.getByRole('button', { name: 'Make it 1' }), touch);
         await page.locator('.next-blend-sum-line').waitFor({ state: 'detached' });
         assert.equal(await page.locator('.next-blend-sum').innerText(), 'Sum 1.00');
         await waitBlend(page);
         // Shuffle weights: one regeneration; weights in 0-1 adding up to 1.
         const shuffleFrom = blendRequests(await trace(page)).length;
+        await up(); // a person scrolls back up to the controls under the pinned result
         await operate(page, page.getByRole('button', { name: 'Shuffle weights' }), touch);
         await waitBlend(page);
         assert.equal(blendRequests(await trace(page)).length - shuffleFrom, 1);
@@ -479,17 +495,23 @@ test(
         await crop.waitFor();
         await operate(page, crop.getByRole('button', { name: 'OK', exact: true }), touch);
         const photoSlot = (await blendOf(page))!.slots[2]!.input.id;
-        // The encode is running as the slot's own Generate; the blend waits on it as a dependency.
-        await page.waitForFunction(
-          (id) => {
-            const s = (window as unknown as W).__fmStore.getState() as unknown as {
-              ActiveFace: string | null;
-            };
-            return s.ActiveFace === id;
-          },
-          photoSlot,
-          { timeout: 60_000 },
-        );
+        // The encode runs as the slot's own Generate (after this tab's encoder question, asked again after the
+        // reload); the blend then waits on it as a dependency.
+        const activeOn = (id: string) =>
+          page.evaluate(
+            (id) =>
+              (
+                (window as unknown as W).__fmStore.getState() as unknown as {
+                  ActiveFace: string | null;
+                }
+              ).ActiveFace === id,
+            id,
+          );
+        for (const end = Date.now() + 120_000; !(await activeOn(photoSlot));) {
+          assert.ok(Date.now() < end, 'the photo slot encode started');
+          if (await accept.isVisible()) await operate(page, accept, touch);
+          else await page.waitForTimeout(250);
+        }
         const pendingFrom = blendRequests(await trace(page)).length;
         await operate(page, page.locator('.next-blend-action'), touch);
         await page.waitForFunction(
