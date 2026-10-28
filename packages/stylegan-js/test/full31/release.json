@@ -1,0 +1,7 @@
+{
+  "note": "The full31 fixtures (./regenerate.py output, every file pinned in ./manifest.json) as one release asset, so the release engine job restores them on any runner: node scripts/ci/fetch-full31.mjs --dest <dir>.",
+  "tag": "full31-fixtures-7770b21f8149",
+  "api_url": "https://api.github.com/repos/facemorph-me/facemorph.me/releases/assets/683497851",
+  "bytes": 73797847,
+  "sha256": "5dad845889605c85c970525d4f687c956f8c7de6ce325d08e560646207293506"
+}

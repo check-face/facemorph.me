@@ -205,9 +205,11 @@ jobs:
           export FACEMORPH_RUNTIME_CACHE="$FACEMORPH_RUNTIME_DIR"
           export FACEMORPH_RUNTIME_SHA256="$(sha256sum "$FACEMORPH_RUNTIME_DIR/manifest.json" | cut -c1-64)"
           # The 31 regenerated research fixtures (packages/stylegan-js/test/full31/regenerate.py, every file checked
-          # against manifest.json), kept outside the cleaned workspace; until 28 October they were never present, so
-          # full31 reported untested in every release.
+          # against manifest.json): kept outside the cleaned workspace, restored from their pinned release asset when
+          # missing or changed (release.json), so any runner can run full31. Until 28 October they were never present,
+          # so full31 reported untested in every release.
           export FACEMORPH_FULL31="$HOME/.cache/facemorph-device-lab/full31"
+          node scripts/ci/fetch-full31.mjs --dest "$FACEMORPH_FULL31"
           node scripts/ci/scaffold-test-shards.mjs --workspace packages/stylegan-js 2>&1 | tee engine.log
           if grep -E '^﹣ full31 ' engine.log; then echo '::error::full31 did not run: the job claims it, so untested is a failure'; exit 1; fi
       - name: Record the failure
