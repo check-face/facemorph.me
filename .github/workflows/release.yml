@@ -188,12 +188,15 @@ jobs:
           retention-days: 14
 
   functional:
-    needs: build
+    # After the timing jobs, on eris: the photo-encoding suites need eris's CPU (GitHub's 4-core runners took over
+    # 20 min per encode-heavy case, run 40647651423), and running after timing keeps each timing job alone on its cores.
+    needs: [build, timing]
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
     name: functional cases (${{ matrix.shard }}/4, Chromium, CPU)
     # Every operated case of the verify.functional manifest (apps/web/test/verify/cases/verify-functional.ts), plus the
     # operated suites of the other product beads (OPERATED below: consent, morph, faces, blend), run on this run's
     # artifact and dealt to four shards, so one release is the evidence for every bead it ships.
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, eris-build]
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -209,10 +212,9 @@ jobs:
           node-version: '24'
           cache: npm
       # The suites import the packages' built entry points (stylegan-js, browser-model-manager), and shell.e2e runs in
-      # Chromium, Firefox and WebKit; the system libraries get a bounded apt attempt that fails here, visibly.
+      # Chromium, Firefox and WebKit (eris has their system libraries).
       - run: npm ci && npm run build # the packages' entry points, and apps/web/dist for the check pages
       - run: npx playwright install chromium firefox webkit
-      - run: sudo env "PATH=$PATH" timeout 600 npx playwright install-deps chromium firefox webkit
       - uses: actions/download-artifact@v4
         with:
           name: ${{ env.ARTIFACT }}
