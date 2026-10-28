@@ -7,6 +7,11 @@ name: release
 # no face can be made). No job stops another: every check runs to the end, records its numbers, failure bundle and
 # local repro command, and the report job lists every failure in one place. device.yml never blocks this workflow.
 on:
+  # Every push to main deploys to next (operator, 28 October 2026): after that commit's check.yml passes and behind the
+  # go/no-go; bead-only and documentation-only pushes change nothing a visitor gets.
+  push:
+    branches: [main]
+    paths-ignore: ['.beads/**', '**/*.md']
   workflow_dispatch:
     inputs:
       target:
@@ -51,7 +56,7 @@ env:
   FETCH: gh run download ${{ github.run_id }} -R ${{ github.repository }} -n next-site-${{ github.sha }} -D /tmp/next-site-${{ github.run_id }}
 jobs:
   build:
-    if: inputs.site == 'candidate'
+    if: (inputs.site || 'candidate') == 'candidate'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -246,8 +251,28 @@ jobs:
           path: apps/web/test-results/
           retention-days: 14
 
+  checked:
+    if: (inputs.site || 'candidate') == 'candidate'
+    name: check.yml passed on this commit
+    # The unit tests, lint, typecheck and smoke run in check.yml on every push; a release deploys only a commit that
+    # passed them. A check run replaced by a newer push never ran: the newer push's release carries the change.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - run: |
+          for i in $(seq 1 85); do
+            read -r status conclusion < <(gh run list -R "$GITHUB_REPOSITORY" -w check.yml --commit "$GITHUB_SHA" -L 1 \
+              --json status,conclusion --jq '.[0] // {} | "\(.status // "none") \(.conclusion // "-")"')
+            echo "check.yml on ${GITHUB_SHA::7}: $status $conclusion"
+            if [ "$status" = completed ]; then test "$conclusion" = success; exit; fi
+            sleep 20
+          done
+          exit 1
+
   engine:
-    if: inputs.site == 'candidate'
+    if: (inputs.site || 'candidate') == 'candidate'
     name: engine numerics on the verified runtime (full31, CPU and browser routes)
     # Real hardware: the browser routes need eris's memory (a 16 GB hosted runner's in-memory storage quota cannot hold
     # the 1.1 GB encoder: QuotaExceededError in run 40488827815) and the WebGPU test needs the device-lab runner's GPU
@@ -477,8 +502,8 @@ jobs:
           retention-days: 14
 
   gate:
-    needs: [build, journeys, functional, engine, timing-gate, timing-final]
-    if: ${{ !cancelled() && inputs.site == 'candidate' }}
+    needs: [build, checked, journeys, functional, engine, timing-gate, timing-final]
+    if: ${{ !cancelled() && (inputs.site || 'candidate') == 'candidate' }}
     name: go/no-go
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -489,7 +514,7 @@ jobs:
         run: |
           node -e '
             const n = JSON.parse(process.env.RESULTS), bad = [];
-            for (const j of ["build", "journeys", "functional", "engine"]) if (n[j].result !== "success") bad.push(`${j}: ${n[j].result}`);
+            for (const j of ["build", "checked", "journeys", "functional", "engine"]) if (n[j].result !== "success") bad.push(`${j}: ${n[j].result}`);
             const t = n["timing-gate"], f = n["timing-final"];
             if (!(t.result === "success" && (t.outputs.verdict === "pass" || (t.outputs.verdict === "more" && f.result === "success"))))
               bad.push(`timing: ${t.outputs.verdict ?? t.result}${f.result === "skipped" ? "" : `, then ${f.result}`}`);
@@ -500,19 +525,21 @@ jobs:
   deploy:
     needs: [build, gate]
     # After a GO, or (site=promote) a named green run's artifact at its recorded digest.
-    if: ${{ !cancelled() && (needs.gate.result == 'success' || (inputs.site == 'promote' && inputs.live_run != '' && inputs.promote_digest != '')) }}
+    if: ${{ !cancelled() && (needs.gate.result == 'success' || ((inputs.site || 'candidate') == 'promote' && inputs.live_run != '' && inputs.promote_digest != '')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      previous: ${{ steps.site.outputs.previous }}
     # One publication per target at a time; a publication in progress is never cancelled.
     concurrency:
-      group: deploy-${{ inputs.target }}
+      group: deploy-${{ (inputs.target || 'next') }}
       cancel-in-progress: false
     defaults:
       run:
         shell: bash # -eo pipefail: a failed step piped to tee still fails
     env:
-      TARGET: ${{ inputs.target }}
-      PUBLISH: ${{ inputs.publish && '--publish' || '' }}
+      TARGET: ${{ (inputs.target || 'next') }}
+      PUBLISH: ${{ (inputs.publish || github.event_name == 'push') && '--publish' || '' }}
       FACEMORPH_PUBLISH_TARGETS: ${{ vars.FACEMORPH_PUBLISH_TARGETS }}
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
     steps:
@@ -525,12 +552,12 @@ jobs:
           cache: npm
       - run: npm ci
       - uses: actions/download-artifact@v4
-        if: inputs.site != 'promote'
+        if: (inputs.site || 'candidate') != 'promote'
         with:
           name: ${{ env.ARTIFACT }}
           path: web
       - uses: actions/download-artifact@v4
-        if: inputs.site == 'promote'
+        if: (inputs.site || 'candidate') == 'promote'
         with:
           pattern: next-site-*
           merge-multiple: true
@@ -539,7 +566,7 @@ jobs:
           path: web
       - name: The artifact is the one built in this run and qualified above
         env:
-          DIGEST: ${{ inputs.site == 'promote' && inputs.promote_digest || needs.build.outputs.digest }}
+          DIGEST: ${{ (inputs.site || 'candidate') == 'promote' && inputs.promote_digest || needs.build.outputs.digest }}
         run: |
           got=$(node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; console.log(treeDigest('web/deploy-next'))")
           echo "artifact digest $got (built: $DIGEST)"
@@ -564,14 +591,16 @@ jobs:
       - name: Warm the runtime mirror with every immutable runtime file
         run: node scripts/hosting/deploy.mjs warm --target "$TARGET" --public "$RUNNER_TEMP/public" $PUBLISH | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Deploy the site
+        id: site
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           node scripts/hosting/deploy.mjs site-deploy --target "$TARGET" --public "$RUNNER_TEMP/public" $PUBLISH | tee site-deploy.json
+          node -e 'const r = JSON.parse(require("fs").readFileSync("site-deploy.json","utf8").trim().split("\n").pop()); require("fs").appendFileSync(process.env.GITHUB_OUTPUT, `previous=${r.published ? r.previousVersion ?? "" : ""}\n`)'
           node -e 'const r = JSON.parse(require("fs").readFileSync("site-deploy.json","utf8").trim().split("\n").pop()); console.log(`Rollback, only if the site is broken for visitors: dispatch release.yml site=rollback target=${process.env.TARGET} rollback_version=${r.previousVersion ?? "(none recorded)"}`)' | tee -a "$GITHUB_STEP_SUMMARY"
           cat site-deploy.json >> "$GITHUB_STEP_SUMMARY"
       - name: The live site serves this build, the historic hello preview and every runtime file
-        if: inputs.publish
+        if: (inputs.publish || github.event_name == 'push')
         run: node scripts/hosting/deploy.mjs live --target "$TARGET" --public "$RUNNER_TEMP/public" --artifact web | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Record the failure
         if: failure() || cancelled()
@@ -585,12 +614,14 @@ jobs:
   # ---- after the switch: once, against the live target; fix and roll forward ------------------------------------
   verify:
     needs: [build, deploy]
-    if: ${{ !cancelled() && inputs.publish && (needs.deploy.result == 'success' || (inputs.site == 'live' && inputs.live_run != '')) }}
+    if: ${{ !cancelled() && (inputs.publish || github.event_name == 'push') && (needs.deploy.result == 'success' || ((inputs.site || 'candidate') == 'live' && inputs.live_run != '')) }}
     name: the six cells and the phone pairs against the live site
     runs-on: [self-hosted, device-lab]
     timeout-minutes: 120
+    outputs:
+      broken: ${{ steps.delivery.outcome == 'failure' }}
     env:
-      RUN: ${{ (inputs.site == 'live' || inputs.site == 'promote') && inputs.live_run || github.run_id }}
+      RUN: ${{ ((inputs.site || 'candidate') == 'live' || (inputs.site || 'candidate') == 'promote') && inputs.live_run || github.run_id }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -599,12 +630,12 @@ jobs:
           cache: npm
       - run: npm ci # hermetic: the post-delivery check imports playwright
       - uses: actions/download-artifact@v4
-        if: inputs.site != 'live' && inputs.site != 'promote'
+        if: (inputs.site || 'candidate') != 'live' && (inputs.site || 'candidate') != 'promote'
         with:
           name: ${{ env.ARTIFACT }}
           path: artifact
       - uses: actions/download-artifact@v4
-        if: inputs.site == 'live' || inputs.site == 'promote'
+        if: (inputs.site || 'candidate') == 'live' || (inputs.site || 'candidate') == 'promote'
         with:
           pattern: next-site-*
           merge-multiple: true
@@ -612,8 +643,9 @@ jobs:
           github-token: ${{ github.token }}
           path: artifact
       - name: Post-delivery check of the published site
+        id: delivery
         run: |
-          origin=$(node -p "require('./hosting/publish-targets.json').targets['${{ inputs.target }}'].site.origin")
+          origin=$(node -p "require('./hosting/publish-targets.json').targets['${{ (inputs.target || 'next') }}'].site.origin")
           echo "ORIGIN=$origin" >> "$GITHUB_ENV"
           echo "CONTROL=$(node -p "require('./hosting/publish-targets.json').targets.control.site.origin")" >> "$GITHUB_ENV"
           # Bound to this artifact: every served deploy-next file re-digested (edge beacon removed from HTML).
@@ -629,7 +661,8 @@ jobs:
             --journey cold-face,warm-face,morph --phone-budgets-from-pairs cold-face,warm-face \
             --label "live-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: The phone pairs against the pinned control
-        if: ${{ !cancelled() }}
+        # Not on a site that failed its post-delivery check: it is being rolled back.
+        if: ${{ !cancelled() && steps.delivery.outcome != 'failure' }}
         working-directory: tools/device-lab
         # Cold and warm first face over the real network, three alternating pairs, control first; a cell over its
         # absolute budget passes when not worse than the control by the timing rule (1.15x and 50 ms).
@@ -643,7 +676,7 @@ jobs:
           adb logcat -d -t 5000 > logcat.txt 2>/dev/null || true
           cat tools/device-lab/out/*live-*"$GITHUB_RUN_ID"/summary.md > verify-summary.txt 2>/dev/null || cp post-delivery.txt verify-summary.txt
           gh_fetch="gh run download $RUN -R ${{ github.repository }} -p 'next-site-*' -D /tmp/next-site-$RUN"
-          node scripts/ci/failures.mjs add --dir failures --check "live ${{ inputs.target }}: six cells and phone pairs" \
+          node scripts/ci/failures.mjs add --dir failures --check "live ${{ (inputs.target || 'next') }}: six cells and phone pairs" \
             --detail "P0 on fm-jzuq: fix and roll forward; roll back only if the site is broken for visitors" \
             --bundle bundle-verify --numbers verify-summary.txt \
             --repro "$gh_fetch && npm run release:local -- --artifact /tmp/next-site-$RUN --url $ORIGIN --only live"
@@ -670,7 +703,7 @@ jobs:
   # The pinned control on its own target (hosting/publish-targets.json "control"), through the same guard and deploy
   # steps, so the verify job measures each phone cell on it straight after the candidate, same phone and link.
   control:
-    if: inputs.site == 'control'
+    if: (inputs.site || 'candidate') == 'control'
     name: the pinned control on its own target
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -679,7 +712,7 @@ jobs:
       cancel-in-progress: false
     env:
       TARGET: control
-      PUBLISH: ${{ inputs.publish && '--publish' || '' }}
+      PUBLISH: ${{ (inputs.publish || github.event_name == 'push') && '--publish' || '' }}
       FACEMORPH_PUBLISH_TARGETS: ${{ vars.FACEMORPH_PUBLISH_TARGETS }}
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
     steps:
@@ -714,22 +747,25 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: node scripts/hosting/deploy.mjs site-deploy --target "$TARGET" --public "$RUNNER_TEMP/public" $PUBLISH | tee -a "$GITHUB_STEP_SUMMARY"
       - name: The live site serves the control and every runtime file
-        if: inputs.publish
+        if: (inputs.publish || github.event_name == 'push')
         run: node scripts/hosting/deploy.mjs live --target "$TARGET" --public "$RUNNER_TEMP/public" --artifact .cache/control/tree | tee -a "$GITHUB_STEP_SUMMARY"
 
   # Only when the target is broken for visitors (site down, app fails to load, no face can be made): serve the warmed
   # previous Worker version the deploy summary recorded. Anything else is fixed and rolled forward.
   rollback:
-    if: inputs.site == 'rollback' && inputs.rollback_version != ''
-    name: roll ${{ inputs.target }} back to ${{ inputs.rollback_version }}
+    # Dispatched (site=rollback), or on its own when this run's published site fails its post-delivery check: next
+    # broken for visitors goes back to the version this deploy replaced. Any other failure is fixed forward.
+    needs: [deploy, verify]
+    if: ${{ always() && ((inputs.site == 'rollback' && inputs.rollback_version != '') || (needs.verify.outputs.broken == 'true' && needs.deploy.outputs.previous != '')) }}
+    name: roll ${{ (inputs.target || 'next') }} back to ${{ inputs.rollback_version || needs.deploy.outputs.previous }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:
-      group: deploy-${{ inputs.target }}
+      group: deploy-${{ (inputs.target || 'next') }}
       cancel-in-progress: false
     env:
-      TARGET: ${{ inputs.target }}
-      PUBLISH: ${{ inputs.publish && '--publish' || '' }}
+      TARGET: ${{ (inputs.target || 'next') }}
+      PUBLISH: ${{ (inputs.publish || github.event_name == 'push') && '--publish' || '' }}
       FACEMORPH_PUBLISH_TARGETS: ${{ vars.FACEMORPH_PUBLISH_TARGETS }}
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
     steps:
@@ -744,9 +780,9 @@ jobs:
       - name: Serve the previous version
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: node scripts/hosting/deploy.mjs rollback --target "$TARGET" --version '${{ inputs.rollback_version }}' $PUBLISH | tee -a "$GITHUB_STEP_SUMMARY"
+        run: node scripts/hosting/deploy.mjs rollback --target "$TARGET" --version '${{ inputs.rollback_version || needs.deploy.outputs.previous }}' $PUBLISH | tee -a "$GITHUB_STEP_SUMMARY"
       - name: The site works for visitors again
-        if: inputs.publish
+        if: (inputs.publish || github.event_name == 'push')
         run: |
           origin=$(node -p "require('./hosting/publish-targets.json').targets['$TARGET'].site.origin")
           node scripts/delivery/post-delivery-check.mjs --mode app --host "$(node -p "new URL('$origin').host")" | tee -a "$GITHUB_STEP_SUMMARY"
@@ -756,6 +792,7 @@ jobs:
     needs:
       [
         build,
+        checked,
         journeys,
         functional,
         engine,

@@ -279,7 +279,8 @@ test('workflow: the mirror origin comes from configuration (no literal model hos
 test('workflow: concurrency, one fixed group per target that never cancels a publication in progress', () => {
   const block = /^ {4}concurrency:\n {6}group: (.*)\n {6}cancel-in-progress: (.*)$/m.exec(WORKFLOW);
   assert.ok(block, 'the deploy job has a concurrency block');
-  assert.equal(block[1], 'deploy-${{ inputs.target }}');
+  // A push deploys to next (operator, 28 October 2026); a dispatch names its target.
+  assert.equal(block[1], "deploy-${{ (inputs.target || 'next') }}");
   assert.equal(block[2], 'false');
   assert.doesNotMatch(
     block[1],
@@ -324,18 +325,21 @@ test('workflow: the deploy step needs every qualifying job and publishes only th
   assert.match(WORKFLOW, /^ {4}needs: \[build, gate\]$/m);
   assert.match(
     RELEASE,
-    /^ {2}gate:\n {4}needs: \[build, journeys, functional, engine, timing-gate, timing-final\]$/m,
+    /^ {2}gate:\n {4}needs: \[build, checked, journeys, functional, engine, timing-gate, timing-final\]$/m,
   );
   const verify = runOf('The artifact is the one built in this run and qualified above');
   // This run's build, or (site=promote) the digest the promoted green run recorded; nothing else is deployable.
   assert.match(
     verify,
-    /DIGEST: \$\{\{ inputs\.site == 'promote' && inputs\.promote_digest \|\| needs\.build\.outputs\.digest \}\}/,
+    /DIGEST: \$\{\{ \(inputs\.site \|\| 'candidate'\) == 'promote' && inputs\.promote_digest \|\| needs\.build\.outputs\.digest \}\}/,
   );
   assert.match(verify, /test "\$got" = "\$DIGEST"/);
   assert.match(verify, /deploy\.mjs verify --artifact web/);
   // Unticked publish is the dry run: every step runs and deploy.mjs publishes nothing without --publish.
-  assert.match(WORKFLOW, /PUBLISH: \$\{\{ inputs\.publish && '--publish' \|\| '' \}\}/);
+  assert.match(
+    WORKFLOW,
+    /PUBLISH: \$\{\{ \(inputs\.publish \|\| github\.event_name == 'push'\) && '--publish' \|\| '' \}\}/,
+  );
 });
 
 test('rollback: needs a version id; without --publish it only names the command; publishing goes through the guard', () => {
@@ -355,4 +359,20 @@ test('rollback: needs a version id; without --publish it only names the command;
       env: { FACEMORPH_PUBLISH_TARGETS: 'staging' },
     }),
   );
+});
+
+test('release: every push to main deploys to next behind check.yml; a broken next rolls back on its own', () => {
+  // Operator, 28 October 2026: push deploys to next; fail forward or roll back is the agent's call, and a site
+  // that fails its post-delivery check goes back to the version the deploy replaced.
+  assert.match(RELEASE, /^ {2}push:\n {4}branches: \[main\]$/m);
+  assert.match(
+    RELEASE,
+    /gh run list -R "\$GITHUB_REPOSITORY" -w check\.yml --commit "\$GITHUB_SHA"/,
+  );
+  assert.match(RELEASE, /broken: \$\{\{ steps\.delivery\.outcome == 'failure' \}\}/);
+  assert.match(
+    RELEASE,
+    /needs\.verify\.outputs\.broken == 'true' && needs\.deploy\.outputs\.previous != ''/,
+  );
+  assert.match(RELEASE, /previous=\$\{r\.published \? r\.previousVersion \?\? "" : ""\}/);
 });
