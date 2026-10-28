@@ -180,7 +180,12 @@ export function NamesDialog({ state, dispatch }: { state: State; dispatch: Dispa
   if (state.Browse === null) return null;
   const close = () => dispatch(msg('CloseNames'));
   return (
-    <Modal label="Browse names" className="next-name-dialog next-names" close={close}>
+    <Modal
+      label="Browse names"
+      className="next-name-dialog next-names"
+      close={close}
+      faceId={state.Browse}
+    >
       <NamesGrid
         names={state.Names}
         error={state.NamesError}

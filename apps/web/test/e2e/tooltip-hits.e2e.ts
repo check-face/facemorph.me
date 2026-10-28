@@ -114,10 +114,18 @@ test(
               await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
             await cdp.detach();
           }
-          // Browse names uses the same text-tooltip policy, including in the dark palette.
+          // The field's burger (Change mode, which holds Browse names: fm-5kpx) uses the same text-tooltip policy,
+          // including in the dark palette; Browse names is no longer a field adornment.
+          assert.equal(
+            await page
+              .locator('[data-next-face="f1"]')
+              .getByRole('button', { name: 'Browse names' })
+              .count(),
+            0,
+          );
           const browse = page
             .locator('[data-next-face="f1"]')
-            .getByRole('button', { name: 'Browse names' });
+            .getByRole('button', { name: 'Change mode' });
           await browse.scrollIntoViewIfNeeded();
           const browseBox = await browse.boundingBox();
           assert.ok(browseBox);
@@ -131,7 +139,7 @@ test(
               ],
             });
             browsing = true;
-            const tooltip = page.getByRole('tooltip', { name: 'Browse names', exact: true });
+            const tooltip = page.getByRole('tooltip', { name: 'Change mode', exact: true });
             await tooltip.waitFor({ state: 'visible' });
             assert.equal(
               await tooltip.evaluate((element) => getComputedStyle(element).pointerEvents),
@@ -139,7 +147,10 @@ test(
             );
             await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
             browsing = false;
-            assert.equal(await browse.getAttribute('aria-label'), 'Browse names');
+            // Releasing the press is a tap on the burger, which opens its menu; Escape closes it again.
+            await page.getByRole('menuitem', { name: 'Browse names', exact: true }).waitFor();
+            await page.keyboard.press('Escape');
+            assert.equal(await browse.getAttribute('aria-label'), 'Change mode');
           } finally {
             if (browsing)
               await touch.send('Input.dispatchTouchEvent', {
@@ -150,7 +161,7 @@ test(
           }
           assert.deepEqual(errors, []);
           t.diagnostic(
-            `${count}@${width} ${colorScheme}: real long-press Remove/Browse tooltips, image + four44px corners hittable, native swipe preserved`,
+            `${count}@${width} ${colorScheme}: real long-press Remove/Change mode tooltips, image + four44px corners hittable, native swipe preserved`,
           );
         } finally {
           await context.close();

@@ -1045,7 +1045,13 @@ test(
       await facesReady(page, 150, 600_000);
       const restored150 = await model(page);
       assert.equal(restored150.Inputs.length, 150, '150 faces restore: no face count check');
-      assert.equal(await tiles.count(), 150);
+      // Past its threshold the strip renders only the tiles near the view (fm-id4c); the model holds all 150.
+      assert.equal(
+        await page.locator('[data-next-virtual="true"]').count(),
+        1,
+        'a virtualised strip',
+      );
+      assert.ok((await tiles.count()) > 0, 'the tiles near the view are rendered');
       await shots('restored-150');
       const fit = await plant('fit');
       assert.ok(fit.faces > 64, `more than 64 faces fit the byte bound: ${fit.faces}`);

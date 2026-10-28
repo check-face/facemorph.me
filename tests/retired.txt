@@ -25,3 +25,6 @@ packages/browser-model-manager/test/adapter-generator.test.ts -> replacement: pa
 # fm-j4i8 retires only the Fraction=1-on-cancellation field in the frozen retry-unchanged
 # and morph.settings-start-cancel replay rows; replay.test.ts retains all other exact control
 # comparisons and strictly checks preserved partial/unknown progress. Frozen goldens stay unchanged.
+# fm-5kpx (folded into fm-ejwq): the Browse names field-adornment expectations (its tooltip in tooltip-hits.e2e.ts, the
+# adornment opener in names.e2e.ts and debug-reporting.e2e.ts) are retired in place by PLAN.md#static-names-and-picker's
+# declared move into each face's burger menu; names.e2e.ts asserts no Browse names adornment remains.

@@ -40,6 +40,9 @@ export function names(message: Msg, state: State): Transition | null {
     case 'ChooseName': {
       const id = state.Browse;
       if (id === null) return { state, effects: [{ type: 'closeNamesFocus' }] };
+      // The picker is bound to the face that opened it: once that face is gone, the pick writes to no face.
+      if (!state.Inputs.some((input) => input.id === id))
+        return { state: { ...state, Browse: null }, effects: [{ type: 'closeNamesFocus' }] };
       return {
         state: {
           ...change(state, id, (i) => ({ ...i, mode: 'text', value: message.args[0], file: null })),

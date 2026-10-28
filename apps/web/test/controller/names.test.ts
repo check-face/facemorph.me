@@ -57,6 +57,17 @@ test('choosing a name updates its slot and describes preview before generation',
   ]);
   assert.equal(names(msg('ChooseName', 'ada'), state)!.state, state);
 });
+test('a pick for a face removed while its picker was open writes to no face', () => {
+  const open = {
+    ...state,
+    Browse: 'face-2',
+    Inputs: state.Inputs.filter((i) => i.id !== 'face-2'),
+  };
+  const picked = names(msg('ChooseName', 'ada'), open)!;
+  assert.equal(picked.state.Browse, null);
+  assert.deepEqual(picked.state.Inputs, open.Inputs);
+  assert.deepEqual(picked.effects, [{ type: 'closeNamesFocus' }]);
+});
 test('preview completion applies only to the current input; failure removes only its preview', () => {
   for (const message of [
     msg('PreviewLoaded', 'missing', 'text', 'hello', '/wrong'),

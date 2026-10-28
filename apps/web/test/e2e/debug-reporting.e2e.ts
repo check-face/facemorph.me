@@ -36,6 +36,8 @@ import { OUTSIDE_REQUESTS } from '../../src/controller/outside-requests.ts';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
 const results = join(REPO, 'apps/web/test-results/debug-reporting');
+// The built artifact: deploy-next/ under FACEMORPH_DEPLOY_OUT, as the other built-app suites take it.
+const built = resolve(process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO);
 mkdirSync(results, { recursive: true });
 const CONSENT = 'facemorph-debug-consent-v1',
   DEVICE = 'facemorph-debug-device-v1',
@@ -77,11 +79,11 @@ function runtimeOrSkip(t: { skip(reason: string): void }): boolean {
 }
 
 async function withSite(fn: (browser: Browser) => Promise<void>) {
-  const artifact = readIdentity(REPO);
+  const artifact = readIdentity(built);
   assert.deepEqual(artifact.findings, []);
   const site = await startControl({
     runtime,
-    artifact: resolve(REPO, 'deploy-next'),
+    artifact: resolve(built, 'deploy-next'),
     source: artifact.identity.deploySource.buildId,
   });
   const browser = await chromium.launch({ args: [...chromiumArgs, '--disable-features=WebGPU'] });
@@ -745,7 +747,12 @@ test(
         await page.waitForTimeout(1500);
 
         log.step = 'names';
-        await operate(page, tile(page, 0).getByRole('button', { name: 'Browse names' }), c.touch);
+        await operate(page, tile(page, 0).getByRole('button', { name: 'Change mode' }), c.touch);
+        await operate(
+          page,
+          page.getByRole('menuitem', { name: 'Browse names', exact: true }),
+          c.touch,
+        );
         const dialog = page.getByRole('dialog', { name: 'Browse names' });
         await dialog.locator('.next-name-choice').first().waitFor({ timeout: 60_000 });
         await operate(page, dialog.locator('.next-name-choice').first(), c.touch);

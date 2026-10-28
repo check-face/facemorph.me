@@ -1,5 +1,6 @@
 // The per-face field (classic Product.fs setpointField, lines 799-865): one outlined, centre-aligned text field
-// with a mode menu at the start and, at the end, Browse names (words) or Choose another photo (photo).
+// with a mode menu at the start and, at the end, Encode image (photo). Browse names is an entry of that face's own
+// mode menu (the burger), which Tab reaches; the declared change from the field adornment (PLAN.md, fm-5kpx).
 import DialpadIcon from '@mui/icons-material/Dialpad';
 import ImageSearchIcon from '@mui/icons-material/ImageSearch';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -14,7 +15,7 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
-import { useState, type ClipboardEvent, type ReactNode } from 'react';
+import { useRef, useState, type ClipboardEvent, type ReactNode } from 'react';
 import type { FaceMode, Input } from './types.ts';
 import { faceInputProblem } from '../../src/controller/derived.ts';
 
@@ -68,6 +69,7 @@ export function FaceField({
 }: FaceFieldProps) {
   const [anchor, setAnchor] = useState<HTMLDivElement | null>(null); // the start adornment the menu opens from
   const [open, setOpen] = useState(false);
+  const burger = useRef<HTMLButtonElement | null>(null);
   // Choosing Encode image opens this card's file chooser without replacing the existing face.
   const entry = (kind: FaceMode, icon: ReactNode, text: string) => (
     <MenuItem
@@ -98,23 +100,9 @@ export function FaceField({
           </IconButton>
         </Tooltip>
       </InputAdornment>
-    ) : item.mode === 'seed' ? (
-      <InputAdornment position="end">
-        <></>
-      </InputAdornment>
     ) : (
       <InputAdornment position="end">
-        <Tooltip title="Browse names">
-          <IconButton
-            className="next-adornment"
-            tabIndex={-1}
-            aria-label="Browse names"
-            edge="end"
-            onClick={onBrowse}
-          >
-            <ImageSearchIcon />
-          </IconButton>
-        </Tooltip>
+        <></>
       </InputAdornment>
     );
   const placeholder =
@@ -131,6 +119,22 @@ export function FaceField({
           photoEncodingAvailable ? 'Encode image' : 'Open saved image',
         )}
         {item.mode === 'project' && entry('project', <RefreshIcon />, 'Restored face')}
+        <MenuItem
+          onClick={() => {
+            setOpen(false);
+            // The names dialog returns focus to what had it when it opened: this face's burger, once the menu
+            // has closed and released its focus trap.
+            requestAnimationFrame(() => {
+              burger.current?.focus();
+              onBrowse();
+            });
+          }}
+        >
+          <ListItemIcon>
+            <ImageSearchIcon />
+          </ListItemIcon>
+          <ListItemText>Browse names</ListItemText>
+        </MenuItem>
         {item.mode === 'photo' && item.file && onRequestCrop && (
           <MenuItem
             onClick={() => {
@@ -155,8 +159,10 @@ export function FaceField({
           error={problem !== null}
           helperText={problem}
           onKeyDown={(e) => {
+            // Only Enter in the text itself runs Generate; Enter on the burger opens its menu.
             if (
               e.key === 'Enter' &&
+              e.target instanceof HTMLInputElement &&
               !e.repeat &&
               !e.nativeEvent.isComposing &&
               e.nativeEvent.keyCode !== 229 &&
@@ -181,8 +187,8 @@ export function FaceField({
                 <InputAdornment position="start" ref={setAnchor}>
                   <Tooltip title="Change mode">
                     <IconButton
+                      ref={burger}
                       className="next-adornment"
-                      tabIndex={-1}
                       aria-label="Change mode"
                       edge="start"
                       onClick={() => setOpen(true)}

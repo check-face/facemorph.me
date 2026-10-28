@@ -23,6 +23,8 @@ import { INSTALL_HOOK } from '../parity/elmish-probe.ts';
 import { generationIdentity } from '../../src/Next/browser/identity.mjs';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
+// The built artifact: deploy-next/ under FACEMORPH_DEPLOY_OUT, as the other built-app suites take it.
+const out = resolve(process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO);
 const results = join(REPO, 'apps/web/test-results/face-controls');
 
 test(
@@ -36,12 +38,12 @@ test(
       t.skip(reason);
       return;
     }
-    const artifact = readIdentity(REPO);
+    const artifact = readIdentity(out);
     assert.deepEqual(artifact.findings, []);
     assert.equal(artifact.identity?.label, 'destination');
     const site = await startControl({
       runtime,
-      artifact: resolve(REPO, 'deploy-next'),
+      artifact: resolve(out, 'deploy-next'),
       source: artifact.identity.deploySource.buildId,
     });
     const browser = await chromium.launch({ args: [...chromiumArgs, '--disable-features=WebGPU'] });
@@ -636,7 +638,7 @@ test(
       if (entry !== encoderDir)
         symlinkSync(join(runtime, 'assets', entry), join(refused, 'assets', entry));
     writeFileSync(join(refused, 'manifest.json'), JSON.stringify(manifest));
-    const artifact = readIdentity(REPO);
+    const artifact = readIdentity(out);
     assert.deepEqual(artifact.findings, []);
     const browser = await chromium.launch({ args: [...chromiumArgs, '--disable-features=WebGPU'] });
     mkdirSync(results, { recursive: true });
@@ -644,7 +646,7 @@ test(
     const saved = join(results, 'refused-source.webp');
     const full = await startControl({
       runtime,
-      artifact: resolve(REPO, 'deploy-next'),
+      artifact: resolve(out, 'deploy-next'),
       source: artifact.identity.deploySource.buildId,
     });
     try {
@@ -680,7 +682,7 @@ test(
     }
     const site = await startControl({
       runtime: refused,
-      artifact: resolve(REPO, 'deploy-next'),
+      artifact: resolve(out, 'deploy-next'),
       source: artifact.identity.deploySource.buildId,
     });
     try {

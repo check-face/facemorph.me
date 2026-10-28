@@ -22,7 +22,7 @@ import { serve, type Served } from '../support/serve.ts';
 import { OUTSIDE_REQUESTS, outsideRequest } from '../../src/controller/outside-requests.ts';
 
 const REPO = new URL('../../../../', import.meta.url).pathname;
-const SITE = join(REPO, 'deploy-next');
+const SITE = join(resolve(process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO), 'deploy-next');
 const results = join(REPO, 'apps/web/test-results/names');
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
 const chromiumPath = process.env['FACEMORPH_E2E_CHROMIUM'];
@@ -87,8 +87,10 @@ const dialogOf = (page: Page) => page.getByRole('dialog', { name: 'Browse names'
 async function operate(page: Page, control: Locator, touch: boolean): Promise<void> {
   assert.ok((await press(page, control, { touch })).inside, `${control} press landed outside`);
 }
+/** Browse names is an entry of the face's own burger (Change mode) menu (fm-5kpx), not a field adornment. */
 async function openNames(page: Page, touch: boolean, tile = 0): Promise<Locator> {
-  await operate(page, tileOf(page, tile).getByRole('button', { name: 'Browse names' }), touch);
+  await operate(page, tileOf(page, tile).getByRole('button', { name: 'Change mode' }), touch);
+  await operate(page, page.getByRole('menuitem', { name: 'Browse names', exact: true }), touch);
   const dialog = dialogOf(page);
   await dialog.waitFor();
   return dialog;
@@ -275,8 +277,15 @@ test(
         const typingStarted = Date.now();
         await page.keyboard.type('banana', { delay: 150 });
         assert.equal(await field.inputValue(), 'banana');
+        // No instant picture (R31, defect 8): the tile says what to do, and photo entry stays in the mode menu.
+        assert.equal(
+          (await tile.locator('.next-face-hint').innerText()).trim(),
+          'Press Generate to make this face',
+        );
         // A seed: switching mode is an explicit act, but "banana" is no seed, so it asks nothing.
         await operate(page, tile.getByRole('button', { name: 'Change mode' }), touch);
+        await page.getByRole('menuitem', { name: 'Encode image', exact: true }).waitFor();
+        await page.screenshot({ path: join(results, `no-instant-picture-${width}.png`) });
         await operate(
           page,
           page.getByRole('menuitem', { name: 'Numeric seed', exact: true }),
@@ -469,7 +478,7 @@ test(
       try {
         await openApp(page, site.origin);
         const url = page.url();
-        const opener = tileOf(page, 0).getByRole('button', { name: 'Browse names' });
+        const opener = tileOf(page, 0).getByRole('button', { name: 'Change mode' });
         const focusedOpener = () => opener.evaluate((e) => e === document.activeElement);
         const closed = async () => {
           await dialogOf(page).waitFor({ state: 'detached' });
@@ -478,7 +487,7 @@ test(
           assert.equal(page.url(), url, 'no page navigation');
           assert.equal(await dialogOf(page).count(), 0);
           await page.waitForFunction(
-            () => document.activeElement?.getAttribute('aria-label') === 'Browse names',
+            () => document.activeElement?.getAttribute('aria-label') === 'Change mode',
           );
           assert.ok(await focusedOpener(), 'focus returns to the opener');
         };
@@ -509,6 +518,143 @@ test(
         await page.keyboard.press('Escape');
         await closed();
         log(`${width}: Escape, history Back and Forward behave once each`);
+      } finally {
+        await ctx.close();
+      }
+    }
+  },
+);
+
+test(
+  'Browse names from each face burger binds the pick to that face (1 of 1, 2 of 3, 64 of 64) and by keyboard',
+  { skip: skipped, timeout: 300_000 },
+  async () => {
+    for (const [width, touch] of [
+      [1280, false],
+      [390, true],
+    ] as const) {
+      const ctx = await context(width, touch);
+      const page = await ctx.newPage();
+      try {
+        await openApp(page, site.origin);
+        const fields = () =>
+          page
+            .locator('section.next-face .next-field input')
+            .evaluateAll((inputs) => inputs.map((i) => (i as HTMLInputElement).value));
+        const faces = () => page.locator('section.next-face').count();
+        const setCount = async (n: number) => {
+          while ((await faces()) > n) {
+            const before = await faces();
+            await tileOf(page, before - 1)
+              .locator('.next-face-close')
+              .click(); // setup
+            await page.waitForFunction(
+              (b) => document.querySelectorAll('section.next-face').length < b,
+              before,
+            );
+          }
+          while ((await faces()) < n) {
+            const before = await faces();
+            await page.getByRole('button', { name: 'Add face', exact: true }).click(); // setup
+            await page.waitForFunction(
+              (b) => document.querySelectorAll('section.next-face').length > b,
+              before,
+            );
+          }
+        };
+        // No field adornment remains: Browse names lives only in the burger (fm-5kpx).
+        assert.equal(
+          await page
+            .locator('section.next-face')
+            .getByRole('button', { name: 'Browse names' })
+            .count(),
+          0,
+          'Browse names is not a field adornment',
+        );
+        let pick = 0;
+        for (const [count, index] of [
+          [1, 0],
+          [3, 1],
+          [64, 63],
+        ] as const) {
+          await setCount(count);
+          const before = await fields();
+          const dialog = await openNames(page, touch, index);
+          await loadedTiles(dialog);
+          const burger = tileOf(page, index).getByRole('button', { name: 'Change mode' });
+          await page.screenshot({
+            path: join(results, `burger-${count}-${index + 1}-${width}.png`),
+          });
+          // Dismissing returns focus to this face's burger and changes no face.
+          await page.keyboard.press('Escape');
+          await dialogOf(page).waitFor({ state: 'detached' });
+          await page.waitForFunction(
+            () => document.activeElement?.getAttribute('aria-label') === 'Change mode',
+          );
+          assert.ok(
+            await burger.evaluate((e) => e === document.activeElement),
+            `${count}: focus returns to face ${index + 1}'s burger`,
+          );
+          assert.deepEqual(await fields(), before, `${count}: dismissing changes no face`);
+          // A pick writes the name into exactly that face's field.
+          const again = await openNames(page, touch, index);
+          await loadedTiles(again);
+          const name = catalogue!.names[pick++]!;
+          await operate(page, again.getByRole('button', { name: name.name, exact: true }), touch);
+          await dialogOf(page).waitFor({ state: 'detached' });
+          const after = await fields();
+          assert.equal(after[index], name.value, `${count}: the pick fills face ${index + 1}`);
+          assert.deepEqual(
+            after.filter((_, i) => i !== index),
+            before.filter((_, i) => i !== index),
+            `${count}: no other face is written`,
+          );
+          // The pick asks to generate; its model consent is not under test here.
+          const consent = page
+            .locator('.next-download-dialog')
+            .getByRole('button', { name: 'Cancel', exact: true });
+          if (
+            await consent.waitFor({ timeout: 5000 }).then(
+              () => true,
+              () => false,
+            )
+          )
+            await consent.click(); // setup
+          log(`${width}: Browse names from face ${index + 1} of ${count} returned there`);
+        }
+        if (!touch) {
+          // Keyboard alone: Tab reaches the first face's burger, Enter opens it, arrow keys reach Browse names.
+          await setCount(2);
+          await page
+            .locator('body')
+            .evaluate(() => (document.activeElement as HTMLElement)?.blur?.());
+          const burger = tileOf(page, 0).getByRole('button', { name: 'Change mode' });
+          let reached = false;
+          for (let i = 0; i < 60 && !reached; i++) {
+            await page.keyboard.press('Tab');
+            reached = await burger.evaluate((e) => e === document.activeElement);
+          }
+          assert.ok(reached, 'Tab reaches the burger');
+          await page.keyboard.press('Enter');
+          const item = page.getByRole('menuitem', { name: 'Browse names', exact: true });
+          await item.waitFor();
+          let onItem = false;
+          for (let i = 0; i < 8 && !onItem; i++) {
+            await page.keyboard.press('ArrowDown');
+            onItem = await item.evaluate((e) => e === document.activeElement);
+          }
+          assert.ok(onItem, 'arrow keys reach Browse names');
+          await page.keyboard.press('Enter');
+          await dialogOf(page).waitFor();
+          await page.screenshot({ path: join(results, `burger-keyboard-${width}.png`) });
+          await page.keyboard.press('Escape');
+          await dialogOf(page).waitFor({ state: 'detached' });
+          await page.waitForFunction(
+            () => document.activeElement?.getAttribute('aria-label') === 'Change mode',
+          );
+          assert.ok(await burger.evaluate((e) => e === document.activeElement));
+          log(`${width}: Tab, Enter and arrow keys open Browse names from the burger`);
+        }
       } finally {
         await ctx.close();
       }
@@ -653,11 +799,11 @@ test(
     }
     const { startControl, chromiumArgs, ORIGIN } = await import('../parity/control-server.ts');
     const { readIdentity } = await import('../../../../scripts/import/build-next.mjs');
-    const artifact = readIdentity(REPO);
+    const artifact = readIdentity(resolve(SITE, '..'));
     assert.deepEqual(artifact.findings, []);
     const control = await startControl({
       runtime,
-      artifact: resolve(REPO, 'deploy-next'),
+      artifact: SITE,
       source: artifact.identity.deploySource.buildId,
     });
     const journey = await chromium.launch({
