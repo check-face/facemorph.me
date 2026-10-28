@@ -665,7 +665,7 @@ jobs:
         working-directory: tools/device-lab
         run: |
           uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --deployed "$GITHUB_WORKSPACE/artifact" \
-            --journey cold-face,warm-face,morph --phone-budgets-from-pairs cold-face,warm-face \
+            --journey cold-face,warm-face,morph,blend --phone-budgets-from-pairs cold-face,warm-face \
             --label "live-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: The phone pairs against the pinned control
         # Not on a site that failed its post-delivery check: it is being rolled back.

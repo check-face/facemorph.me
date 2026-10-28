@@ -48,9 +48,8 @@
       "flow": "Save and share a face image and the morph MP4 with recovery metadata (fm-y2jb, fm-qh1s)."
     },
     "blend": {
-      "implemented": false,
-      "owner": "fm-ve73",
-      "flow": "Blend view: weighted slots, one blend synthesis and its export."
+      "implemented": true,
+      "flow": "Blend view (fm-2kse): from two generated faces, More options, Blend faces, Blend: one blend synthesis shown as the result, then Back. No frozen budget yet."
     }
   },
   "measurements": {

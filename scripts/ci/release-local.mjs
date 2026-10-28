@@ -88,7 +88,7 @@ export function checks({ artifact, runtimeSha, runtimeDir, out, url, control }) 
       {
         name: 'live:cells',
         cwd: LAB,
-        cmd: `uv run --quiet --with playwright python lab.py matrix --url ${url} --deployed ${artifact} --journey cold-face,warm-face,morph --phone-budgets-from-pairs cold-face,warm-face --label release-local-live`,
+        cmd: `uv run --quiet --with playwright python lab.py matrix --url ${url} --deployed ${artifact} --journey cold-face,warm-face,morph,blend --phone-budgets-from-pairs cold-face,warm-face --label release-local-live`,
       },
       {
         name: 'live:phone-pairs',

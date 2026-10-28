@@ -272,7 +272,7 @@ class Registry(unittest.TestCase):
     """journeys.json is the authoritative list; budgets are enforced from it."""
 
     def test_registry_names_the_runnable_and_pending_journeys(self):
-        self.assertEqual(lab.JOURNEYS, {'cold-face', 'warm-face', 'morph', 'operated'})
+        self.assertEqual(lab.JOURNEYS, {'cold-face', 'warm-face', 'morph', 'blend', 'operated'})
         for name, entry in lab.REGISTRY.items():
             with self.subTest(name=name):
                 self.assertTrue(entry['flow'])

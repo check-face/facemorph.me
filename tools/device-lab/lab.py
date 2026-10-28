@@ -935,6 +935,36 @@ def journey_morph(phone, gpu=None):
     return {'videoS': round(time.time() - t0, 2), 'route': route, 'url': phone.page.url}
 
 
+def journey_blend(phone, gpu=None):
+    """The blend view (fm-2kse) from the two faces the earlier journeys made: More options, Blend faces and Blend,
+    each a real tap at its visible position; the blended face shown is the result. Then Back to the faces."""
+    t0 = time.time()
+    toggle = 'button[aria-controls="next-overflow"]'
+    if phone.js(f"document.querySelector('{toggle}')?.getAttribute('aria-expanded')") != 'true':
+        phone.tap(toggle)
+    phone.wait("!!document.querySelector('.next-blend-open')", 30)
+    phone.tap('.next-blend-open')
+    phone.wait("!!document.querySelector('.next-blend')", 60)
+    slots = int(phone.js("document.querySelector('.next-blend')?.dataset.nextBlendSlots||'0'"))
+    if slots < 2:
+        raise RuntimeError(f'blend view opened with {slots} slot(s); two generated faces were expected')
+    t1 = time.time()
+    phone.tap('.next-blend-action')
+    phone.wait("(()=>{const b=document.querySelector('.next-blend');const r=document.querySelector('.next-blend-result');"
+               "return b?.dataset.nextBlendRunning==='false'&&r?.dataset.nextBlendResult==='shown'})()", 900)
+    blendS = time.time() - t1
+    error = phone.js("document.querySelector('.next-blend-error')?.innerText||''").strip()
+    if error:
+        raise RuntimeError(f'blend failed: {error[:200]}')
+    route = phone.js(f"document.querySelector('{S['route']}')?.innerText||''").strip()
+    if gpu is not None and route:
+        check_route(route, gpu)
+    phone.tap('.next-blend-back')
+    phone.wait("!document.querySelector('.next-blend')", 60)
+    return {'blendS': round(blendS, 2), 'totalS': round(time.time() - t0, 2), 'slots': slots, 'route': route[:80],
+            'url': phone.page.url}
+
+
 OPERATED_PORT = 8461  # the operated-input fixture page, reached by the phone through adb reverse
 
 
@@ -1078,6 +1108,8 @@ def run_journeys(dev, args, cell, gpu, out, report, memory=None):
                     rec['warm'] = journey_face(dev, args.url, False, f'lab{i}warm', gpu)
                 elif j == 'morph':
                     rec['morph'] = journey_morph(dev, gpu)
+                elif j == 'blend':
+                    rec['blend'] = journey_blend(dev, gpu)
                 elif j == 'operated':
                     rec['operated'] = journey_operated(dev, cell)
                 rec.setdefault('durationsS', {})[j] = round(time.monotonic() - started, 1)
@@ -1155,7 +1187,7 @@ def report_findings(report, journeys, digest=None):
     runs = report.get('runs') or []
     if not runs:
         findings.append('no executed journeys')
-    keys = {'cold-face': 'cold', 'warm-face': 'warm', 'morph': 'morph', 'operated': 'operated'}
+    keys = {'cold-face': 'cold', 'warm-face': 'warm', 'morph': 'morph', 'blend': 'blend', 'operated': 'operated'}
     for run in runs:
         if not run.get('ok'):
             findings.append('journey failed or untested')
@@ -1172,6 +1204,14 @@ def report_findings(report, journeys, digest=None):
                     check_route(result.get('route', ''), CELLS[cell][1])
                 except RuntimeError as e:
                     findings.append(str(e))
+            elif journey == 'blend':
+                if not result.get('url') or (result.get('slots') or 0) < 2:
+                    findings.append('blend: missing executed URL or fewer than two slots')
+                if result.get('route'):
+                    try:
+                        check_route(result['route'], CELLS[cell][1])
+                    except RuntimeError as e:
+                        findings.append(str(e))
             elif not result.get('steps') or not all(s.get('ok') for s in result['steps']):
                 findings.append('operated steps failed or missing')
     return findings + budget_findings(cell, runs)
