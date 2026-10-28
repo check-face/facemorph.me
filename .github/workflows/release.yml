@@ -136,6 +136,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      # A self-hosted workspace keeps artifact/ between runs, and the download only adds files.
+      - run: rm -rf artifact
       - uses: actions/download-artifact@v4
         with:
           name: ${{ env.ARTIFACT }}
@@ -212,6 +214,8 @@ jobs:
       # The image carries Node 24 and the Chromium, Firefox and WebKit of the pinned Playwright, with their libraries.
       # The suites import the packages' built entry points (stylegan-js, browser-model-manager).
       - run: npm ci && npm run build # the packages' entry points, and apps/web/dist for the check pages
+      # A self-hosted workspace keeps artifact/ between runs, and the download only adds files.
+      - run: rm -rf artifact
       - uses: actions/download-artifact@v4
         with:
           name: ${{ env.ARTIFACT }}
@@ -351,6 +355,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci && npx playwright install chromium
+      # A self-hosted workspace keeps artifact/ between runs, and the download only adds files.
+      - run: rm -rf artifact
       - uses: actions/download-artifact@v4
         with:
           name: ${{ env.ARTIFACT }}
@@ -448,6 +454,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci && npx playwright install chromium
+      # A self-hosted workspace keeps artifact/ between runs, and the download only adds files.
+      - run: rm -rf artifact
       - uses: actions/download-artifact@v4
         with:
           name: ${{ env.ARTIFACT }}
@@ -639,6 +647,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci # hermetic: the post-delivery check imports playwright
+      # A self-hosted workspace keeps artifact/ between runs, and the download only adds files.
+      - run: rm -rf artifact
       - uses: actions/download-artifact@v4
         if: (inputs.site || 'candidate') != 'live' && (inputs.site || 'candidate') != 'promote'
         with:

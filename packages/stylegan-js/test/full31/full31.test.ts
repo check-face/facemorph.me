@@ -398,13 +398,20 @@ function recordNumericalCell(cell: NumericalCell) {
 }
 
 // Opening the local test page can fail at the network level while eris is busy with CI beside this job (net::ERR_TIMED_OUT
-// in runs 40602031941 and 40615911412, before any numerics). Only that is retried; every check after it is unchanged.
+// in runs 40602031941 and 40615911412, before any numerics; an interruption by Chrome's error page in 40673374332). Only
+// that is retried; every check after it is unchanged.
 async function open(page: Page, url: string) {
   for (let attempt = 1; ; attempt++) {
     try {
       return await page.goto(url);
     } catch (error) {
-      if (attempt === 3 || !/net::ERR_(TIMED_OUT|CONNECTION_\w+)/.test(String(error))) throw error;
+      if (
+        attempt === 3 ||
+        !/net::ERR_(TIMED_OUT|CONNECTION_\w+)|interrupted by another navigation to "chrome-error:/.test(
+          String(error),
+        )
+      )
+        throw error;
     }
   }
 }
