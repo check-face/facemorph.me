@@ -300,6 +300,18 @@ export const VERIFY_FUNCTIONAL: OperatedManifest = {
       },
     },
     {
+      // session-words opens /?testing, types every face and presses Generate faces at its visible position.
+      id: 'testing-bulk-generate',
+      steps: ['open-testing-link', 'type-every-face', 'generate-faces', 'faces-made'],
+      rows: ['testing-bulk-generate'],
+      widths: BOTH,
+      test: {
+        file: 'session-words.e2e.ts',
+        title:
+          'session words across reload, new tab, stored size and Clear in the built destination',
+      },
+    },
+    {
       id: 'retained-tools-links',
       steps: ['help-links', 'refusal-help', 'licence-links'],
       rows: ['testing-bulk-generate'],
@@ -327,11 +339,4 @@ export const UNTESTED: readonly {
   readonly rows: readonly string[];
   readonly part: string;
   readonly reason: string;
-}[] = [
-  {
-    rows: ['testing-bulk-generate'],
-    part: '?testing bulk Generate operated on the release artifact',
-    reason:
-      'exercised only through the facade e2e (facade.e2e.ts testing-bulk-generate), not an operated built-UI case',
-  },
-];
+}[] = [];
