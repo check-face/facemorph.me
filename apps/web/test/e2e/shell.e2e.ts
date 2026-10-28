@@ -85,10 +85,24 @@ const CASES = [
 // Declared changes to parity rows (agreed product changes, applied before the exact comparison). Each must be
 // present exactly once, so a missing or doubled change still fails; everything else in the row stays exact.
 type Snap = { tag?: string; classes?: string[]; children?: Snap[] };
+// fm-s3o (0fd4cd5): the Report-error link opens this repository's bug-report.yml form; the control's link named
+// next-facemorph.yml. The new template appears exactly once in the row and is compared as the control's.
+const issueTemplate =
+  (id: string) =>
+  (row: Snap): Snap => {
+    const text = JSON.stringify(row);
+    const found = text.split('template=bug-report.yml').length - 1;
+    assert.equal(found, 1, `${id}: the declared bug-report.yml issue link appears exactly once`);
+    return JSON.parse(
+      text.replace('template=bug-report.yml', 'template=next-facemorph.yml'),
+    ) as Snap;
+  };
 const DECLARED: Record<string, (row: Snap) => Snap> = {
+  'shell.preview-strip': issueTemplate('shell.preview-strip'),
   // fm-szbf: a "Privacy & reports" link to the debug-reporting dialog; fm-gbdt: a "Licences and notices" link to
   // the runtime's notices. Both are operated in CASES.
-  'shell.footer': (row) => {
+  'shell.footer': (input) => {
+    const row = issueTemplate('shell.footer')(input);
     const added = ['next-footer-privacy', 'next-footer-notices'];
     const removed = new Map(added.map((c) => [c, 0]));
     const strip = (node: Snap): Snap => ({

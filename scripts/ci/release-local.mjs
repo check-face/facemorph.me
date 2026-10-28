@@ -39,7 +39,7 @@ export function checks({ artifact, runtimeSha, runtimeDir, out, url, control }) 
       name: 'functional',
       cwd: join(REPO, 'apps/web'),
       env: {
-        FACEMORPH_DEPLOY_OUT: site,
+        FACEMORPH_DEPLOY_OUT: artifact, // the suites serve its deploy-next/
         FACEMORPH_REQUIRE_RUNTIME: '1',
         FACEMORPH_RUNTIME_DIR: runtimeDir,
       },
