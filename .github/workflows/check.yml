@@ -244,6 +244,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run build:next
+      - name: Help and licence copy in the built site artifact
+        # The unit shards build no deploy-next/, so these built-app cases skip there; here they run on it (fm-gbdt).
+        working-directory: apps/web
+        env:
+          FACEMORPH_REQUIRE_BUILT: '1'
+        run: node --test test/build/help-copy.test.ts
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

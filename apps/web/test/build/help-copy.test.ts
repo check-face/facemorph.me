@@ -177,6 +177,8 @@ const built = (() => {
 const UNBUILT = built
   ? false
   : 'untested: no destination build at deploy-next/ (npm run build:next)';
+// CI's site-artifact job sets this: there a missing build is a failure, not a skip.
+if (UNBUILT && process.env['FACEMORPH_REQUIRE_BUILT'] === '1') throw Error(UNBUILT);
 
 test('the built app recommends no native download', { skip: UNBUILT }, () => {
   const hits: string[] = [];

@@ -3,7 +3,9 @@
 // Every case presses the control where a person sees it (press(): elementFromPoint at its visible centre, then a
 // real mouse click or touch tap) and checks the anchor or page it opens; one screenshot per case. By-name clicks
 // are setup only. The refusal is real: forcing the WebGPU route in a browser without WebGPU is refused by route
-// admission (webgpu-absent), and the shown sentence must be that reason's copy, never an exception's text.
+// admission (webgpu-absent), and the shown sentence must be that reason's copy, never an exception's text. The CPU
+// route's refusal (cpu-wasm-unavailable) is the page reopened as a browser without WebAssembly SIMD. The selector's
+// Using a computer / Supported browsers links are pressed above the first face and must open their Help topics.
 // The licence page is served from hosting/next/notices/, the copy hosting/next-static/stage.py publishes at
 // /runtime/notices/ over the runtime mirror's. fm-qoc3: the FAQ entry on the models presses each model licence link
 // and reads the served text, and the face-model download consent shows a Model licences link a keyboard reaches.
@@ -22,6 +24,11 @@ import { MODEL_LICENCES } from '../../shell/render/model-licences.ts';
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
 const results = join(REPO, 'apps/web/test-results/help');
 const NOTICES = join(REPO, 'hosting/next/notices');
+/** The runtime's WebAssembly SIMD probe module (apps/web/src/Next/browser/admission.mjs). */
+const SIMD_PROBE = [
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10, 1, 8, 0, 65, 0, 253, 15,
+  253, 98, 11,
+];
 const RAW = /\b(Type|Range|Reference|Syntax)?Error\b|\n\s+at \S+:\d+|AdmissionRefused|undefined/;
 
 /** The required Help topics, as a person reads them on the built page. */
@@ -164,6 +171,40 @@ test(
             /download (the|our) (desktop |native )?app|install (the|our) (desktop|native) app/i,
           );
 
+          // The selector's Help links (fm-5kpx renders them beside Processing mode, above the first face): each one a
+          // person sees there, pressed where it is, opens its Help topic below the page and brings it on screen.
+          const row = page.locator('.next-provider-row');
+          const firstFace = page.locator('section.next-face').first();
+          for (const [id, label] of [
+            ['computer-requirements', 'Using a computer'],
+            ['supported-browsers', 'Supported browsers'],
+          ] as const) {
+            await page.evaluate(() => scrollTo(0, 0)); // setup: the page as it first opens
+            assert.equal(await page.locator(`a[href="#${id}"]:visible`).count(), 1, id);
+            const link = row.getByRole('link', { name: label, exact: true });
+            const [rowBox, faceBox] = await Promise.all([
+              row.boundingBox(),
+              firstFace.boundingBox(),
+            ]);
+            assert.ok(
+              rowBox && faceBox && rowBox.y + rowBox.height <= faceBox.y + 1,
+              `${id}: row above the first face`,
+            );
+            assert.ok(await inView(link), `${id}: on screen as the page opens`);
+            await shot(`selector-${id}-link`);
+            const landed = await operate(link);
+            assert.equal(landed.href, `${ORIGIN}/#${id}`);
+            await page.waitForFunction((h) => location.hash === h, `#${id}`);
+            const topic = page.locator(`details#${id}`);
+            assert.equal(await topic.evaluate((d) => (d as HTMLDetailsElement).open), true, id);
+            await page.waitForTimeout(300);
+            assert.ok(
+              await inView(topic.locator('summary')),
+              `${id}: the opened topic is on screen`,
+            );
+            await shot(`selector-${id}-topic`);
+          }
+
           // The saved-file format reference (fm-fy2.7): open Keep your originals, press its link.
           const originals = page.locator('details#help-keep-originals');
           await operate(originals.locator('summary'));
@@ -225,9 +266,7 @@ test(
 
           // A real refusal: force WebGPU where the browser has none, then generate a face.
           await dismissToasts();
-          await operate(page.getByRole('button', { name: 'More options' }));
           await page.getByLabel('Processing mode').selectOption('webgpu'); // setup
-          await page.keyboard.press('Escape');
           const tile = page.locator('section.next-face').nth(1);
           await operate(tile.locator('.next-field input'));
           await page.keyboard.press('Control+A');
@@ -298,27 +337,58 @@ test(
           assert.equal(refusal.helpAnchor, '#help-webgpu-route');
           await shot('refusal-help-topic');
 
-          // Optional selector Help links (#computer-requirements, #supported-browsers) belong to the
-          // face selector (face.selector-names). Press each one the built page renders.
-          for (const id of ['computer-requirements', 'supported-browsers']) {
-            const links = page.locator(`a[href="#${id}"]:visible`);
-            const count = await links.count();
-            if (count === 0) {
-              console.log(
-                `# untested: no rendered selector link to #${id} in this build (face.selector-names)`,
-              );
-              continue;
-            }
-            for (let i = 0; i < count; i++) {
-              await operate(links.nth(i));
-              await page.waitForFunction((h) => location.hash === h, `#${id}`);
-              assert.equal(
-                await page.locator(`#${id}`).evaluate((d) => (d as HTMLDetailsElement).open),
-                true,
-              );
-              await shot(`selector-${id}-${i}`);
-            }
-          }
+          // The CPU route's refusal: the page reopened as a browser without WebAssembly SIMD (its validate() rejects
+          // the runtime's SIMD probe module, as such a browser does), CPU chosen, a face asked for. Route admission
+          // refuses with cpu-wasm-unavailable, and its Help link opens the CPU route topic.
+          await page.addInitScript((probe: number[]) => {
+            const validate = WebAssembly.validate.bind(WebAssembly);
+            WebAssembly.validate = (bytes: BufferSource) => {
+              const b = ArrayBuffer.isView(bytes)
+                ? new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+                : new Uint8Array(bytes);
+              if (b.length === probe.length && b.every((v, i) => v === probe[i])) return false;
+              return validate(bytes);
+            };
+          }, SIMD_PROBE);
+          await ready(page);
+          await page.getByLabel('Processing mode').selectOption('cpu'); // setup
+          const cpuTile = page.locator('section.next-face').nth(1);
+          await operate(cpuTile.locator('.next-field input'));
+          await page.keyboard.press('Control+A');
+          await page.keyboard.press('Backspace');
+          await page.keyboard.insertText('help cpu');
+          await operate(cpuTile.locator('.next-input-row .next-face-generate'));
+          const cpuBox = page.locator('.next-error');
+          const cpuGate = page.getByRole('button', { name: 'Download and continue' });
+          await cpuBox.or(cpuGate).first().waitFor({ timeout: 30_000 });
+          if (await cpuGate.isVisible()) await operate(cpuGate);
+          await cpuBox.waitFor({ timeout: 180_000 });
+          await dismissToasts();
+          const cpuWhy = cpuBox.getByRole('link', { name: 'Why, and what to try' });
+          assert.equal(await cpuWhy.getAttribute('data-next-reason'), 'cpu-wasm-unavailable');
+          const cpuRefusal = reason('cpu-wasm-unavailable');
+          assert.equal(await cpuBox.locator('p').first().innerText(), cpuRefusal.text);
+          assert.doesNotMatch(await page.locator('.next-product').innerText(), RAW);
+          const [cpuSentence, cpuLink] = await Promise.all([
+            cpuBox.locator('p').first().boundingBox(),
+            cpuWhy.boundingBox(),
+          ]);
+          assert.ok(cpuSentence && cpuLink && cpuLink.y >= cpuSentence.y + cpuSentence.height - 1);
+          await cpuWhy.scrollIntoViewIfNeeded();
+          await shot('refusal-cpu-help-link');
+          const cpuLanded = await operate(cpuWhy);
+          assert.equal(cpuLanded.href, `${ORIGIN}/${cpuRefusal.helpAnchor}`);
+          assert.equal(cpuRefusal.helpAnchor, '#help-cpu-route');
+          await page.waitForFunction((h) => location.hash === h, cpuRefusal.helpAnchor);
+          const cpuTarget = page.locator(cpuRefusal.helpAnchor);
+          assert.equal(await cpuTarget.evaluate((d) => (d as HTMLDetailsElement).open), true);
+          await page.waitForTimeout(300);
+          assert.ok(
+            await inView(cpuTarget.locator('summary')),
+            'the opened CPU topic is on screen',
+          );
+          await shot('refusal-cpu-help-topic');
+
           assert.deepEqual(errors, []);
         } catch (error) {
           await shot('failure', true).catch(() => {});
