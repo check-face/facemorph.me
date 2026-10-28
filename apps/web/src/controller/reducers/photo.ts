@@ -7,6 +7,7 @@ import { createCrop } from '../geometry.ts';
 import type { ClassifiedStill } from '../msg.ts';
 import type { HeldStill } from '../state.ts';
 import { admitTo, refusal, type AdmissionFacts } from '../admission.ts';
+import { openBatch, proposedView } from './batch.ts';
 type Offer = Extract<Extract<Msg, { type: 'Photo' }>['args'][1], { kind: 'crop' }>['offer'];
 
 export interface PhotoFacts extends AdmissionFacts {
@@ -47,7 +48,7 @@ export function forgetStill(state: State, id: string, checks: boolean): Transiti
   return { state: next, effects: held?.url ? [{ type: 'revokeUrl', url: held.url }] : [] };
 }
 /** The face holds `entry` as media: shown, saved as its original bytes and never computed with. */
-function hold(state: State, id: string, entry: ClassifiedStill): Transition {
+export function hold(state: State, id: string, entry: ClassifiedStill): Transition {
   if (!isHeld(entry.kind) || !entry.reason) throw new Error('Only a held kind is held by a face');
   const released = forgetStill(state, id, false);
   const preparing = new Set(released.state.PreparingFaces);
@@ -97,6 +98,12 @@ function classified(
     return refusal({ ...state, StillChecks: checks, PreparingFaces: preparing }, admission, urls);
   }
   let next: State = { ...state, StillChecks: checks };
+  // Several files open one batch view (fm-id4c, fm-q5b9): nothing about the faces changes until its OK.
+  if (entries.length > 1) {
+    if (target !== null && !next.Inputs.some((input) => input.id === target))
+      return { state: next, effects: urls };
+    return openBatch(next, key, token, pick, target, entries);
+  }
   const effects: Effect[] = [];
   const apply = (id: string, entry: ClassifiedStill) => {
     const t = hold(next, id, entry);
@@ -189,20 +196,31 @@ export function offerCrop(state: State, id: string, offer: Offer): Transition {
   if (!input) return { state, effects: [{ type: 'revokeUrl', url: offer.url }] };
   const preparing = new Set(state.PreparingFaces);
   preparing.delete(id);
+  const initial = createCrop({
+    previewWidth: offer.previewWidth,
+    previewHeight: offer.previewHeight,
+    scale: offer.scale,
+    viewport: 320,
+  });
+  // A face picked by its detected box in the batch view opens with that box as the proposed crop.
+  const box = state.CropProposals?.get(id);
   const choice = {
     faceId: id,
     input,
     url: offer.url,
     file: offer.file,
     scale: offer.scale,
-    view: createCrop({
-      previewWidth: offer.previewWidth,
-      previewHeight: offer.previewHeight,
-      scale: offer.scale,
-      viewport: 320,
-    }),
+    view: box ? proposedView(initial, box) : initial,
   };
-  const next = { ...state, PreparingFaces: preparing, Error: null, ModelToastHidden: true };
+  const proposals = new Map(state.CropProposals ?? []);
+  proposals.delete(id);
+  const next = {
+    ...state,
+    PreparingFaces: preparing,
+    Error: null,
+    ModelToastHidden: true,
+    ...(box ? { CropProposals: proposals } : {}),
+  };
   return state.Crop && state.Crop.faceId !== id
     ? {
         state: { ...next, CropQueue: [...state.CropQueue, choice] },

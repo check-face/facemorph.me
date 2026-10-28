@@ -15,6 +15,7 @@ import {
   stillLog,
 } from '../../src/media/still-entry.ts';
 import { state } from './photo-inputs.ts';
+import { confirmAll } from './batch-flow.ts';
 import { futureSchemaPng } from '../support/recovery-stills.ts';
 import type { State } from '../../src/controller/state.ts';
 
@@ -141,6 +142,46 @@ for (const n of [1, 2, 3, 8, 30]) {
       dropped.state,
       { newPhotoIds: ids },
     )!;
+    if (n > 1) {
+      // Several files open the batch view (fm-id4c, fm-q5b9): no face changes until its OK, every file is
+      // offered in drop order, a damaged still offers nothing unless explicitly used as a photo.
+      assert.equal(next.state.Inputs, dropped.state.Inputs, 'no face changes before OK');
+      assert.deepEqual(
+        next.state.Batch!.groups.map((g) => g.entry.kind),
+        entries.map((e) => e.kind),
+      );
+      const confirmed = confirmAll(next.state, { newPhotoIds: ids });
+      const picked = entries.filter((e) => e.kind !== 'damaged');
+      const placed = ['face-1', ...ids.slice(1, picked.length)];
+      assert.deepEqual(
+        confirmed.state.Inputs.map((i) => i.id),
+        [...placed, 'face-2'],
+      );
+      const photos = picked.flatMap((e, i) =>
+        isHeld(e.kind) ? [] : [[placed[i]!, e.file] as const],
+      );
+      assert.deepEqual(
+        confirmed.effects.filter((e) => e.type === 'selectPhoto'),
+        photos.length ? [{ type: 'selectPhoto', id: photos[0]![0], files: [photos[0]![1]] }] : [],
+      );
+      assert.deepEqual(confirmed.state.PhotoQueue, photos.slice(1));
+      picked.forEach((entry, i) => {
+        const held = confirmed.state.Held?.get(placed[i]!);
+        if (!isHeld(entry.kind)) return assert.equal(held, undefined);
+        assert.equal(held?.kind, entry.kind);
+        assert.equal(held?.file, entry.file, 'the held file is the original File');
+        assert.equal(confirmed.state.Inputs.find((x) => x.id === placed[i])!.mode, 'project');
+        assert.equal(held?.url, `blob:held-${entry.index}`);
+      });
+      assert.ok(
+        ![...(confirmed.state.Held?.values() ?? [])].some((h) => h.kind === 'damaged'),
+        'a damaged still is never added implicitly',
+      );
+      assert.ok(
+        !confirmed.effects.some((e) => e.type === 'execute' || e.type === 'downloadModels'),
+      );
+      return;
+    }
     const targets = ['face-1', ...ids.slice(0, n - 1)];
     assert.deepEqual(
       next.state.Inputs.map((i) => i.id),

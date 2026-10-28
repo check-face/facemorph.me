@@ -5,6 +5,7 @@ import { slider } from './slider.ts';
 import { jobs, type JobFacts } from './jobs.ts';
 import { gate } from './gate.ts';
 import { photo, type PhotoFacts } from './photo.ts';
+import { batch, detectOnReady, type BatchFacts } from './batch.ts';
 import { crop } from './crop.ts';
 import { sameInputs } from './schedule.ts';
 import { commitUndo, NEXT_ACTIONS, undo, type UndoFacts } from './undo.ts';
@@ -17,6 +18,7 @@ import { retirePhotoRunInputs } from '../admission.ts';
 export type ControllerFacts = InputFacts &
   JobFacts &
   PhotoFacts &
+  BatchFacts &
   UndoFacts &
   BlendFacts & {
     /** An already requested queued job resuming automatically, not a new user action. */
@@ -80,6 +82,12 @@ export const CASES = {
   Cropped: photo,
   Classified: photo,
   UseAsPhoto: photo,
+  BatchStaged: batch,
+  BatchDetected: batch,
+  BatchPick: batch,
+  BatchUseAsPhoto: batch,
+  BatchCancel: batch,
+  BatchOk: batch,
   CancelFace: jobs,
   Run: jobs,
   RunFace: jobs,
@@ -146,11 +154,14 @@ function reduceFaces(message: Msg, state: State, facts: ControllerFacts): Transi
   if (replacing !== null && state.Inputs.some((input) => input.id === replacing))
     state = retirePhotoRunInputs(state, replacing);
   const gated = gate(message, state);
-  if (gated !== null)
+  if (gated !== null) {
+    // An open batch view looks for faces as soon as photo processing is ready (fm-q5b9).
+    const ready = message.type === 'DownloadsChanged' ? detectOnReady(state, gated) : gated;
     return rememberView(state, {
-      ...gated,
-      state: retirePausedPhotos(retirePhotoRunInputs(gated.state)),
+      ...ready,
+      state: retirePausedPhotos(retirePhotoRunInputs(ready.state)),
     });
+  }
   const handler: ControllerReducer = CASES[message.type];
   const result = handler(message, state, facts);
   if (result === null) throw new Error(`Controller case ${message.type} has no reducer`);

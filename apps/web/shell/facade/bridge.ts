@@ -219,6 +219,23 @@ export async function cropPhoto(
 ): Promise<File> {
   return readCroppedFile(await bridge.cropPhotoReported(file, area, options), 'cropPhoto');
 }
+/** The faces the on-device detector finds in a batch photo's preview (fm-q5b9): fractions, two or more, else none. */
+export async function detectFaces(
+  file: Blob,
+): Promise<readonly { x: number; y: number; width: number; height: number }[]> {
+  const v: unknown = await bridge.detectFaces(file);
+  if (!Array.isArray(v)) throw new FacadeError('detectFaces', '', 'expected a list of boxes');
+  return v.map((box: unknown, i) => {
+    const b = box as Record<string, unknown>;
+    const read = (k: string) => {
+      const n = b?.[k];
+      if (typeof n !== 'number' || !Number.isFinite(n) || n < 0 || n > 1)
+        throw new FacadeError('detectFaces', `[${i}].${k}`, 'expected a fraction');
+      return n;
+    };
+    return { x: read('x'), y: read('y'), width: read('width'), height: read('height') };
+  });
+}
 export async function chooseDetectedFace(choice: DetectedFaces, index: number): Promise<File> {
   return readCroppedFile(await bridge.chooseDetectedFace(choice, index), 'chooseDetectedFace');
 }

@@ -2,6 +2,7 @@ import type { CropView, Msg } from './msg.ts';
 import type { HeldKind, StillReason } from '../media/still-entry.ts';
 import type { UndoNotice } from './reducers/undo.ts';
 import type { BlendState } from './blend.ts';
+import type { BatchBox, BatchState } from './reducers/batch.ts';
 import type {
   DetectedFaces,
   Downloads,
@@ -99,11 +100,11 @@ export interface State {
    * again. When the video codec fallback must be downloaded, its bytes join the Generate row of the consent.
    */
   readonly MorphCodec?: { readonly run: Msg; readonly needed: boolean; readonly bytes: number };
-  readonly ModelToastHidden: boolean;
   /** The bytes the last approval downloads, as its consent showed them (fm-9kr8): a failure counts against it. */
   readonly ApprovedBytes?: number;
   /** A failed download whose kept files the bridge has not re-measured yet: its byte line waits for that. */
   readonly KeptPending?: boolean;
+  readonly ModelToastHidden: boolean;
   readonly DownloadConsent: ReadonlySet<string>;
   readonly Gate: readonly [string, Msg] | null;
   readonly LastRun: Msg | null;
@@ -121,6 +122,10 @@ export interface State {
   readonly UndoSeq?: number;
   /** The blend view's slots, weights and result (fm-2kse); absent until the view first opens. */
   readonly Blend?: BlendState;
+  /** The open batch view of a multi-file pick, drop or paste (fm-id4c, fm-q5b9); absent when closed. */
+  readonly Batch?: BatchState | undefined;
+  /** A photo face picked as a detected face in the batch view: its box is the proposed crop when it opens. */
+  readonly CropProposals?: ReadonlyMap<string, BatchBox>;
 }
 /** A still the face shows and saves as its original bytes; `url` is '' when it is not shown (damaged). */
 export interface HeldStill {

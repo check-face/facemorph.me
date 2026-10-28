@@ -86,6 +86,8 @@ function retainedPhotos(state: State, except: string | null): Set<Blob> {
   // These snapshots remain live independently of the currently installed face.
   for (const { input } of state.Undo?.hidden ?? []) if (input.file) blobs.add(input.file);
   for (const input of state.RunInputs) if (input.file) blobs.add(input.file);
+  // An open batch view stages every file it was given until its Cancel or OK.
+  for (const group of state.Batch?.groups ?? []) blobs.add(group.entry.file);
   return blobs;
 }
 

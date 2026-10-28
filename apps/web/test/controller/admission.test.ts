@@ -19,6 +19,7 @@ import { inputs } from '../../src/controller/reducers/inputs.ts';
 import { photo } from '../../src/controller/reducers/photo.ts';
 import type { HeldStill, State } from '../../src/controller/state.ts';
 import { state } from './photo-inputs.ts';
+import { confirmAll } from './batch-flow.ts';
 
 const limitOf = (name: AdmissionBudget): number => {
   const found = lookupCeiling(name, { kind: 'all-routes' });
@@ -420,8 +421,10 @@ test('a 150-face drop is admitted when the budgets allow and appends every face 
     dropped.state,
     { newPhotoIds: ids },
   )!;
+  // The batch view opens (fm-id4c); its OK is the same single check over all 150 files.
+  const confirmed = confirmAll(next.state, { newPhotoIds: ids });
   assert.deepEqual(
-    next.state.Inputs.map((i) => i.id),
+    confirmed.state.Inputs.map((i) => i.id),
     ids,
   );
 });

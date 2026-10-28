@@ -7,6 +7,7 @@ import { rejection } from '../../src/controller/effects.ts';
 import { MULTIPLE_FACES_MESSAGE } from '../../shell/facade/bridge.ts';
 import { refusal } from '../../src/Next/photo/refusal.mjs';
 import { state, file, offer, recovered } from './photo-inputs.ts';
+import { confirmAll } from './batch-flow.ts';
 import { classifyClipboard } from '../../src/photo/source.ts';
 
 test('clipboard classification: image wins over text; malformed selections leave the source unchanged', () => {
@@ -119,7 +120,7 @@ test('accepted photo queues behind a real run but clears cropping-owned Busy', (
     { type: 'dispatch', message: msg('RunFace', 'face-1'), continuation: true },
   ]);
 });
-test('a three-file drop uses an empty tile first then appends in drop order', () => {
+test('a three-file drop uses an empty tile first, then inserts the rest after it in pick order', () => {
   const files = ['first.jpg', 'second.jpg', 'third.jpg'].map(file);
   const empty = { ...state, Inputs: [{ ...state.Inputs[0]!, value: '' }, state.Inputs[1]!] };
   const dropped = photo(msg('Photos', null, files), empty)!;
@@ -140,17 +141,26 @@ test('a three-file drop uses an empty tile first then appends in drop order', ()
       })),
     ),
     dropped.state,
-    { newPhotoIds: ['new-a', 'new-b', 'unused'] },
+    { newPhotoIds: ['unused-a', 'unused-b', 'unused-c'] },
   )!;
+  // Several files open the batch view (fm-id4c); nothing changes until its OK.
+  assert.equal(next.state.Inputs, dropped.state.Inputs);
+  const confirmed = confirmAll(next.state, { newPhotoIds: ['unused', 'new-a', 'new-b'] });
   assert.deepEqual(
-    next.state.Inputs.map((input) => input.id),
-    ['face-1', 'face-2', 'new-a', 'new-b'],
+    confirmed.state.Inputs.map((input) => input.id),
+    ['face-1', 'new-a', 'new-b', 'face-2'],
+    'the first pick takes the empty face; the rest follow it in pick order',
   );
-  assert.deepEqual(next.state.PhotoQueue, [
+  const next2 = confirmed;
+  assert.deepEqual(next2.state.PhotoQueue, [
     ['new-a', files[1]],
     ['new-b', files[2]],
   ]);
-  assert.deepEqual(next.effects.at(-1), { type: 'selectPhoto', id: 'face-1', files: [files[0]] });
+  assert.ok(
+    next2.effects.some(
+      (e) => e.type === 'selectPhoto' && e.id === 'face-1' && e.files[0] === files[0],
+    ),
+  );
 });
 test('selection failure advances pending photos and drops only that face intent', () => {
   const pending = {

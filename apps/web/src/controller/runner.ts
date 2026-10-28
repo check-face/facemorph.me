@@ -214,7 +214,7 @@ export function createController(
   measureStored();
   const store = createStore(initial.state, {
     facts: (message, state) => ({
-      ...(['AddAt', 'Photos', 'PickPhoto', 'Classified'].includes(message.type)
+      ...(['AddAt', 'Photos', 'PickPhoto', 'Classified', 'BatchOk'].includes(message.type)
         ? { storedSessionBytes, pendingPhotoFiles: photoTasks.files() }
         : {}),
       ...(message.type === 'AddAt'
@@ -241,6 +241,13 @@ export function createController(
       ...(message.type === 'Classified' && !message.args[2]
         ? {
             newPhotoIds: message.args[4].map(
+              () => `face-${crypto.randomUUID().replaceAll('-', '')}`,
+            ),
+          }
+        : {}),
+      ...(message.type === 'BatchOk' && state.Batch
+        ? {
+            newPhotoIds: state.Batch.order.map(
               () => `face-${crypto.randomUUID().replaceAll('-', '')}`,
             ),
           }
@@ -775,6 +782,27 @@ export function createController(
               );
             },
             (error) => update((current) => classificationFailure(current, effect, error)),
+          );
+          break;
+        case 'stageBatch':
+          // Each file is decoded for display on its own: a slow or broken file never holds up its siblings.
+          for (const item of effect.files)
+            photoTask(
+              [item.file],
+              async () =>
+                item.photo
+                  ? { ok: true, offer: await facade.previewPhoto(item.file, { edge: 2048 }) }
+                  : { ok: true, url: URL.createObjectURL(item.file) },
+              (result) => store.dispatch(msg('BatchStaged', effect.token, item.id, result)),
+              () => store.dispatch(msg('BatchStaged', effect.token, item.id, { ok: false })),
+            );
+          break;
+        case 'detectBatchFaces':
+          photoTask(
+            [effect.file],
+            () => facade.detectFaces(effect.file),
+            (boxes) => store.dispatch(msg('BatchDetected', effect.token, effect.group, boxes)),
+            () => store.dispatch(msg('BatchDetected', effect.token, effect.group, null)),
           );
           break;
         case 'previewPhoto': {

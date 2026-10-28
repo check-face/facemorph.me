@@ -157,6 +157,7 @@ async function engine(){
  runtimeIdentity=manifestSha256;diagnostics.bundle(manifestSha256);
  // The browser adapter rejects missing photo support rather than silently using a server.
  const photoAligner=manifest.photo?createPhotoAligner({manifestUrl:manifest.photo.manifestUrl,workerFactory:()=>new Worker(new URL('./photo/selection-worker.mjs',import.meta.url),{type:'module'})}):null;
+ batchAligner=photoAligner;
  const alignPhoto=photoAligner?async(blob,options)=>{const prepared=await photoAligner(blob,options);if(prepared.provenance?.preprocessingSha256!==manifest.alignmentSha256)throw Error('Photo processing files changed. Reload before trying again.');return prepared;}:undefined;
  runtime=createBrowserRuntime({manifest,manifestSha256,onProgress:progress,alignPhoto});return runtime;
 }
@@ -347,8 +348,8 @@ async function refreshInventory(){
   // its MP4 probe needs it and these bytes are not already on the device.
   const codecParts=[planned.manifest.codec?.wasm,planned.manifest.codec?.module].filter(a=>a&&Number.isSafeInteger(a.size));
   const codec=codecParts.length===2?await measure(codecParts,cache):null;
-  Object.assign(downloads,{known:true,routeReady:route.ready,photoReady:photo.ready,photoAvailable:planned.photoAvailable===true,
   if(route.ready)downloads.modelNotKept=false;
+  Object.assign(downloads,{known:true,routeReady:route.ready,photoReady:photo.ready,photoAvailable:planned.photoAvailable===true,
    routeBytes:Math.max(0,route.total-route.present),photoBytes:Math.max(0,photo.total-photo.present),
    ...(codec?{codecReady:codec.ready,codecBytes:Math.max(0,codec.total-codec.present)}:{})});
   announceDownloads();
@@ -809,6 +810,15 @@ export async function restoreLastResult(){
 export function queueFace(id,depth){analytics.queuedRequest?.(id,depth);}
 export function cancelQueuedFace(id){analytics.cancelQueued?.(id);}
 
+// The batch view (fm-q5b9): the on-device detector over a photo's decoded preview, before any confirmation. The
+// controller asks only once photo processing is ready on this device; the faces come back as fractions of the photo.
+let batchAligner=null;
+export async function detectFaces(blob){
+ await engine();if(!batchAligner)throw refusal('Photo processing is not available here.');
+ const prepared=await batchAligner(blob,{tryAlign:true,requireSingleFace:false});
+ if(prepared.provenance?.preprocessingSha256!==manifest.alignmentSha256)throw Error('Photo processing files changed. Reload before trying again.');
+ return prepared.faceCount>1&&Array.isArray(prepared.stats?.faceBoxes)?prepared.stats.faceBoxes:[];
+}
 async function prepareFaceChoices(id,boxes,processed){const file=processed?.facemorphOriginal||processed||sourceFiles.get(id);if(!file)return null;try{const preview=await previewPhoto(file,{edge:2048});return {id,file,boxes,...preview};}catch{return null;}}
 export async function chooseDetectedFace(choice,index){
  analytics.operationResult?.('selection','completed');const box=choice.boxes[index];if(!box)throw refusal('Choose a detected face.');

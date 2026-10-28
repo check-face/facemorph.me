@@ -44,7 +44,7 @@ function returnFromDialog(token: string): void {
   });
 }
 
-function Modal({
+export function Modal({
   label,
   className,
   close,

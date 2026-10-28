@@ -29,6 +29,7 @@ import { MorphSlot } from './render/MorphSlot.tsx';
 import { ProviderSelector } from './render/ProviderSelector.tsx';
 import { VideoSlot } from './render/VideoSlot.tsx';
 import { NamesDialog, DetectedDialog, CropDialog, DownloadDialog } from './render/Dialogs.tsx';
+import { BatchDialog } from './render/BatchDialog.tsx';
 import { Support, TestingInvite } from './render/Support.tsx';
 
 export function Product({ store }: { store: Store }) {
@@ -116,8 +117,11 @@ export function Product({ store }: { store: Store }) {
             report={facade.reportStatus()}
             reference={facade.reportReference()}
           />
-          {!s.Crop && !s.PhotoChoice && !s.Gate && <NamesDialog state={s} dispatch={dispatch} />}
-          {!s.Crop && !s.Gate && <DetectedDialog state={s} dispatch={dispatch} />}
+          {!s.Crop && !s.PhotoChoice && !s.Gate && !s.Batch && (
+            <NamesDialog state={s} dispatch={dispatch} />
+          )}
+          {!s.Crop && !s.Gate && !s.Batch && <DetectedDialog state={s} dispatch={dispatch} />}
+          {!s.Crop && <BatchDialog state={s} dispatch={dispatch} />}
           <CropDialog state={s} dispatch={dispatch} />
           <DownloadDialog state={s} dispatch={dispatch} />
         </>

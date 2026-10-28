@@ -110,7 +110,7 @@ export function FaceTile(p: FaceTileProps) {
         chosen(photoFiles(e));
       }}
       onPaste={(e) => {
-        if (!e.defaultPrevented) pastedPhoto(e, p.onPhoto, p.onNotice);
+        if (!e.defaultPrevented) pastedPhoto(e, p.onPhoto, p.onNotice, p.onPhotos);
       }}
     >
       <input
@@ -118,6 +118,7 @@ export function FaceTile(p: FaceTileProps) {
         type="file"
         hidden
         accept="image/*,video/mp4"
+        multiple
         aria-label={entry}
         onChange={(e) => chosen(photoFiles(e))}
       />
@@ -251,6 +252,7 @@ export function FaceTile(p: FaceTileProps) {
           canRun={!!canGenerate && !working}
           onRun={p.onRun}
           onPhoto={p.onPhoto}
+          onPhotos={p.onPhotos}
           {...(p.onNotice ? { onNotice: p.onNotice } : {})}
           {...(p.photoEncodingAvailable !== undefined
             ? { photoEncodingAvailable: p.photoEncodingAvailable }

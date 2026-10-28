@@ -1,7 +1,9 @@
 // One payload tuple per frozen Product.fs Msg case (a42829bb, lines 263-279).
 import type { CropState } from '../../shell/facade/helpers.ts';
 import type { StillEntry } from '../media/still-entry.ts';
+import type { CandidateId } from '../contracts/batch.ts';
 import type {
+  CropOffer,
   Downloads,
   Face,
   Input,
@@ -108,6 +110,27 @@ export interface Payloads {
   ];
   /** The explicit Use as photo action on a held still: enters the confirmed-crop flow. */
   UseAsPhoto: readonly [string];
+  // ---- the batch view (fm-id4c item 12, fm-q5b9) ----
+  /** A batch file's display: a photo's decoded preview, a saved still's URL, or ok:false when it does not decode. */
+  BatchStaged: readonly [
+    token: number,
+    group: string,
+    result: { readonly ok: boolean; readonly url?: string; readonly offer?: CropOffer },
+  ];
+  /** The on-device detector's faces in a batch photo (null: it could not run, so the whole photo is offered). */
+  BatchDetected: readonly [
+    token: number,
+    group: string,
+    boxes: readonly { x: number; y: number; width: number; height: number }[] | null,
+  ];
+  /** A click on a candidate face: picks it (appended to the order) or unpicks it. */
+  BatchPick: readonly [CandidateId];
+  /** The explicit Use as photo action on a damaged still in the batch view. */
+  BatchUseAsPhoto: readonly [string];
+  /** The view's Cancel: discards the whole proposal; nothing changes. */
+  BatchCancel: readonly [];
+  /** The view's OK: one admission check, then every pick lands in click order. */
+  BatchOk: readonly [];
   // ---- the blend view (fm-2kse) ----
   /** The view opened (seeds the slots on first open) or closed (cancels a pending blend synthesis). */
   BlendView: readonly [boolean];

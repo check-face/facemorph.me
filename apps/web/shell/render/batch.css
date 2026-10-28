@@ -1,0 +1,212 @@
+/* The batch view (fm-id4c, fm-q5b9) in the crop modal's visual language: the dark panel, white text, the same
+ * CANCEL (left) and OK (right) footer. Its picks are numbered badges; every control is at least 44 px. */
+.next-batch {
+  box-sizing: border-box;
+  width: min(92vw, 760px);
+  max-height: 92vh;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: #17181c;
+  color: #fff;
+  padding: 16px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.next-batch-header h2 {
+  color: #fff;
+  font:
+    500 20px/1.25 Roboto,
+    sans-serif;
+  margin: 0 0 4px;
+}
+.next-batch-header p {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+.next-batch-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+  gap: 12px;
+}
+.next-batch-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.next-batch-group h3 {
+  margin: 0;
+  font:
+    500 0.85rem/1.3 Roboto,
+    sans-serif;
+  color: #fff;
+  opacity: 0.85;
+}
+.next-batch-image {
+  position: relative;
+  line-height: 0;
+}
+.next-batch-image img,
+.next-batch-whole img,
+.next-batch-none img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 260px;
+  object-fit: contain;
+  background: #222;
+  user-select: none;
+}
+.next-batch-box {
+  position: absolute;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 3px solid #3cf0c5;
+  cursor: pointer;
+}
+.next-batch-box[aria-pressed='true'] {
+  border-color: #ffa63d;
+  background: rgba(255, 166, 61, 0.15);
+}
+.next-batch-box:focus-visible,
+.next-batch-whole:focus-visible {
+  outline: 4px solid #ffa63d;
+  outline-offset: 2px;
+}
+.next-batch-whole {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 3px solid #3cf0c5;
+  background: #222;
+  cursor: pointer;
+  color: #fff;
+}
+.next-batch-whole[aria-pressed='true'] {
+  border-color: #ffa63d;
+}
+.next-batch-noimage {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+.next-batch-none {
+  opacity: 0.45;
+}
+.next-batch-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 14px;
+  background: #ffa63d;
+  color: #17181c;
+  font:
+    700 15px/28px Roboto,
+    sans-serif;
+  text-align: center;
+  pointer-events: none;
+}
+.next-batch-note {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  opacity: 0.85;
+}
+.next-batch .next-batch-use-photo {
+  align-self: flex-start;
+  min-height: 44px;
+  color: #fff;
+}
+.next-batch .next-batch-setup {
+  align-self: flex-start;
+  min-height: 44px;
+  color: #3cf0c5;
+}
+.next-batch-tray ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.next-batch-tray li {
+  position: relative;
+}
+.next-batch-thumb {
+  position: relative;
+  display: block;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  background: #222;
+  object-fit: cover;
+}
+.next-batch-thumb img {
+  position: absolute;
+  max-width: none;
+}
+.next-batch-tray-n {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background: #ffa63d;
+  color: #17181c;
+  font:
+    700 12px/20px Roboto,
+    sans-serif;
+  text-align: center;
+}
+.next-batch-empty,
+.next-batch-refused {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.next-batch-refused {
+  color: #ffb4ab;
+}
+.next-batch-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  bottom: -16px;
+  margin: 0 -16px -16px;
+  padding: 12px 16px;
+  background: #17181c;
+}
+.next-batch .next-batch-cancel {
+  background: #e0e0e0;
+  color: #1d1d1d;
+  min-width: 85px;
+  min-height: 44px;
+}
+.next-batch .next-batch-ok {
+  background: #3f51b5;
+  color: #fff;
+  min-width: 64px;
+  min-height: 44px;
+}
+.next-batch .next-batch-ok.Mui-disabled {
+  background: #3a3b44;
+  color: #9a9ba3;
+}

@@ -31,6 +31,8 @@ export interface FaceFieldProps {
   readonly onRun?: () => void;
   readonly canRun?: boolean;
   readonly onPhoto?: (files: File[]) => void;
+  /** Several pasted images (the batch view, fm-id4c). */
+  readonly onPhotos?: (files: File[]) => void;
   readonly onNotice?: (message: string) => void;
   readonly photoEncodingAvailable?: boolean;
 }
@@ -40,10 +42,23 @@ export function pastedPhoto(
   e: ClipboardEvent,
   onPhoto?: (files: File[]) => void,
   onNotice?: (message: string) => void,
+  onPhotos?: (files: File[]) => void,
 ) {
   const files = [...e.clipboardData.items].filter((item) => item.kind === 'file');
   if (!files.length) return;
   e.preventDefault();
+  // Several pasted images open the batch view, like a multi-file pick or drop (fm-id4c).
+  if (
+    files.length > 1 &&
+    onPhotos &&
+    files.every((item) => /^image\/(png|jpeg|webp)$/.test(item.type))
+  ) {
+    const pasted = files.map((item) => item.getAsFile()).filter((f): f is File => !!f);
+    if (pasted.length === files.length) {
+      onPhotos(pasted);
+      return;
+    }
+  }
   if (files.length !== 1 || !/^image\/(png|jpeg|webp)$/.test(files[0]!.type)) {
     onNotice?.('Paste one PNG, JPEG or WebP image. Your text is unchanged.');
     return;
@@ -64,6 +79,7 @@ export function FaceField({
   onRun,
   canRun = false,
   onPhoto,
+  onPhotos,
   onNotice,
   photoEncodingAvailable = true,
 }: FaceFieldProps) {
@@ -172,7 +188,7 @@ export function FaceField({
               onRun?.();
             }
           }}
-          onPaste={(e) => pastedPhoto(e, onPhoto, onNotice)}
+          onPaste={(e) => pastedPhoto(e, onPhoto, onNotice, onPhotos)}
           className="focuswithin-parent"
           slotProps={{
             htmlInput: {

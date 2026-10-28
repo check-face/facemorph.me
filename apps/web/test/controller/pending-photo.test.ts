@@ -113,13 +113,25 @@ test('classify→select→preview→crop handovers retain one shared Blob withou
       return entries;
     },
     (entries) => {
-      const selected = photo(
+      // Two files open the batch view (fm-id4c): it holds the shared Blob once until OK.
+      const opened = photo(
         msg('Classified', 'face-1', current.StillSeq!, true, 'face-1', entries),
         current,
         facts(),
       )!;
+      current = opened.state;
+      assert.equal(opened.effects.at(-1)?.type, 'stageBatch');
+      check();
+      const token = current.Batch!.token;
+      current = reduce(
+        msg('BatchStaged', token, 'f0', { ok: true, offer: { ...offer('staged.jpg'), file } }),
+        current,
+      )!.state;
+      current = reduce(msg('BatchPick', 'f0#0'), current)!.state;
+      check();
+      const selected = reduce(msg('BatchOk'), current, { ...facts(), newPhotoIds: ['unused'] })!;
       current = selected.state;
-      assert.equal(selected.effects.at(-1)?.type, 'selectPhoto');
+      assert.ok(selected.effects.some((effect) => effect.type === 'selectPhoto'));
       nextTask = tasks.run(
         files,
         async () => {

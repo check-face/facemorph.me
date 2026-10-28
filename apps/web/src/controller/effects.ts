@@ -92,6 +92,23 @@ export type PhotoEffect =
       readonly files: readonly File[];
     }
   | { readonly type: 'previewPhoto'; readonly id: string; readonly file: Blob }
+  /** Decodes each batch file for display (a photo's preview; a saved still's URL); no model work. */
+  | {
+      readonly type: 'stageBatch';
+      readonly token: number;
+      readonly files: readonly {
+        readonly id: string;
+        readonly file: File;
+        readonly photo: boolean;
+      }[];
+    }
+  /** The on-device detector over one batch photo's decoded preview (only when photo processing is ready). */
+  | {
+      readonly type: 'detectBatchFaces';
+      readonly token: number;
+      readonly group: string;
+      readonly file: Blob;
+    }
   | {
       readonly type: 'cropPhoto';
       readonly id: string;
