@@ -230,8 +230,10 @@ jobs:
           FACEMORPH_REQUIRE_RUNTIME: '1'
           GITHUB_TOKEN: ${{ github.token }}
           # face.many's full matrix (45 widths x 8 counts, about 6 h) is the layout owner's local run; the release runs
-          # every case at the phone and desktop widths the other cases use.
+          # every case at the phone and desktop widths the other cases use, at one, two, three and a strip of 30 faces
+          # (the virtualised case keeps its 150; morph-intent covers 8, 64 and 150). Over an hour before (run 40657762294).
           FACE_MANY_WIDTHS: 390,1280
+          FACE_MANY_COUNTS: 1,2,3,30
         run: |
           files=$(node --input-type=module -e "
             import { VERIFY_FUNCTIONAL as m } from './test/verify/cases/verify-functional.ts';
