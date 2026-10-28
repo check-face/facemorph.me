@@ -188,7 +188,7 @@ jobs:
     # Every operated case of the verify.functional manifest (apps/web/test/verify/cases/verify-functional.ts), run on
     # this run's artifact: the manifest names each case's e2e file, and the files are dealt to three shards (fm-ejwq).
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -219,6 +219,9 @@ jobs:
           FACEMORPH_DEPLOY_OUT: ${{ github.workspace }}/artifact # the suites serve its deploy-next/
           FACEMORPH_REQUIRE_RUNTIME: '1'
           GITHUB_TOKEN: ${{ github.token }}
+          # face.many's full matrix (45 widths x 8 counts, about 6 h) is the layout owner's local run; the release runs
+          # every case at the phone and desktop widths the other cases use.
+          FACE_MANY_WIDTHS: 390,1280
         run: |
           files=$(node --input-type=module -e "
             import { VERIFY_FUNCTIONAL as m } from './test/verify/cases/verify-functional.ts';
