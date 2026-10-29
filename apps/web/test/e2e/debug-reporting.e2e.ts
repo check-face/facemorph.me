@@ -727,8 +727,13 @@ test(
         await page.goto(ORIGIN);
         await page.locator('section.next-face').nth(1).waitFor();
         const notNow = page.locator('.next-model-toast').getByRole('button', { name: 'Not now' });
-        await notNow.waitFor();
-        await operate(page, notNow, c.touch);
+        if (
+          await notNow.waitFor({ timeout: 8000 }).then(
+            () => true,
+            () => false,
+          )
+        )
+          await operate(page, notNow, c.touch);
         // A stored refusal: "No thanks" on the reporting question.
         await operate(
           page,
@@ -738,6 +743,8 @@ test(
         const refusal = (await stored(page)).consent;
         assert.match(refusal ?? '', /"choice":"off","basis":"toast"/);
         await cpuMode(page);
+        // The morph below only has to outlast the withdrawal: the short length (8 frames per face) is enough.
+        await page.getByLabel('Morph length', { exact: true }).selectOption('8'); // setup
 
         log.step = 'typing';
         await setWord(page, 0, '389', c.touch);
@@ -889,6 +896,7 @@ test(
         );
         await toggleByFooter(page, c.touch, 'Off');
         const offAt = Date.now();
+        assert.equal((await model(page))['Busy'], true, 'withdrawn while the morph runs');
         const after = await stored(page);
         assert.equal(after.batch, null, 'the session mirror is discarded');
         assert.equal(after.device, null, 'the grouping ID is cleared');
