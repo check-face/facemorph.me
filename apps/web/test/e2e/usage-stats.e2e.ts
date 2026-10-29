@@ -408,7 +408,7 @@ test(
 
 test(
   'a production-host test build: one session sends only closed-vocabulary monorepo beacons to /stats/v1',
-  { timeout: 1_800_000 },
+  { timeout: 600_000 }, // 114 s on eris, including its Vite build (158 s with an 8-frame-per-face morph)
   async (t) => {
     if (!runtimeOrSkip(t)) return;
     const build = testBuild();
@@ -437,16 +437,14 @@ test(
       );
       await saved;
       log.step = 'morph';
-      const length = page.getByLabel('Morph length');
-      const options = await length
-        .locator('option')
-        .evaluateAll((o) => (o as HTMLOptionElement[]).map((x) => x.value));
-      await length.selectOption(options[0]!);
+      // The shortest real morph (Custom, 2 frames per face): the beacons need a completed morph, not a long one.
+      await page.getByLabel('Morph length', { exact: true }).selectOption('custom'); // setup
+      await page.getByRole('textbox', { name: 'Frames per face', exact: true }).fill('2'); // setup
       assert.ok((await press(page, page.locator('.next-primary-action'))).inside);
       await page
         .getByRole('button', { name: /Save video/ })
         .first()
-        .waitFor({ timeout: 1_200_000 });
+        .waitFor({ timeout: 300_000 });
       await idle(page);
       // A reload is a page hide: everything queued goes. The model is then restored from the cache, and a second
       // face on the loaded model is a warm job, so one beacon carries model, compute and job_warm.
