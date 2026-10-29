@@ -50,6 +50,10 @@
     "blend": {
       "implemented": true,
       "flow": "Blend view (fm-2kse): from two generated faces, More options, Blend faces, Blend: one blend synthesis shown as the result, then Back. No frozen budget yet."
+    },
+    "many-faces": {
+      "implemented": true,
+      "flow": "Many faces with real taps (operator, 29 October 2026): from the faces the earlier journeys left, Add face and the strip's trailing + until six faces, a word in each, Create morph, any download question answered, then Cancel once it has started. The morph is not waited for: it checks the many-face UI, not synthesis. No frozen budget."
     }
   },
   "measurements": {

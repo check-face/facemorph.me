@@ -432,6 +432,8 @@ jobs:
       # phone runs every journey once (its cold first face is judged by the pairs: within budget, or not worse than the
       # pinned control by the timing rule, 1.15x and 50 ms), then the pairs: cold first face only, three alternating
       # pairs, control first. Warm face keeps its absolute budget, which it always met (17-33 s against 45 and 50 s).
+      # The phone also adds faces to six, presses Create morph and cancels once it starts (many-faces, about 30 s): the
+      # many-face UI with real taps, without waiting for a six-face morph.
       - name: The six cells, once, on every journey; then the phone pairs against the pinned control
         if: steps.current.outputs.serves == 'true'
         working-directory: tools/device-lab
@@ -443,7 +445,7 @@ jobs:
           lab --cells eris-webgpu,eris-cpu,eris-firefox-webgpu,eris-firefox-cpu --journey cold-face,warm-face,morph,blend \
             --keep-camera --label "live-eris-$RUN" > eris.md 2>&1 &
           eris_pid=$!
-          lab --cells phone-webgpu,phone-cpu --journey cold-face,warm-face,morph,blend --phone-budgets-from-pairs cold-face \
+          lab --cells phone-webgpu,phone-cpu --journey cold-face,warm-face,morph,blend,many-faces --phone-budgets-from-pairs cold-face \
             --label "live-phone-$RUN" > phone.md 2>&1
           phone=$?
           lab --control-url "$CONTROL" --cells phone-cpu,phone-webgpu --journey cold-face \

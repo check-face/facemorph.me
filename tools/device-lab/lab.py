@@ -965,6 +965,87 @@ def journey_blend(phone, gpu=None):
             'url': phone.page.url}
 
 
+MANY_FACES = 6
+# The face count: a strip names its last face on its trailing connector (a long strip renders only the tiles in view,
+# so the fields on the page are not a count); two faces are the pair layout ("Add a face after Morph to").
+FACE_COUNT = """(()=>{const l=document.querySelector('.next-connector-add[aria-label^="Add a face after Face"]');
+  if(l)return +l.getAttribute('aria-label').match(/\\d+$/)[0];
+  if(document.querySelector('.next-connector-add[aria-label="Add a face after Morph to"]'))return 2;
+  return document.querySelectorAll('[data-next-face]').length})()"""
+TRAILING_ADD = '.next-connector-add[aria-label^="Add a face after"]'
+# The morph was accepted: queued behind face work, or running.
+MORPH_STARTED = """(()=>{const b=document.querySelector('button.next-primary-action');
+  const r=document.querySelector('#next-morph-reason')?.innerText||'';
+  return b?.textContent.trim()==='Morph queued'||/morph is running|morph queued/i.test(r)})()"""
+MARK = """t=>{document.querySelectorAll('[data-lab-target]').forEach(e=>e.removeAttribute('data-lab-target'));
+  const b=[...document.querySelectorAll('button')].find(e=>e.textContent.trim()===t&&e.getClientRects().length);
+  if(b)b.setAttribute('data-lab-target','');return !!b}"""
+
+
+def tap_text(dev, text):
+    """A real tap on the visible button labelled exactly `text`."""
+    if not dev.js(MARK, text):
+        raise RuntimeError(f'no visible {text!r} button')
+    dev.tap('[data-lab-target]')
+
+
+def journey_many_faces(dev, gpu=None):
+    """Many faces on one device, every step a real tap (operator, 29 October 2026): from the faces the earlier journeys
+    left, Add face and the strip's trailing + in turn until six faces, a word in each empty field in view, Create morph,
+    any download question answered as a person does, then Cancel once the run has started. The morph is not waited
+    for: this is the many-face UI (layout, hit targets, the strip, Create morph, Cancel), not synthesis."""
+    t0 = time.time()
+    start = dev.js(FACE_COUNT)
+    if start < 1:
+        seen = dev.js("[...document.querySelectorAll('.next-connector-add,[data-next-face],.next-face')].map(e=>e.getAttribute('aria-label')||e.className).slice(0,8).join(' | ')")
+        raise RuntimeError(f'no faces on the page (saw: {seen[:200]})')
+    added = 0
+    while (n := dev.js(FACE_COUNT)) < MANY_FACES:
+        if added % 2:
+            dev.tap(TRAILING_ADD)
+        else:
+            tap_text(dev, 'Add face')
+        dev.wait(f"({FACE_COUNT})>{n}", 15)
+        added += 1
+        empty = dev.js(f"[...document.querySelectorAll('{S['faceText']}')].findIndex(i=>!i.value)")
+        if empty >= 0:
+            word = f'lab{n}many'
+            typed = dev.type_into(S['faceText'], word, empty)
+            if typed.lower() != word:
+                raise RuntimeError(f'face field holds {typed!r} after typing {word!r}')
+    if dev.js(MORPH_STARTED):
+        raise RuntimeError('a morph was already queued or running before Create morph was pressed')
+    layout = dev.js('({w: document.documentElement.scrollWidth, iw: innerWidth})')
+    if layout['w'] > layout['iw'] + 1:
+        raise RuntimeError(f'the page scrolls sideways with {MANY_FACES} faces: {layout}')
+    dev.tap('button.next-primary-action')
+    t1 = time.time()
+    busy = "document.querySelector('.next-product')?.getAttribute('data-next-busy')==='true'"
+    answered = 0  # the first morph may ask before it downloads anything
+    while True:
+        if dev.js("!!document.querySelector('.next-download-accept')"):
+            dev.tap('.next-download-accept')
+            answered += 1
+            dev.wait("!document.querySelector('.next-download-accept')", 30)
+            continue
+        if dev.js(MORPH_STARTED):
+            break
+        if time.time() - t1 > 60:
+            reason = dev.js("document.querySelector('#next-morph-reason')?.innerText||''")
+            raise RuntimeError(f'Create morph with {MANY_FACES} faces did not start: {reason[:200]!r}')
+        time.sleep(0.5)
+    started = time.time() - t1
+    time.sleep(3)  # a few seconds of the running state: an error or a layout break shows here
+    dev.wait(f"!document.querySelector('{S['error']}')", 1)
+    tap_text(dev, 'Cancel')
+    dev.wait(f"!({busy})", 120)
+    error = dev.js(f"document.querySelector('{S['error']}')?.innerText||''").strip()
+    if error:
+        raise RuntimeError(f'app error after Cancel: {error[:200]}')
+    return {'faces': dev.js(FACE_COUNT), 'added': added, 'downloadQuestions': answered, 'startS': round(started, 2),
+            'totalS': round(time.time() - t0, 2), 'url': dev.page.url}
+
+
 OPERATED_PORT = 8461  # the operated-input fixture page, reached by the phone through adb reverse
 
 
@@ -1110,6 +1191,8 @@ def run_journeys(dev, args, cell, gpu, out, report, memory=None):
                     rec['morph'] = journey_morph(dev, gpu)
                 elif j == 'blend':
                     rec['blend'] = journey_blend(dev, gpu)
+                elif j == 'many-faces':
+                    rec['manyFaces'] = journey_many_faces(dev, gpu)
                 elif j == 'operated':
                     rec['operated'] = journey_operated(dev, cell)
                 rec.setdefault('durationsS', {})[j] = round(time.monotonic() - started, 1)
@@ -1187,7 +1270,8 @@ def report_findings(report, journeys, digest=None):
     runs = report.get('runs') or []
     if not runs:
         findings.append('no executed journeys')
-    keys = {'cold-face': 'cold', 'warm-face': 'warm', 'morph': 'morph', 'blend': 'blend', 'operated': 'operated'}
+    keys = {'cold-face': 'cold', 'warm-face': 'warm', 'morph': 'morph', 'blend': 'blend', 'many-faces': 'manyFaces',
+            'operated': 'operated'}
     for run in runs:
         if not run.get('ok'):
             findings.append('journey failed or untested')
@@ -1212,6 +1296,9 @@ def report_findings(report, journeys, digest=None):
                         check_route(result['route'], CELLS[cell][1])
                     except RuntimeError as e:
                         findings.append(str(e))
+            elif journey == 'many-faces':
+                if not result.get('url') or (result.get('faces') or 0) < MANY_FACES:
+                    findings.append(f'many-faces: missing executed URL or fewer than {MANY_FACES} faces')
             elif not result.get('steps') or not all(s.get('ok') for s in result['steps']):
                 findings.append('operated steps failed or missing')
     return findings + budget_findings(cell, runs)
