@@ -151,6 +151,45 @@ async function virtualEnds(page: Page, count: number, engine: string, touch: boo
   assert.equal(await tail.locator('select[aria-label="Face source"]').inputValue(), 'seed');
 }
 
+// fm-vd4i: on a phone the strip shows one face per view: the image spans the tile's width on top, the field sits
+// below it, and the + before and after the face are wholly in the strip; Remove, both + and the field are what
+// elementFromPoint finds at their centres.
+async function phoneOneFace(page: Page, label: string) {
+  const m = await page.evaluate(() => {
+    const strip = document.querySelector('[data-next-strip]')!;
+    const r = strip.getBoundingClientRect();
+    const inside = (e: Element) => {
+      const b = e.getBoundingClientRect();
+      return b.left >= r.left - 0.5 && b.right <= r.right + 0.5;
+    };
+    const kids = [...strip.children].filter((k) => k.matches('.next-face, .next-connector'));
+    const at = kids.findIndex((k) => k.matches('.next-face') && inside(k));
+    const face = kids[at]!;
+    const hit = (e: Element | null | undefined) => {
+      if (!e) return false;
+      const b = e.getBoundingClientRect();
+      return e.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2));
+    };
+    const box = face.getBoundingClientRect();
+    const image = face.querySelector('.next-face-image')!.getBoundingClientRect();
+    const field = face.querySelector('.next-field input')!;
+    return {
+      faces: kids.filter((k) => k.matches('.next-face') && inside(k)).length,
+      plusBefore: inside(kids[at - 1]!) && hit(kids[at - 1]!.querySelector('button')),
+      plusAfter: inside(kids[at + 1]!) && hit(kids[at + 1]!.querySelector('button')),
+      remove: hit(face.querySelector('.next-face-close')),
+      field: hit(field),
+      imageShare: image.width / box.width,
+      fieldBelow: field.getBoundingClientRect().top >= image.bottom - 0.5,
+    };
+  });
+  assert.equal(m.faces, 1, `${label}: one face per view`);
+  assert.ok(m.imageShare >= 0.9, `${label}: the image spans the tile (${m.imageShare})`);
+  assert.ok(m.fieldBelow, `${label}: the field is below the image`);
+  assert.ok(m.plusBefore && m.plusAfter, `${label}: both + are whole and hittable`);
+  assert.ok(m.remove && m.field, `${label}: Remove and the field are hittable`);
+}
+
 for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || only.includes(e))) {
   test(`${engine}: tiles and connectors at 1, 2, 3 and many faces, operated by mouse and touch`, async () => {
     const browser = await type.launch();
@@ -190,6 +229,10 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
             await page.locator('.next-faces-area').getAttribute('data-next-faces'),
             String(n),
           );
+          if (touch && n >= 3 && n <= VIRTUALISE_AFTER) {
+            await page.locator('[data-next-strip]').scrollIntoViewIfNeeded();
+            await phoneOneFace(page, `${engine} ${width} n${n}`);
+          }
           await shot(page, `${engine}-${width}-n${n}`);
           if (n > VIRTUALISE_AFTER) {
             await virtualEnds(page, n, engine, touch);

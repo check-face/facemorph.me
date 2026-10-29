@@ -665,21 +665,22 @@ test(
                     );
                   if (o.hidden.length)
                     failures.push(`${label}: hidden scrolling surfaces ${o.hidden.join('; ')}`);
-                  if (touch && count > 4) {
-                    const compact = await s.page.locator('section.next-face').evaluateAll((faces) =>
+                  if (touch && count > 2) {
+                    // One face per view (fm-vd4i): the image spans the tile's width at every count.
+                    const whole = await s.page.locator('section.next-face').evaluateAll((faces) =>
                       faces.map((face) => {
                         const image = face
                           .querySelector('.next-face-image')!
                           .getBoundingClientRect();
                         const card = face.getBoundingClientRect();
-                        return image.width > 0 && image.width <= card.width / 2;
+                        return image.width >= card.width * 0.9;
                       }),
                     );
                     assert.ok(
-                      compact.length > 0 && compact.every(Boolean),
-                      `${label}: compact thumbnails`,
+                      whole.length > 0 && whole.every(Boolean),
+                      `${label}: full-width images`,
                     );
-                    cell['compact'] = true;
+                    cell['fullWidth'] = true;
                   }
                   const v = await visitAll(s, count, label);
                   cell['visit'] = {

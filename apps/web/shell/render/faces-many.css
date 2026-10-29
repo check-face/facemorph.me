@@ -1,7 +1,7 @@
 /* The many-face layout (face.many, fm-id4c). Three or more faces sit in one contained strip at every width: it
  * scrolls sideways inside itself (never the page), snaps to tiles, keeps a visible scrollbar, fades the edge that
  * has more, and says which faces are showing with Previous/Next buttons. The page height no longer grows with the
- * face count. The phone breakpoint also switches projects with more than four faces to compact rows.
+ * face count. On phones a tile is a whole face per view (image on top), whatever the face count (fm-vd4i).
  *
  * Remove's own rules use three classes so they win over the component library's single-class rules in any
  * stylesheet order (style independence): the drawn circle stays 32 px, the hit area is 44 x 44 inside the image. */
@@ -115,52 +115,49 @@
   border-radius: 4px;
 }
 
-/* Once a phone project grows past four faces, use compact rows throughout the strip. Keeping a uniform
- * pitch lets scrolling, keyboard focus and the virtual window reach every face in the same order. */
+/* Phones (fm-vd4i): one face per view at every count. The strip runs edge to edge (100cqw, as on wide screens) and
+ * a tile is the strip's width less one + slot each side, so a tile resting in the centre shows the whole + before
+ * and after it, each a 44 x 44 hit area; the image spans the tile's width on top, with Remove in its top right
+ * corner, and the field and the face's action sit below it. A tile is as tall as its content. */
 @media (max-width: 599px) {
-  .next-faces-many:not([data-next-face-count='3']):not([data-next-face-count='4']) .next-face {
-    display: grid;
-    grid-template-columns: 112px minmax(0, 1fr);
-    align-content: start;
-    align-items: start;
-    gap: 8px;
+  .next-morph-content.next-many > .next-faces-many {
+    width: 100cqw;
+    margin-inline: calc(50% - 50cqw);
   }
-  .next-faces-many:not([data-next-face-count='3']):not([data-next-face-count='4'])
-    .next-face-image {
-    grid-column: 1;
-    grid-row: 1 / span 3;
-    width: 112px;
+  .next-morph-content.next-many .next-strip-head {
+    padding-inline: 1.25rem;
   }
-  .next-faces-many:not([data-next-face-count='3']):not([data-next-face-count='4']) .next-input-row {
-    grid-column: 2;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    min-width: 0;
+  /* A swipe always rests on a whole face: both of its + are in view there, so the + need no snap of their own. */
+  .next-morph-content.next-many .next-faces-row.next-faces-strip {
+    scroll-snap-type: x mandatory;
   }
-  .next-faces-many:not([data-next-face-count='3']):not([data-next-face-count='4'])
-    .next-input-row
-    > .next-field {
-    flex: 0 0 auto;
+  .next-morph-content.next-many .next-faces-strip > .next-connector,
+  .next-morph-content.next-many .next-faces-strip > .next-connector:first-child,
+  .next-morph-content.next-many .next-faces-strip > .next-connector:last-child {
+    scroll-snap-align: none;
   }
-  .next-faces-many:not([data-next-face-count='3']):not([data-next-face-count='4']) .next-face-hint {
-    inset: 48px 4px 0;
-    display: grid;
-    place-items: center;
-    margin: 0;
-    font-size: 0.8rem;
-    line-height: 1.2;
+  .next-morph-content.next-many .next-faces-strip > .next-face {
+    flex: 0 0 calc(100% - 88px);
+    width: calc(100% - 88px);
+    max-width: calc(100% - 88px);
+    padding: 0.5rem;
+    align-self: flex-start;
   }
-  .next-faces-many:not([data-next-face-count='3']):not([data-next-face-count='4'])
-    .next-face-generate {
-    min-height: 44px;
+  .next-morph-content.next-many .next-faces-strip > .next-connector {
+    flex: 0 0 44px;
+    width: 44px;
+    max-width: 44px;
+    padding: 0;
+    opacity: 1;
   }
-  .next-faces-many:not([data-next-face-count='3']):not([data-next-face-count='4'])
-    .next-tile-status,
-  .next-faces-many:not([data-next-face-count='3']):not([data-next-face-count='4'])
-    .next-face-actions {
-    grid-column: 2;
-    min-width: 0;
+  .next-morph-content.next-many .next-faces-strip > .next-connector .next-connector-add {
+    width: 44px;
+    height: 44px;
+  }
+  /* The + rings are inside the view at rest, so the edge fades stay narrow and off them. */
+  .next-strip-frame::before,
+  .next-strip-frame::after {
+    width: 4px;
   }
 }
 
