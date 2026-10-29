@@ -1,11 +1,12 @@
 name: release
-# Operator gating, 28 October 2026. A go/no-go of about five minutes, all in parallel after one build: the journeys in
-# Chromium and Firefox (sharded), the engine numerics, and the paired CPU timing against the pinned control with early
-# stopping. If it passes, the deploy to the target (the switch, for next). After it, the six cells and the phone pairs
-# run once against the live target: a failure there is fixed and rolled forward (P0 on fm-jzuq, npm run
-# release:local), never rolled back; site=rollback is only for a site broken for visitors (down, app fails to load,
-# no face can be made). No job stops another: every check runs to the end, records its numbers, failure bundle and
-# local repro command, and the report job lists every failure in one place. device.yml never blocks this workflow.
+# Push to verified live in about ten minutes (operator, 29 October 2026). The go/no-go is only what keeps next working
+# for visitors: check.yml on this commit and the journeys in Chromium and Firefox on this run's artifact (about four
+# minutes). Then the deploy, then the live check: the post-delivery check and a real first face on the live site; if
+# either fails, next goes straight back to the version this deploy replaced. Everything else (the engine numerics, the
+# paired CPU timing against the pinned control, the functional shards, the six cells and the phone pairs) runs beside
+# or after the deploy and reports: a failure there is fixed and rolled forward (P0 on fm-jzuq, npm run release:local),
+# never rolled back. No job stops another: every check runs to the end, records its numbers, failure bundle and local
+# repro command, and the report job lists every failure in one place. device.yml never blocks this workflow.
 on:
   # Every push to main deploys to next (operator, 28 October 2026): after that commit's check.yml passes and behind the
   # go/no-go; bead-only and documentation-only pushes change nothing a visitor gets.
@@ -291,7 +292,8 @@ jobs:
     name: engine numerics on the verified runtime (full31, CPU and browser routes)
     # Real hardware: the browser routes need eris's memory (a 16 GB hosted runner's in-memory storage quota cannot hold
     # the 1.1 GB encoder: QuotaExceededError in run 40488827815) and the WebGPU test needs the device-lab runner's GPU
-    # session (on an eris build runner it fails: run 40598624135). The device-lab runner is free during the go/no-go.
+    # session (on an eris build runner it fails: run 40598624135). It reports beside the deploy, outside the go/no-go
+    # (operator, 29 October 2026); the device-lab runner is free until the cells after the timing.
     runs-on: [self-hosted, device-lab]
     timeout-minutes: 40
     steps:
@@ -338,25 +340,26 @@ jobs:
     needs: build
     name: timing ${{ matrix.segment }}
     # One job per segment: three alternating pairs, control and build back to back on the same machine, then more pairs
-    # until the stop rule decides (scripts/verify/not-worse). Each job holds its own fixed core set on eris (operator,
-    # 28 October 2026): two sets of six, morph (the longest, ~12 min) on one, face then photo on the other; a job waits for its set's lock.
-    # Control against control on an idle eris stayed within the rule in both sets at once (fm-fy2.11). Triton's Ubuntu
-    # 20.04 has no Playwright Chromium (run 40583631410), so eris is the timing machine.
+    # until the stop rule decides (scripts/verify/not-worse). Reported beside the deploy, not part of the go/no-go
+    # (operator, 29 October 2026): a slower build is fixed forward. Each segment holds its own four cores on eris, so no
+    # segment waits for another's lock (photo waited 8 min behind face in run 40618330814); control and build of a pair
+    # still share the same cores. Triton's Ubuntu 20.04 has no Playwright Chromium (run 40583631410), so eris is the timing machine.
     runs-on: [self-hosted, eris-build]
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { segment: face, cpus: 6-11 }
-          - { segment: morph, cpus: 0-5 }
-          - { segment: photo, cpus: 6-11 }
+          - { segment: face, cpus: 0-3 }
+          - { segment: morph, cpus: 4-7 }
+          - { segment: photo, cpus: 8-11 }
     steps:
       - uses: actions/checkout@v4
+      # No npm cache action on eris: it re-downloaded a 1.25 GB cache for 4-5 min per job (run 40680693275); the
+      # runner's own ~/.npm already holds it.
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
       - run: npm ci && npx playwright install chromium
       # A self-hosted workspace keeps artifact/ between runs, and the download only adds files.
       - run: rm -rf artifact
@@ -420,7 +423,7 @@ jobs:
           set -e
           # The second wave's matrix: every segment's next pair indexes, each on its segment's runners.
           node -e '
-            const v = require("./timing-verdict.json"), runner = { face: ["self-hosted","eris-build"], morph: ["self-hosted","eris-build"], photo: ["self-hosted","eris-build"] }, cpus = { face: "6-11", morph: "0-5", photo: "6-11" };
+            const v = require("./timing-verdict.json"), runner = { face: ["self-hosted","eris-build"], morph: ["self-hosted","eris-build"], photo: ["self-hosted","eris-build"] }, cpus = { face: "0-3", morph: "4-7", photo: "8-11" };
             const include = Object.entries(v.segments ?? {}).flatMap(([segment, s]) => (s.nextPairs ?? []).map((pair) => ({ segment, pair, runner: JSON.stringify(runner[segment]), cpus: cpus[segment] })));
             require("fs").appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${JSON.stringify({ include })}\n`);'
           test "$code" != 1
@@ -455,7 +458,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
       - run: npm ci && npx playwright install chromium
       # A self-hosted workspace keeps artifact/ between runs, and the download only adds files.
       - run: rm -rf artifact
@@ -521,9 +523,10 @@ jobs:
           retention-days: 14
 
   gate:
-    needs: [build, checked, journeys, engine, timing-gate, timing-final]
-    # The functional shards report beside the deploy rather than gating it (operator, 28 October 2026): they are
-    # the beads' evidence, and a deploy that breaks next for visitors rolls back after verify.
+    needs: [build, checked, journeys]
+    # Only what keeps next working for visitors (operator, 29 October 2026). The engine numerics, the paired timing and
+    # the functional shards report beside the deploy: a failure there is fixed forward; a deploy that breaks next for
+    # visitors rolls back after the live check.
     if: ${{ !cancelled() && (inputs.site || 'candidate') == 'candidate' }}
     name: go/no-go
     runs-on: ubuntu-latest
@@ -535,10 +538,7 @@ jobs:
         run: |
           node -e '
             const n = JSON.parse(process.env.RESULTS), bad = [];
-            for (const j of ["build", "checked", "journeys", "engine"]) if (n[j].result !== "success") bad.push(`${j}: ${n[j].result}`);
-            const t = n["timing-gate"], f = n["timing-final"];
-            if (!(t.result === "success" && (t.outputs.verdict === "pass" || (t.outputs.verdict === "more" && f.result === "success"))))
-              bad.push(`timing: ${t.outputs.verdict ?? t.result}${f.result === "skipped" ? "" : `, then ${f.result}`}`);
+            for (const j of ["build", "checked", "journeys"]) if (n[j].result !== "success") bad.push(`${j}: ${n[j].result}`);
             console.log(bad.length ? `NO-GO\n${bad.join("\n")}` : "GO");
             process.exitCode = bad.length ? 1 : 0;' | tee -a "$GITHUB_STEP_SUMMARY"
 
@@ -632,15 +632,17 @@ jobs:
           name: failure-deploy
           path: failures/
 
-  # ---- after the switch: once, against the live target; fix and roll forward ------------------------------------
-  verify:
+  # ---- after the switch: the live check decides rollback; the cells report, fix and roll forward -----------------
+  live:
     needs: [build, deploy]
     if: ${{ !cancelled() && (inputs.publish || github.event_name == 'push') && (needs.deploy.result == 'success' || ((inputs.site || 'candidate') == 'live' && inputs.live_run != '')) }}
-    name: the six cells and the phone pairs against the live site
-    runs-on: [self-hosted, device-lab]
-    timeout-minutes: 120
+    name: next works for visitors (post-delivery check and a first face on the live site)
+    # On a hosted runner, so it never queues behind the device lab: the served files are this artifact, the app loads
+    # with no console error, and a visitor gets a first face on CPU (31 s on eris against next, 29 October 2026).
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
-      broken: ${{ steps.delivery.outcome == 'failure' }}
+      broken: ${{ steps.delivery.outcome == 'failure' || steps.face.outcome == 'failure' }}
     env:
       RUN: ${{ ((inputs.site || 'candidate') == 'live' || (inputs.site || 'candidate') == 'promote') && inputs.live_run || github.run_id }}
     steps:
@@ -649,9 +651,8 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci # hermetic: the post-delivery check imports playwright
-      # A self-hosted workspace keeps artifact/ between runs, and the download only adds files.
-      - run: rm -rf artifact
+      - run: npm ci && npx playwright install chromium # the post-delivery check imports playwright
+      - uses: astral-sh/setup-uv@v6
       - uses: actions/download-artifact@v4
         if: (inputs.site || 'candidate') != 'live' && (inputs.site || 'candidate') != 'promote'
         with:
@@ -670,34 +671,117 @@ jobs:
         run: |
           origin=$(node -p "require('./hosting/publish-targets.json').targets['${{ (inputs.target || 'next') }}'].site.origin")
           echo "ORIGIN=$origin" >> "$GITHUB_ENV"
-          echo "CONTROL=$(node -p "require('./hosting/publish-targets.json').targets.control.site.origin")" >> "$GITHUB_ENV"
           # Bound to this artifact: every served deploy-next file re-digested (edge beacon removed from HTML).
           digest=$(node --input-type=module -e "import {deployNextDigest} from './scripts/delivery/post-delivery-check.mjs'; import {readFileSync} from 'node:fs'; console.log(deployNextDigest(JSON.parse(readFileSync('artifact/next-site-identity.json','utf8')).files))")
           node scripts/delivery/post-delivery-check.mjs --mode app --host "$(node -p "new URL('$origin').host")" \
             --expect-digest "$digest" --identity artifact/next-site-identity.json | tee post-delivery.txt | tee -a "$GITHUB_STEP_SUMMARY"
-      # A phone cell's cold and warm first face are judged by the pairs step below (within budget, or not worse than the
-      # pinned control); its morph and every eris cell keep their absolute budgets here.
-      - name: The six cells, once, on every journey
+      - name: A first face on the live site, real input, CPU
+        id: face
+        if: ${{ !cancelled() && steps.delivery.outcome == 'success' }}
+        working-directory: tools/device-lab
+        # Broken means no face, a wrong artifact or an error. Over eris's 35 s budget is not: a hosted runner is slower
+        # (42.7 s in run 40680693275), and the six cells judge the budgets on eris.
+        run: |
+          set +e
+          uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --deployed "$GITHUB_WORKSPACE/artifact" \
+            --cells eris-cpu --journey cold-face --keep-camera --label "live-face-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
+          set -e
+          python3 - <<'PY'
+          import glob, json, re, sys
+          over = re.compile(r'^[\w-]+ took [\d.]+s on [\w-]+, over its \d+s budget$')
+          found = glob.glob('out/*live-face-*/eris-cpu.json')
+          if not found: sys.exit('no first-face report: the journey did not run')
+          r = json.load(open(found[0]))
+          errors = [e for e in r.get('evidenceErrors') or [] if not over.match(e)]
+          runs = r.get('runs') or []
+          if not runs or not all(x.get('ok') for x in runs) or errors:
+              sys.exit(f"next broken for visitors: status {r.get('status')}, {errors or 'a run failed'}")
+          print('a visitor gets a first face on the live site')
+          PY
+      - name: Record the failure (next is rolled back)
+        if: failure() || cancelled()
+        run: |
+          cat tools/device-lab/out/*live-face-"$GITHUB_RUN_ID"/summary.md > live-summary.txt 2>/dev/null || cp post-delivery.txt live-summary.txt 2>/dev/null || true
+          node scripts/ci/failures.mjs add --dir failures --check "live ${{ (inputs.target || 'next') }}: post-delivery check and first face" \
+            --detail "next broken for visitors: rolled back to the version this deploy replaced" \
+            --bundle bundle-live --numbers live-summary.txt \
+            --repro "node scripts/delivery/post-delivery-check.mjs --mode app --host <host>; cd tools/device-lab && uv run --with playwright python lab.py matrix --url <origin> --cells eris-cpu --journey cold-face --keep-camera"
+      - uses: actions/upload-artifact@v4
+        if: failure() || cancelled()
+        with:
+          name: failure-live
+          path: failures/
+      - uses: actions/upload-artifact@v4
+        if: failure() || cancelled()
+        with:
+          name: bundle-live
+          path: |
+            tools/device-lab/out/*live-face-${{ github.run_id }}/
+            post-delivery.txt
+          retention-days: 14
+
+  verify:
+    # After the timing jobs, which measure on eris's cores: a browser run beside them would skew both.
+    needs: [build, deploy, live, timing-gate, timing-final]
+    if: ${{ !cancelled() && (inputs.publish || github.event_name == 'push') && needs.live.result == 'success' }}
+    name: the six cells and the phone pairs against the live site
+    runs-on: [self-hosted, device-lab]
+    timeout-minutes: 120
+    env:
+      RUN: ${{ ((inputs.site || 'candidate') == 'live' || (inputs.site || 'candidate') == 'promote') && inputs.live_run || github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      # No npm cache action on eris: it re-downloaded the 1.25 GB cache (149 s in run 40680693275); ~/.npm holds it.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci # hermetic: lab.py's deployed-artifact check imports playwright
+      # A self-hosted workspace keeps artifact/ between runs, and the download only adds files.
+      - run: rm -rf artifact
+      - uses: actions/download-artifact@v4
+        if: (inputs.site || 'candidate') != 'live' && (inputs.site || 'candidate') != 'promote'
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: artifact
+      - uses: actions/download-artifact@v4
+        if: (inputs.site || 'candidate') == 'live' || (inputs.site || 'candidate') == 'promote'
+        with:
+          pattern: next-site-*
+          merge-multiple: true
+          run-id: ${{ inputs.live_run }}
+          github-token: ${{ github.token }}
+          path: artifact
+      # The eris cells and the phone are separate devices with separate lab locks, so they run at the same time. The
+      # phone runs every journey once (its cold first face is judged by the pairs: within budget, or not worse than the
+      # pinned control by the timing rule, 1.15x and 50 ms), then the pairs: cold first face only, three alternating
+      # pairs, control first. Warm face keeps its absolute budget, which it always met (17-33 s against 45 and 50 s).
+      - name: The six cells, once, on every journey; then the phone pairs against the pinned control
         working-directory: tools/device-lab
         run: |
-          uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --deployed "$GITHUB_WORKSPACE/artifact" \
-            --journey cold-face,warm-face,morph,blend --phone-budgets-from-pairs cold-face,warm-face \
-            --label "live-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: The phone pairs against the pinned control
-        # Not on a site that failed its post-delivery check: it is being rolled back.
-        if: ${{ !cancelled() && steps.delivery.outcome != 'failure' }}
-        working-directory: tools/device-lab
-        # Cold and warm first face over the real network, three alternating pairs, control first; a cell over its
-        # absolute budget passes when not worse than the control by the timing rule (1.15x and 50 ms).
-        run: |
-          uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --deployed "$GITHUB_WORKSPACE/artifact" \
-            --control-url "$CONTROL" --cells phone-cpu,phone-webgpu --journey cold-face,warm-face \
-            --label "live-pairs-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
+          ORIGIN=$(node -p "require('../../hosting/publish-targets.json').targets['${{ (inputs.target || 'next') }}'].site.origin")
+          CONTROL=$(node -p "require('../../hosting/publish-targets.json').targets.control.site.origin")
+          lab() { uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --deployed "$GITHUB_WORKSPACE/artifact" "$@"; }
+          set +e
+          lab --cells eris-webgpu,eris-cpu,eris-firefox-webgpu,eris-firefox-cpu --journey cold-face,warm-face,morph,blend \
+            --keep-camera --label "live-eris-$GITHUB_RUN_ID" > eris.md 2>&1 &
+          eris_pid=$!
+          lab --cells phone-webgpu,phone-cpu --journey cold-face,warm-face,morph,blend --phone-budgets-from-pairs cold-face \
+            --label "live-phone-$GITHUB_RUN_ID" > phone.md 2>&1
+          phone=$?
+          lab --control-url "$CONTROL" --cells phone-cpu,phone-webgpu --journey cold-face \
+            --label "live-pairs-$GITHUB_RUN_ID" > pairs.md 2>&1
+          pairs=$?
+          wait "$eris_pid"
+          eris=$?
+          cat eris.md phone.md pairs.md | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "eris cells: exit $eris; phone cells: exit $phone; phone pairs: exit $pairs"
+          test "$eris$phone$pairs" = 000
       - name: Record the failure (P0 on fm-jzuq; fix and roll forward)
         if: failure() || cancelled()
         run: |
           adb logcat -d -t 5000 > logcat.txt 2>/dev/null || true
-          cat tools/device-lab/out/*live-*"$GITHUB_RUN_ID"/summary.md > verify-summary.txt 2>/dev/null || cp post-delivery.txt verify-summary.txt
+          cat tools/device-lab/out/*live-*"$GITHUB_RUN_ID"/summary.md > verify-summary.txt 2>/dev/null || true
+          ORIGIN=$(node -p "require('./hosting/publish-targets.json').targets['${{ (inputs.target || 'next') }}'].site.origin")
           gh_fetch="gh run download $RUN -R ${{ github.repository }} -p 'next-site-*' -D /tmp/next-site-$RUN"
           node scripts/ci/failures.mjs add --dir failures --check "live ${{ (inputs.target || 'next') }}: six cells and phone pairs" \
             --detail "P0 on fm-jzuq: fix and roll forward; roll back only if the site is broken for visitors" \
@@ -714,8 +798,8 @@ jobs:
           name: bundle-verify
           path: |
             tools/device-lab/out/*live-*${{ github.run_id }}/
+            tools/device-lab/*.md
             logcat.txt
-            post-delivery.txt
           retention-days: 14
       - name: Leave the devices in their resting state
         if: always()
@@ -776,10 +860,11 @@ jobs:
   # Only when the target is broken for visitors (site down, app fails to load, no face can be made): serve the warmed
   # previous Worker version the deploy summary recorded. Anything else is fixed and rolled forward.
   rollback:
-    # Dispatched (site=rollback), or on its own when this run's published site fails its post-delivery check: next
-    # broken for visitors goes back to the version this deploy replaced. Any other failure is fixed forward.
-    needs: [deploy, verify]
-    if: ${{ always() && ((inputs.site == 'rollback' && inputs.rollback_version != '') || (needs.verify.outputs.broken == 'true' && needs.deploy.outputs.previous != '')) }}
+    # Dispatched (site=rollback), or on its own when this run's published site fails the live check (post-delivery
+    # check or first face): next broken for visitors goes back to the version this deploy replaced. Any other failure
+    # is fixed forward.
+    needs: [deploy, live]
+    if: ${{ always() && ((inputs.site == 'rollback' && inputs.rollback_version != '') || (needs.live.outputs.broken == 'true' && needs.deploy.outputs.previous != '')) }}
     name: roll ${{ (inputs.target || 'next') }} back to ${{ inputs.rollback_version || needs.deploy.outputs.previous }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -825,6 +910,7 @@ jobs:
         timing-final,
         gate,
         deploy,
+        live,
         verify,
         control,
         rollback,

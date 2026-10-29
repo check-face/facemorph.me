@@ -321,12 +321,10 @@ test('workflow: the guard runs before any network step; every deploy runs throug
 });
 
 test('workflow: the deploy step needs every qualifying job and publishes only the digest built in this run', () => {
-  // The go/no-go (journeys, engine, timing) gates the switch (operator, 28 October 2026).
+  // The go/no-go (check.yml and the journeys) gates the switch; the engine and timing report beside it (operator,
+  // 29 October 2026).
   assert.match(WORKFLOW, /^ {4}needs: \[build, gate\]$/m);
-  assert.match(
-    RELEASE,
-    /^ {2}gate:\n {4}needs: \[build, checked, journeys, engine, timing-gate, timing-final\]$/m,
-  );
+  assert.match(RELEASE, /^ {2}gate:\n {4}needs: \[build, checked, journeys\]$/m);
   const verify = runOf('The artifact is the one built in this run and qualified above');
   // This run's build, or (site=promote) the digest the promoted green run recorded; nothing else is deployable.
   assert.match(
@@ -363,16 +361,19 @@ test('rollback: needs a version id; without --publish it only names the command;
 
 test('release: every push to main deploys to next behind check.yml; a broken next rolls back on its own', () => {
   // Operator, 28 October 2026: push deploys to next; fail forward or roll back is the agent's call, and a site
-  // that fails its post-delivery check goes back to the version the deploy replaced.
+  // that fails its live check (post-delivery check or a first face) goes back to the version the deploy replaced.
   assert.match(RELEASE, /^ {2}push:\n {4}branches: \[main\]$/m);
   assert.match(
     RELEASE,
     /gh run list -R "\$GITHUB_REPOSITORY" -w check\.yml --commit "\$GITHUB_SHA"/,
   );
-  assert.match(RELEASE, /broken: \$\{\{ steps\.delivery\.outcome == 'failure' \}\}/);
   assert.match(
     RELEASE,
-    /needs\.verify\.outputs\.broken == 'true' && needs\.deploy\.outputs\.previous != ''/,
+    /broken: \$\{\{ steps\.delivery\.outcome == 'failure' \|\| steps\.face\.outcome == 'failure' \}\}/,
+  );
+  assert.match(
+    RELEASE,
+    /needs\.live\.outputs\.broken == 'true' && needs\.deploy\.outputs\.previous != ''/,
   );
   assert.match(RELEASE, /previous=\$\{r\.published \? r\.previousVersion \?\? "" : ""\}/);
 });
