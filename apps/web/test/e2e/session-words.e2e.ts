@@ -544,6 +544,12 @@ async function cpuSetup(page: Page) {
   await page.getByLabel('Processing mode').selectOption('cpu'); // setup
 }
 
+/** Setup: the shortest real morph, Custom with 2 frames per face. */
+async function shortestMorph(page: Page) {
+  await page.getByLabel('Morph length', { exact: true }).selectOption('custom'); // setup
+  await page.getByRole('textbox', { name: 'Frames per face', exact: true }).fill('2'); // setup
+}
+
 const facesReady = (page: Page, k: number, timeout: number) =>
   page.waitForFunction(
     (k) => {
@@ -613,7 +619,7 @@ async function storedBlobs(page: Page) {
 
 test(
   'photo faces keep only their file name; an unfinished photo points to Encode image; MP4 and diagnostics carry no words',
-  { timeout: 3_600_000 },
+  { timeout: 600_000 }, // 112 s on eris (both widths, a 2-frame-per-face morph each)
   async (t) => {
     const s = await site(t);
     if (!s) return;
@@ -721,21 +727,47 @@ test(
         await shot('unfinished-photo');
         await page.keyboard.press('Escape'); // the confirmation stays unanswered: close it, keep the input
         await dialog.waitFor({ state: 'detached' });
-        // A morph of the two faces, then its MP4 saved and scanned.
-        await page.getByLabel('Morph length').selectOption('8'); // setup
+        // A morph of the two faces, then its MP4 saved and scanned. The scan is of the file's bytes, so the shortest
+        // real morph (Custom, 2 frames per face) serves as well as a long one.
+        await shortestMorph(page);
         if ((await tiles.count()) === 3)
           await tiles
             .nth(2)
             .getByRole('button', { name: /^Remove/ })
             .click(); // setup: a morph needs every face; the unfinished photo is re-added below
         await operate(page.getByRole('button', { name: 'Create morph' }));
-        await page.waitForFunction(
-          () =>
-            !!(window as unknown as { __elmish: { model: { VideoUrl: string; Busy: boolean } } })
-              .__elmish.model.VideoUrl,
-          null,
-          { timeout: 1_800_000, polling: 1000 },
-        );
+        // The video, or an error; a download question on the way (the video codec) is answered as a person does.
+        for (;;) {
+          await page.waitForFunction(
+            () => {
+              const m = (
+                window as unknown as {
+                  __elmish: { model: { VideoUrl: string; Error: string | null } };
+                }
+              ).__elmish.model;
+              return (
+                !!m.VideoUrl ||
+                m.Error !== null ||
+                !!document.querySelector('.next-download-accept')
+              );
+            },
+            null,
+            { timeout: 600_000, polling: 1000 },
+          );
+          const accept = page.locator('.next-download-accept');
+          if (!(await accept.isVisible())) break;
+          await operate(accept);
+          await accept.waitFor({ state: 'detached' });
+        }
+        const morphed = await page.evaluate(() => {
+          const m = (
+            window as unknown as { __elmish: { model: { VideoUrl: string; Error: string | null } } }
+          ).__elmish.model;
+          return { VideoUrl: m.VideoUrl, Error: m.Error };
+        });
+        if (!morphed.VideoUrl) await shot('morph-failed');
+        assert.equal(morphed.Error, null, `${label}: the morph`);
+        assert.ok(morphed.VideoUrl, `${label}: the morph made a video`);
         await facesReady(page, 2, 60_000);
         const videoDownload = page.waitForEvent('download');
         await operate(page.getByRole('button', { name: 'Save video', exact: true }));
@@ -891,7 +923,7 @@ test(
 
 test(
   'many faces through a real project import, then the stored-session byte bound (no face count) on reload',
-  { timeout: 5_400_000 },
+  { timeout: 300_000 }, // 44 s on eris
   async (t) => {
     const s = await site(t);
     if (!s) return;
@@ -915,8 +947,8 @@ test(
         await page.setViewportSize({ width: 1280, height: 900 });
       };
       await cpuSetup(page);
-      // A real saved MP4 from this app: two faces and a short morph.
-      await page.getByLabel('Morph length').selectOption('8'); // setup
+      // A real saved MP4 from this app: two faces and the shortest real morph.
+      await shortestMorph(page);
       await operate(page.getByRole('button', { name: 'Create morph' }));
       const accept = page.locator('.next-download-accept');
       if (
@@ -931,7 +963,7 @@ test(
           !!(window as unknown as { __elmish: { model: { VideoUrl: string } } }).__elmish.model
             .VideoUrl,
         null,
-        { timeout: 1_800_000, polling: 1000 },
+        { timeout: 600_000, polling: 1000 },
       );
       await facesReady(page, 2, 60_000);
       const saved = page.waitForEvent('download');
