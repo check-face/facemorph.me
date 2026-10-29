@@ -132,7 +132,7 @@ test('changed npm-test runners, hooks and empty globs require an explicit adapte
   }
 });
 
-test('check.yml schedules every shard in quick mode; release.yml runs the deferred engine files in full', () => {
+test('check.yml schedules every shard in quick mode; qualify.yml runs the deferred engine files in full', () => {
   const read = (name) =>
     parse(readFileSync(new URL(`../../.github/workflows/${name}.yml`, import.meta.url), 'utf8'));
   const unit = read('check').jobs.unit;
@@ -147,7 +147,7 @@ test('check.yml schedules every shard in quick mode; release.yml runs the deferr
         s.run === 'node scripts/ci/scaffold-test-shards.mjs --shard ${{ matrix.shard }} --quick',
     ),
   );
-  const engine = read('release').jobs.engine;
+  const engine = read('qualify').jobs.engine;
   // The step keeps its log for the failure bundle; the suite and full qualification are what matter.
   assert.ok(
     engine.steps.some(
