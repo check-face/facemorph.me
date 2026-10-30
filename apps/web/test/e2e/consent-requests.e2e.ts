@@ -1638,6 +1638,46 @@ test(
             )
               await operate(control);
           await chooseCpu(page);
+          // A face already made before the failure: the app's own saved still, reinstalled in face 2 with no model.
+          // It must be the same face, unchanged, after both failures and the Retry.
+          // Setup: dropped on face 2, as a person drags a file (a cold profile's Encode image asks about the
+          // encoder first, which this case is not about).
+          await tiles.nth(1).scrollIntoViewIfNeeded();
+          const dropAt = (await tiles.nth(1).locator('.next-face-image').boundingBox())!;
+          await page.evaluate(
+            ([x, y, bytes]) => {
+              const dt = new DataTransfer();
+              dt.items.add(
+                new File([new Uint8Array(bytes as number[])], 'saved.png', { type: 'image/png' }),
+              );
+              const at = document.elementFromPoint(x as number, y as number)!;
+              for (const type of ['dragenter', 'dragover', 'drop'])
+                at.dispatchEvent(
+                  new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt }),
+                );
+            },
+            [
+              dropAt.x + dropAt.width / 2,
+              dropAt.y + dropAt.height / 2,
+              [...readFileSync(join(REPO, 'apps/web/test/fixtures/verify/stills/recovery-v2.png'))],
+            ] as const,
+          );
+          const madeImage = tiles.nth(1).locator('img.next-face-img');
+          await madeImage.waitFor({ timeout: 60_000 });
+          const made = async () => ({
+            state: await tiles.nth(1).getAttribute('data-next-state'),
+            src: await madeImage.getAttribute('src'),
+            value: await tiles.nth(1).locator('.next-field input').inputValue(),
+          });
+          const madeBefore = await made();
+          // A reinstalled saved face is shown in its project state, its picture in place.
+          assert.equal(madeBefore.state, 'project', `${name}: face 2 is made before the failure`);
+          assert.ok(madeBefore.src, `${name}: face 2 shows its picture`);
+          assert.equal(
+            await page.locator('.next-download-dialog').count(),
+            0,
+            'a saved still asks nothing',
+          );
           await tiles.nth(0).locator('.next-field input').fill('fault first'); // setup
           await operate(tiles.nth(0).locator('.next-face-generate'));
           const dialog = page.locator('.next-download-dialog');
@@ -1710,6 +1750,11 @@ test(
             /^The model download server had a temporary fault \(HTTP 500\)/,
             'http-500',
           );
+          assert.deepEqual(
+            await made(),
+            madeBefore,
+            `${name}: the failures leave face 2 as it was`,
+          );
           server.faults.fail.clear();
           const resumedAt = server.log.length;
           await operate(errorBox.getByRole('button', { name: 'Try again', exact: true }));
@@ -1731,6 +1776,11 @@ test(
           assert.ok(
             Math.abs(resumed - Number(remaining) * MiB) <= MiB,
             `${name}: Try again fetched ${resumed} bytes for ${remaining} MB remaining`,
+          );
+          assert.deepEqual(
+            await made(),
+            madeBefore,
+            `${name}: the face made before the failure is unchanged`,
           );
           await page.screenshot({ path: join(results, `${name}-fault-recovered.png`) });
           console.log(
