@@ -2590,10 +2590,17 @@ test(
             );
             assert.equal(await digest(faces[0]!.id), resultDigest, 'Undo shows the same result');
             assert.equal(await digest(faces[2]!.id), siblingDigest, 'Undo preserves its sibling');
+            const undoTrace = (await faceTrace(page)).slice(t1);
             assert.deepEqual(
-              (await faceTrace(page)).slice(t1).filter((e) => e.type === 'invalidateFace'),
+              undoTrace.filter((e) => e.type === 'invalidateFace' && e.id !== faces[1]!.id),
               [],
               'Undo: no invalidateFace',
+            );
+            // A notice still open for face 2 is ended by removing face 1, with exactly one invalidateFace.
+            assert.equal(
+              undoTrace.filter((e) => e.type === 'invalidateFace' && e.id === faces[1]!.id).length,
+              stillOpen ? 1 : 0,
+              'removing face 1 ends the notice for face 2 once',
             );
             assert.equal(s.models.length, modelsAt, 'Undo: no model request');
             const opctlAfterUndo = await opctl();
