@@ -49,6 +49,8 @@ const results = join(REPO, 'apps/web/test-results/blend');
 const CASES = new Set((process.env['BLEND_CASES'] ?? 'run,output,counts,layout').split(','));
 const MODEL = /^\/runtime\/(assets|chunks|encoder-stream|photo)\//;
 const PHOTO = join(REPO, 'tests/crop/fixtures/non-square.jpg');
+// A different photo for the restored slot, so its encode is real work rather than this profile's cached result.
+const PHOTO_AGAIN = join(REPO, 'tests/crop/fixtures/oriented.jpg');
 const COUNTS = [1, 2, 3, 8, 16, 40, 100] as const;
 
 type Trace = { type: string; requestId?: string; kind?: string; outcome?: string }[];
@@ -324,7 +326,12 @@ test(
         for (const end = Date.now() + 900_000; ;) {
           assert.ok(Date.now() < end, 'the crop proposal was ready in time');
           const okButton = crop.getByRole('button', { name: 'OK', exact: true });
-          if ((await okButton.isVisible()) && (await okButton.isEnabled())) break;
+          const state = await page
+            .locator('.next-encode-confirmation')
+            .getAttribute('data-next-crop-state', { timeout: 1000 })
+            .catch(() => null);
+          // While the proposal is still being found (waiting/running) the decision, not OK, covers the photo.
+          if (state && !/^(waiting|running)$/.test(state) && (await okButton.isEnabled())) break;
           const decision = page.locator('.next-download-accept');
           if (await decision.isVisible()) await operate(page, decision, touch);
           else await page.waitForTimeout(500);
@@ -499,7 +506,7 @@ test(
         assert.ok(await page.locator('.next-blend').isVisible(), 'the view stays');
         assert.equal(new URL(page.url()).hash, '#blend');
         // Leaving the view cancels a pending blend synthesis while a slot photo encode keeps running. A restored
-        // photo slot asks for its photo again (its pixels stayed in the old tab's memory): choose it again.
+        // photo slot asks for its photo again (its pixels stayed in the old tab's memory): choose one.
         assert.match((await blendOf(page))!.slots[2]!.input.mode, /photo/);
         await operate(page, slot(2).getByRole('button', { name: 'Change mode' }), touch);
         const again = page.waitForEvent('filechooser');
@@ -508,8 +515,20 @@ test(
           page.getByRole('menuitem', { name: 'Encode image', exact: true }),
           touch,
         );
-        await (await again).setFiles(PHOTO);
-        await crop.waitFor();
+        await (await again).setFiles(PHOTO_AGAIN);
+        // Faces first (fm-k09b): a reloaded tab may ask the photo-setup decision again before the proposal.
+        for (const end = Date.now() + 900_000; ;) {
+          assert.ok(Date.now() < end, 'the crop proposal was ready in time after the reload');
+          const okButton = crop.getByRole('button', { name: 'OK', exact: true });
+          const state = await page
+            .locator('.next-encode-confirmation')
+            .getAttribute('data-next-crop-state', { timeout: 1000 })
+            .catch(() => null);
+          // While the proposal is still being found (waiting/running) the decision, not OK, covers the photo.
+          if (state && !/^(waiting|running)$/.test(state) && (await okButton.isEnabled())) break;
+          if (await accept.isVisible()) await operate(page, accept, touch);
+          else await page.waitForTimeout(500);
+        }
         await operate(page, crop.getByRole('button', { name: 'OK', exact: true }), touch);
         const photoSlot = (await blendOf(page))!.slots[2]!.input.id;
         // The encode runs as the slot's own Generate (after this tab's encoder question, asked again after the
