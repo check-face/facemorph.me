@@ -844,6 +844,10 @@ FACES = "(sel)=>[...document.querySelectorAll(sel)].filter(i=>(i.naturalWidth||i
 
 def check_route(route, gpu):
     r = str(route or '').lower()
+    # LAB_ANY_ROUTE=1 times whatever route the product chose under the cell's browser flags (route-choice
+    # experiments, fm-ve6a); the chosen route is still recorded in each journey's result.
+    if os.environ.get('LAB_ANY_ROUTE') == '1':
+        return
     if gpu and ('webgpu' not in r or 'cpu' in r):
         raise RuntimeError(f'expected the WebGPU route, got {route!r}')
     if not gpu and ('cpu' not in r or 'webgpu' in r):

@@ -140,6 +140,32 @@ test('slow timings never demote a working route; only failure filters it', () =>
   assert.deepEqual(priorOrder(desktop, ['cpu']), ['cpu']);
 });
 
+test('a Mali phone tries the CPU first; Adreno, unnamed GPUs and desktops keep WebGPU first (fm-ve6a)', () => {
+  const phone = capabilities({ userAgent: AGENTS[3] as string, gpu: true });
+  assert.equal(phone.android, true);
+  assert.deepEqual(priorOrder({ ...phone, gpuVendor: 'arm' }, ['cpu', 'webgpu']), [
+    'cpu',
+    'webgpu',
+  ]);
+  assert.deepEqual(
+    rankedRoutes({ ...phone, gpuVendor: 'arm' }, ['cpu', 'webgpu'], new Set(['cpu'])),
+    ['webgpu'],
+  );
+  for (const gpuVendor of ['qualcomm', '', undefined])
+    assert.deepEqual(
+      priorOrder({ ...phone, ...(gpuVendor === undefined ? {} : { gpuVendor }) }, [
+        'cpu',
+        'webgpu',
+      ]),
+      ['webgpu', 'cpu'],
+    );
+  const desktop = capabilities({ userAgent: AGENTS[0] as string, gpu: true });
+  assert.deepEqual(priorOrder({ ...desktop, gpuVendor: 'arm' }, ['cpu', 'webgpu']), [
+    'webgpu',
+    'cpu',
+  ]);
+});
+
 test('the direct engine: desktop only, adapter limits, and a direct failure retries WebGPU on ORT (mobile-runtime.test.mjs)', () => {
   assert.deepEqual({ ...DIRECT_LIMITS }, direct.DIRECT_LIMITS);
   const big = {

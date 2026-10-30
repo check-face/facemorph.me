@@ -20,6 +20,8 @@ export interface RouteCapabilities {
   readonly ios: boolean;
   readonly mobile: boolean;
   readonly cores: number;
+  /** The probed WebGPU adapter's vendor (GPUAdapterInfo.vendor), once known. */
+  readonly gpuVendor?: string;
 }
 
 /** The navigator fields the capability read uses. */
@@ -70,6 +72,14 @@ export interface RoutePrior {
  * Mac Chromium WebGPU 294-327 ms against CPU about 11,000 ms; Windows desktop GPU 60-70 ms.
  */
 export const ROUTE_PRIORS: readonly RoutePrior[] = Object.freeze([
+  {
+    // fm-ve6a: an Android phone with an ARM Mali GPU is faster on its CPU (Huawei P30 Pro, device lab, warm face).
+    // Adreno (the Galaxy S24 Ultra), iPhones and unnamed GPUs keep WebGPU first.
+    when: (c: RouteCapabilities) => c.webgpu && c.android && c.gpuVendor === 'arm',
+    order: ['cpu', 'webgpu'],
+    measured: { cpu: 16000, webgpu: 22000 },
+    because: 'On a Mali phone the CPU route measured 16 s per warm face against 22 s on WebGPU',
+  },
   {
     when: (c: RouteCapabilities) => c.webgpu,
     order: ['webgpu', 'cpu'],
