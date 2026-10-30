@@ -921,16 +921,17 @@ test(
         );
         await download;
 
-        // Share: headless Chromium has no navigator.share, so the product hands the file over as a download.
+        // Share: headless Chromium has no navigator.share, so no Share control is offered (fm-qh1s, fm-7u7z);
+        // Save above is how the file leaves this browser.
         log.step = 'share';
         assert.equal(await page.evaluate(() => typeof navigator.share), 'undefined');
-        const shared = page.waitForEvent('download');
-        await operate(
-          page,
-          tile(page, 0).getByRole('button', { name: 'Share image', exact: true }),
-          c.touch,
+        assert.equal(
+          await tile(page, 0)
+            .getByRole('button', { name: /^Share/ })
+            .count(),
+          0,
+          'no Share control without Web Share',
         );
-        assert.match((await shared).suggestedFilename(), /\.(webp|png)$/);
 
         // A real photo encode on the CPU: face 2's Encode image chooser, the crop confirmed with OK, the photo
         // encoder download accepted.
@@ -1036,11 +1037,15 @@ test(
         fresh.log.step = 'turn-on';
         await second.goto(ORIGIN);
         await second.locator('section.next-face').nth(1).waitFor();
-        await operate(
-          second,
-          second.locator('.next-model-toast').getByRole('button', { name: 'Not now' }),
-          c.touch,
-        );
+        // As at arrival: the model offer may or may not be shown before the reporting question.
+        const offer = second.locator('.next-model-toast').getByRole('button', { name: 'Not now' });
+        if (
+          await offer.waitFor({ timeout: 8000 }).then(
+            () => true,
+            () => false,
+          )
+        )
+          await operate(second, offer, c.touch);
         const ask = second.locator('.next-consent-prompt');
         await ask.waitFor();
         assert.match(await ask.innerText(), /from now on, until you turn it off/);
