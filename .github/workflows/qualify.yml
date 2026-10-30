@@ -291,10 +291,12 @@ jobs:
             --json timing-verdict.json --github-output "$GITHUB_OUTPUT" | tee -a "$GITHUB_STEP_SUMMARY" timing-table.txt
           code=${PIPESTATUS[0]}
           set -e
-          # The second wave's matrix: every segment's next pair indexes, each on its segment's runners.
+          # The second wave's matrix: every segment's next pair indexes, each on its segment's runners. Pairs are dealt
+          # round-robin over eris's three core sets: pairs on one set queue on its cpu-timing lock, so four morph pairs
+          # on one set ran one after another and two hit the job limit (qualify 40985123438).
           node -e '
-            const v = require("./timing-verdict.json"), runner = { face: ["self-hosted","eris-build"], morph: ["self-hosted","eris-build"], photo: ["self-hosted","eris-build"] }, cpus = { face: "0-3", morph: "4-7", photo: "8-11" };
-            const include = Object.entries(v.segments ?? {}).flatMap(([segment, s]) => (s.nextPairs ?? []).map((pair) => ({ segment, pair, runner: JSON.stringify(runner[segment]), cpus: cpus[segment] })));
+            const v = require("./timing-verdict.json"), runner = { face: ["self-hosted","eris-build"], morph: ["self-hosted","eris-build"], photo: ["self-hosted","eris-build"] }, sets = ["0-3", "4-7", "8-11"];
+            const include = Object.entries(v.segments ?? {}).flatMap(([segment, s]) => (s.nextPairs ?? []).map((pair) => ({ segment, pair, runner: JSON.stringify(runner[segment]) }))).map((entry, i) => ({ ...entry, cpus: sets[i % sets.length] }));
             require("fs").appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${JSON.stringify({ include })}\n`);'
           test "$code" != 1
       - name: Record the failure
@@ -319,7 +321,8 @@ jobs:
     if: ${{ !cancelled() && needs.timing-gate.outputs.verdict == 'more' }}
     name: timing ${{ matrix.segment }} pair ${{ matrix.pair }} (second wave)
     runs-on: ${{ fromJSON(matrix.runner) }}
-    timeout-minutes: 30
+    # Up to four pairs share three core sets, so one set may run two morph pairs (about 13 min each) back to back.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.timing-gate.outputs.more) }}
