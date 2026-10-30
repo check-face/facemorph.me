@@ -276,7 +276,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
   if(decision.status==='refused')emit({stage:'route-admitted',provider:requested==='auto'?undefined:requested,gpu:gpuOffer(),routeOutcome:'unsupported',admission:decision.event},progress);
   return {decision,caps,ev};
  }
- function capability(){const base=capabilities();return {...base,webgpu:base.webgpu&&gpuAdapter!==false&&Boolean(manifest.webgpu),gpuVendor:gpuAdapterObject?.info?.vendor};}
+ function capability(){const base=capabilities();return {...base,webgpu:base.webgpu&&gpuAdapter!==false&&Boolean(manifest.webgpu),gpuVendor:gpuAdapterObject?.info?.vendor,gpuArchitecture:gpuAdapterObject?.info?.architecture};}
  // WebGL execution is gone (fm-x6h5, 17 October decision); manifest.webgl stays: it is the direct WebGPU engine's coefficient bundle.
  function supportedRoutes(){const caps=capability();return ['cpu',...(caps.webgpu?['webgpu']:[])];}
  function orderedRoutes(){return rankedRoutes(capability(),supportedRoutes(),speeds(),failedRoutes);}

@@ -20,8 +20,9 @@ export interface RouteCapabilities {
   readonly ios: boolean;
   readonly mobile: boolean;
   readonly cores: number;
-  /** The probed WebGPU adapter's vendor (GPUAdapterInfo.vendor), once known. */
+  /** The probed WebGPU adapter's vendor and architecture (GPUAdapterInfo), once known. */
   readonly gpuVendor?: string;
+  readonly gpuArchitecture?: string;
 }
 
 /** The navigator fields the capability read uses. */
@@ -73,12 +74,15 @@ export interface RoutePrior {
  */
 export const ROUTE_PRIORS: readonly RoutePrior[] = Object.freeze([
   {
-    // fm-ve6a: an Android phone with an ARM Mali GPU is faster on its CPU (Huawei P30 Pro, device lab, warm face).
-    // Adreno (the Galaxy S24 Ultra), iPhones and unnamed GPUs keep WebGPU first.
-    when: (c: RouteCapabilities) => c.webgpu && c.android && c.gpuVendor === 'arm',
+    // fm-ve6a: the one Mali measured (Huawei P30 Pro, Mali-G76, adapter vendor `arm`, architecture `bifrost`) is
+    // faster on its CPU. Only that architecture: newer Valhall/5th-gen Malis, Adreno (the Galaxy S24 Ultra),
+    // iPhones and unnamed GPUs keep WebGPU first until measured.
+    when: (c: RouteCapabilities) =>
+      c.webgpu && c.android && c.gpuVendor === 'arm' && c.gpuArchitecture === 'bifrost',
     order: ['cpu', 'webgpu'],
     measured: { cpu: 16000, webgpu: 22000 },
-    because: 'On a Mali phone the CPU route measured 16 s per warm face against 22 s on WebGPU',
+    because:
+      'On a Mali-G76 (Bifrost) phone the CPU route measured 16 s per warm face against 22 s on WebGPU',
   },
   {
     when: (c: RouteCapabilities) => c.webgpu,
