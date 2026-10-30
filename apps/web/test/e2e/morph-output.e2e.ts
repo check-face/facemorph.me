@@ -13,7 +13,9 @@ import { corners } from '../support/rendered-frame.ts';
 import { launchFreshChromiumProfile } from '../support/browser-profile.ts';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/ci-runtime');
-const artifactRoot = process.env['FACEMORPH_MORPH_ARTIFACT'] ?? REPO;
+// The built artifact: FACEMORPH_MORPH_ARTIFACT, else the release suites' FACEMORPH_DEPLOY_OUT, else the repository's.
+const artifactRoot =
+  process.env['FACEMORPH_MORPH_ARTIFACT'] ?? process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO;
 const out = join(REPO, 'apps/web/test-results/morph-output');
 type Call = { type: string; value?: string; hashes: string[] };
 type Progress = { attempt: number; value: number | null; text: string; time: number };
@@ -456,7 +458,8 @@ test(
 
 test(
   'Morph output: operated intent, cancel/failure retries, complete frames and absent-frame restore',
-  { timeout: 1_200_000 },
+  // 15 min alone on eris; the release's functional shard runs three files at a time.
+  { timeout: 2_400_000 },
   async (t) => {
     if (!existsSync(join(runtime, 'manifest.json'))) {
       const reason = `untested: real runtime absent at ${runtime}; owner fm-j4i8`;

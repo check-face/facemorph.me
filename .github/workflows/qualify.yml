@@ -85,7 +85,7 @@ jobs:
         shard: [1, 2, 3, 4]
     env:
       CHECK: functional:${{ matrix.shard }}
-      OPERATED: consent-requests dialogs encoder-setup morph-intent morph-guards morph-progress tiles tooltip-hits blend
+      OPERATED: consent-requests dialogs encoder-setup morph-intent morph-guards morph-output morph-progress tiles tooltip-hits blend
     steps:
       - uses: actions/checkout@v4
         with:

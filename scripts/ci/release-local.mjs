@@ -21,7 +21,7 @@ const REPO = resolve(import.meta.dirname, '../..');
 const LAB = join(REPO, 'tools/device-lab');
 // The other product beads' operated suites the release's functional shards run beside the manifest (release.yml).
 const OPERATED =
-  'consent-requests dialogs encoder-setup morph-intent morph-guards morph-progress tiles tooltip-hits blend';
+  'consent-requests dialogs encoder-setup morph-intent morph-guards morph-output morph-progress tiles tooltip-hits blend';
 const STAMP = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15); // run.ts refuses an existing label dir
 
 /** The release checks for one artifact, in release.yml's order and names. Pure. */
