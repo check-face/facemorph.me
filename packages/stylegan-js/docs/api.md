@@ -4364,6 +4364,8 @@ export interface RouteCapabilities {
     readonly ios: boolean;
     readonly mobile: boolean;
     readonly cores: number;
+    /** The probed WebGPU adapter's vendor (GPUAdapterInfo.vendor), once known. */
+    readonly gpuVendor?: string;
 }
 ```
 
