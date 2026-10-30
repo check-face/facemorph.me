@@ -1,10 +1,18 @@
 import {Sha256}from'../Assets/sha256.mjs';
 import {inspectImage}from'./image-header.mjs';
+import {FAST_NATIVE}from'./native/identity.mjs';
+// The app's fast build of the same detector/predictor/warp (photo-native/build.py, fm-3xjm): identical landmarks and
+// prepared bytes (native/native.test.mjs), used when this browser validates it (SIMD and wasm exceptions); otherwise
+// the pinned manifest build runs as before.
+const FAST_GLUE_URL=new URL('./native/photo-native.mjs',import.meta.url).href,FAST_WASM_URL=new URL('./native/photo-native.wasm',import.meta.url).href;
 let running=false;
 const LANDMARK_HASH='fbdc2cb80eb9aa7a758672cbfdda32ba6300efe9b6e6c7a299ff7e736b11b92f';
 const hex=bytes=>{const hash=new Sha256();hash.update(bytes);return hash.hex();};
+// SHA-256 by the browser's native digest where available (the 100 MB landmark model took ~1 s in JS on a desktop and
+// several on a phone, on every alignment); the JS hash remains the fallback.
+async function digestHex(bytes){if(globalThis.crypto?.subtle)try{const d=new Uint8Array(await crypto.subtle.digest('SHA-256',bytes));let out='';for(const b of d)out+=b.toString(16).padStart(2,'0');return out;}catch{}return hex(bytes);}
 function descriptor(value,base,max){if(!value||!Number.isSafeInteger(value.size)||value.size<1||value.size>max||!/^[0-9a-f]{64}$/.test(value.sha256))throw Error('Invalid photo asset descriptor.');const url=new URL(value.url,base);if(url.origin!==self.location.origin)throw Error('Photo model/runtime assets must use this site origin.');return{...value,url:url.href};}
-async function checkedSmall(a){const r=await fetch(a.url,{credentials:'omit'});if(!r.ok)throw Error(`Photo runtime download failed (${r.status}).`);const length=Number(r.headers.get('content-length'));if(length&&length>a.size)throw Error('Photo runtime exceeds pinned size.');const bytes=new Uint8Array(await r.arrayBuffer());if(bytes.length!==a.size||hex(bytes)!==a.sha256)throw Error('Photo runtime integrity check failed.');return bytes;}
+async function checkedSmall(a){const r=await fetch(a.url,{credentials:'omit'});if(!r.ok)throw Error(`Photo runtime download failed (${r.status}).`);const length=Number(r.headers.get('content-length'));if(length&&length>a.size)throw Error('Photo runtime exceeds pinned size.');const bytes=new Uint8Array(await r.arrayBuffer());if(bytes.length!==a.size||await digestHex(bytes)!==a.sha256)throw Error('Photo runtime integrity check failed.');return bytes;}
 function readError(m,result){if(result<0)throw Error(m.UTF8ToString(m._cf_error())||'Native alignment failed.');return result;}
 async function modelToHeap(m,a,progress,stats){
  let root,handle,writer,reader,downloaded=false,pointer=0,success=false;
@@ -20,22 +28,25 @@ async function modelToHeap(m,a,progress,stats){
    try{root||=await navigator.storage.getDirectory();handle=await root.getFileHandle(filename,{create:true});writer=await handle.createSyncAccessHandle();writer.truncate(0);stats.modelCache='opfs-write';}catch{writer?.close();writer=null;}
   }
   pointer=m._malloc(a.size);if(!pointer)throw Error('Not enough bounded WASM memory for landmarks.');
-  const hash=new Sha256();let offset=0,last=0;
+  let offset=0,last=0;const partChecks=[];
   const schedule=cachedResponse?[a]:(parts||[a]);stats.chunkedModelTransport=!cachedResponse&&Boolean(parts);stats.modelChunkCount=schedule.length;
   for(const part of schedule){
    const response=cachedResponse||await fetch(part.url,{credentials:'omit'});if(!response.ok)throw Error(`Landmark download failed (${response.status}).`);
    const length=Number(response.headers.get('content-length'));if(length&&length>part.size)throw Error('Landmark response exceeds pinned size.');
    let byob=false;try{reader=response.body?.getReader({mode:'byob'});byob=Boolean(reader);}catch{reader=response.body?.getReader();}if(!reader)throw Error('A streaming landmark response is required.');stats.modelReader=byob?'byob-1MiB':'default-stream';
-   let partOffset=0;const partHash=parts&&!cachedResponse?new Sha256():null;
+   let partOffset=0;const partStart=offset,partHashed=Boolean(parts&&!cachedResponse);
    while(true){const item=await (byob?reader.read(new Uint8Array(1024*1024)):reader.read());if(item.done)break;const chunk=item.value;if(partOffset+chunk.length>part.size||offset+chunk.length>a.size)throw Error('Landmark stream exceeds pinned size.');
-    m.HEAPU8.set(chunk,pointer+offset);hash.update(chunk);partHash?.update(chunk);if(writer)writer.write(chunk,{at:offset});offset+=chunk.length;partOffset+=chunk.length;stats.maxModelChunkBytes=Math.max(stats.maxModelChunkBytes||0,chunk.length);
+    m.HEAPU8.set(chunk,pointer+offset);if(writer)writer.write(chunk,{at:offset});offset+=chunk.length;partOffset+=chunk.length;stats.maxModelChunkBytes=Math.max(stats.maxModelChunkBytes||0,chunk.length);
     if(offset-last>=4*1024*1024||offset===a.size){progress('alignment-model-download',{completed:offset,total:a.size});last=offset;}
    }
-   if(partOffset!==part.size||(partHash&&partHash.hex()!==part.sha256))throw Error('Landmark chunk integrity check failed.');
+   if(partOffset!==part.size)throw Error('Landmark chunk integrity check failed.');
+   // The digest copies the chunk now and runs while the next chunk downloads.
+   if(partHashed){const check=digestHex(m.HEAPU8.subarray(pointer+partStart,pointer+offset)).then(digest=>{if(digest!==part.sha256)throw Error('Landmark chunk integrity check failed.');});check.catch(()=>{});partChecks.push(check);}
    // This private reader is deliberately not releaseLock'ed (WebKit GC deadlock).
    reader=null;
   }
-  if(offset!==a.size||hash.hex()!==a.sha256)throw Error('Landmark integrity check failed.');writer?.flush();writer?.close();writer=null;success=true;return pointer;
+  await Promise.all(partChecks);
+  if(offset!==a.size||await digestHex(m.HEAPU8.subarray(pointer,pointer+a.size))!==a.sha256)throw Error('Landmark integrity check failed.');writer?.flush();writer?.close();writer=null;success=true;return pointer;
  }catch(error){try{Promise.resolve(reader?.cancel(error)).catch(()=>{});}catch{}throw error;}
  finally{
   try{writer?.close();}catch{}
@@ -54,12 +65,19 @@ self.onmessage=async({data})=>{
   if(manifest.schemaVersion!==1||!/^[0-9a-f]{64}$/.test(manifest.preprocessingSha256)||manifest.orientationPolicy!=='legacy-ignore-exif')throw Error('Invalid preprocessing identity.');
   const landmarks=descriptor(manifest.landmarks,data.manifestUrl,100*1024*1024),glue=descriptor(manifest.module,data.manifestUrl,8*1024*1024),wasm=descriptor(manifest.wasm,data.manifestUrl,8*1024*1024);
   if(landmarks.sha256!==LANDMARK_HASH||landmarks.size!==99693937)throw Error('Unexpected landmark model.');
-  stats.preprocessingSha256=manifest.preprocessingSha256;stats.landmarksSha256=landmarks.sha256;stats.wasmSha256=wasm.sha256;
+  stats.preprocessingSha256=manifest.preprocessingSha256;stats.landmarksSha256=landmarks.sha256;stats.wasmSha256=wasm.sha256;let runtimeWasmSha=wasm.sha256;
   const imageBytes=new Uint8Array(await data.blob.arrayBuffer()),header=inspectImage(imageBytes);stats.input=header;
-  await stage('alignment-runtime',async()=>{const js=await checkedSmall(glue),binary=await checkedSmall(wasm);moduleObjectUrl=URL.createObjectURL(new Blob([js],{type:'text/javascript'}));const factory=(await import(/* @vite-ignore */ moduleObjectUrl)).default;m=await factory({wasmBinary:binary,locateFile:path=>new URL(path,wasm.url).href,print:()=>{},printErr:()=>{}});URL.revokeObjectURL(moduleObjectUrl);moduleObjectUrl=null;});
+  const instantiate=async(js,binary,base)=>{moduleObjectUrl=URL.createObjectURL(new Blob([js],{type:'text/javascript'}));try{const factory=(await import(/* @vite-ignore */ moduleObjectUrl)).default;return await factory({wasmBinary:binary,locateFile:path=>new URL(path,base).href,print:()=>{},printErr:()=>{}});}finally{URL.revokeObjectURL(moduleObjectUrl);moduleObjectUrl=null;}};
+  await stage('alignment-runtime',async()=>{
+   try{const fastWasm={url:FAST_WASM_URL,...FAST_NATIVE.wasm},binary=await checkedSmall(fastWasm);
+    if(!WebAssembly.validate(binary))throw Error('unsupported');
+    m=await instantiate(await checkedSmall({url:FAST_GLUE_URL,...FAST_NATIVE.glue}),binary,FAST_WASM_URL);runtimeWasmSha=FAST_NATIVE.wasm.sha256;stats.nativeBuild='fast-v1';
+   }catch(error){stats.nativeBuild='pinned';stats.fastNativeRefused=String(error?.message||error);m=await instantiate(await checkedSmall(glue),await checkedSmall(wasm),wasm.url);}
+   stats.wasmSha256=runtimeWasmSha;
+  });
   if(data.tryAlign||data.requireSingleFace){
    pointer=await stage('alignment-model',()=>modelToHeap(m,landmarks,progress,stats));
-   await stage('alignment-model-deserialize',()=>readError(m,m._cf_init_predictor(pointer,landmarks.size)));m._free(pointer);pointer=0;
+   await stage('alignment-model-deserialize',()=>readError(m,m._cf_init_predictor(pointer,landmarks.size)));m._free(pointer);pointer=0;stats.fastLandmarkLoader=Boolean(m._cf_fast_loader_used?.());
   }
   await stage('photo-decode',()=>{pointer=m._malloc(imageBytes.length);if(!pointer)throw Error('Image exceeds bounded alignment memory.');m.HEAPU8.set(imageBytes,pointer);readError(m,m._cf_decode(pointer,imageBytes.length));m._free(pointer);pointer=0;if(m._cf_width()!==header.width||m._cf_height()!==header.height)throw Error('Decoded dimensions differ from admitted header.');});
   const count=(data.tryAlign||data.requireSingleFace)?await stage('face-landmarks',()=>readError(m,m._cf_detect())):0;stats.faceCount=count;
@@ -88,7 +106,7 @@ self.onmessage=async({data})=>{
   const rgb=m.HEAPU8.slice(m._cf_prepared(),m._cf_prepared()+256*256*3),tensor=new Float32Array(3*256*256);
   for(let p=0;p<256*256;p++)for(let c=0;c<3;c++){let value=Math.fround(rgb[p*3+c]/255);value=Math.fround(value-.5);tensor[c*256*256+p]=Math.fround(value/.5);}
   stats.preparedSha256=hex(rgb);stats.tensorSha256=hex(new Uint8Array(tensor.buffer));stats.faceCount=count;stats.didAlign=didAlign;stats.wasmCapacityBytes=m.HEAPU8.buffer.byteLength;m._cf_reset();
-  postMessage({type:'complete',result:{tensor,shape:[1,3,256,256],rgb,width:256,height:256,didAlign,faceCount:count,stats,provenance:{preprocessingSha256:manifest.preprocessingSha256,landmarksSha256:landmarks.sha256,runtimeSha256:wasm.sha256,facePolicy:data.requireSingleFace?'exactly-one-face-v1':'legacy-largest-face-or-unaligned-v1',orientationPolicy:manifest.orientationPolicy,exifOrientation:header.exifOrientation,privateDataStayedLocal:true}}},[tensor.buffer,rgb.buffer]);
+  postMessage({type:'complete',result:{tensor,shape:[1,3,256,256],rgb,width:256,height:256,didAlign,faceCount:count,stats,provenance:{preprocessingSha256:manifest.preprocessingSha256,landmarksSha256:landmarks.sha256,runtimeSha256:runtimeWasmSha,facePolicy:data.requireSingleFace?'exactly-one-face-v1':'legacy-largest-face-or-unaligned-v1',orientationPolicy:manifest.orientationPolicy,exifOrientation:header.exifOrientation,privateDataStayedLocal:true}}},[tensor.buffer,rgb.buffer]);
  }catch(error){postMessage({type:'error',name:error.name,message:String(error.message||error),code:typeof error.code==='string'?error.code:undefined,stats});}
  finally{if(pointer)m?._free(pointer);try{m?._cf_reset();}catch{}if(moduleObjectUrl)URL.revokeObjectURL(moduleObjectUrl);}
 };

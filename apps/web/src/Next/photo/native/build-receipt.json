@@ -1,0 +1,35 @@
+{
+  "compiler": "Emscripten4.0.23",
+  "dlib": "20.0.1",
+  "pillow": "12.3.0",
+  "jpeg": "libjpeg-turbo3.1.4.1",
+  "flags": [
+    "-O3",
+    "-msimd128",
+    "-fwasm-exceptions"
+  ],
+  "maxWasmBytes": 268435456,
+  "unshared": true,
+  "files": {
+    "photo-native/native/Python.h": {
+      "sha256": "c5e61ace89641769730a4c83460d5676e89d26ccaaaf30187e73d9132fd0d089",
+      "bytes": 352
+    },
+    "photo-native/native/photo.cpp": {
+      "sha256": "a8bd0d0e28053f5efe8fcc8acc8577100d8e74a993058d39841b1b0e69620d77",
+      "bytes": 16739
+    },
+    "photo-native/native/pillow_support.c": {
+      "sha256": "fec752cb485bd484af181272fcf8c28a4a1ed0f12240d5306f6bca8d957f36f6",
+      "bytes": 1784
+    },
+    "src/Next/photo/native/photo-native.mjs": {
+      "sha256": "7045377aecf9d4ad882ce7c843f59dc13bc62a54f999c8e540eeb03510fa6851",
+      "bytes": 12886
+    },
+    "src/Next/photo/native/photo-native.wasm": {
+      "sha256": "23894eea1d2d2757f581996e80499c28f2ceb42cbb2afacce8634d8f761ef85f",
+      "bytes": 1027113
+    }
+  }
+}
