@@ -1,0 +1,18 @@
+{
+  "schema": "facemorph.serial-ort-source/1",
+  "bundleSha256": "5caaaaa2f9be523672b7837b9298c7f92cd661d4334f5835061aba2fd350aa8e",
+  "files": [
+    {
+      "file": "ort.wasm.min.mjs",
+      "url": "https://api.github.com/repos/facemorph-me/facemorph.me/releases/assets/690937895"
+    },
+    {
+      "file": "ort-wasm-simd.mjs",
+      "url": "https://api.github.com/repos/facemorph-me/facemorph.me/releases/assets/690937897"
+    },
+    {
+      "file": "ort-wasm-simd.wasm",
+      "url": "https://api.github.com/repos/facemorph-me/facemorph.me/releases/assets/690937894"
+    }
+  ]
+}

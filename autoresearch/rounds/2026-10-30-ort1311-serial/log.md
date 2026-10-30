@@ -38,3 +38,16 @@
 - Resources / failures: not_measured.
 - Evidence: this log.
 - Conclusion / next action: keep the fix; next paired desktop timing, encoder canaries, phone rows.
+
+### 2026-10-30T15:30:00+10:00 — Q4-OBSERVED
+
+- Phase / status: observed / desktop ORT-WebGPU regression on 1.31.1 native EP; CPU timing not measured
+- Round / experiment / correction: Q4 / not_applicable
+- Hypothesis / decision: 1.31.1 (native WebGPU EP, ort.webgpu.min.mjs) is not worse than control (JSEP 1.22) on the ORT WebGPU engine, the engine phones use; refuted by a not-worse failure beyond control/control noise.
+- Identity: control runtime d9e37e50…, candidate composed runtime 775fab8f… (overlay evidence/runtime-mirror-webgpu.candidate.json.raw, serial source evidence/runtime-serial-source.candidate.json.raw); numerics receipts evidence/full31-*.json; package dist with the Q3 fix.
+- Context: eris, Chrome (google-chrome), RTX 2080 SUPER, tools/ort-qualify/paired.mjs under run.py --exclusive gpu-timing, disk profiles, load ceiling 12; two discarded warmups then ABBA x3; .locks/eris-browser-1 held.
+- Boundary / samples: noise (control/control) margins: warm ms/frame 1.05%, cold start 0.25%. Compare medians control → candidate: warm ms/frame 69.9 → 74.5 (ratio 1.066, interval 1.060–1.073: failed); cold start 3541 → 3900 ms (inconclusive); runtime download 34,710,491 → 43,799,252 B (+26%, failed); peak browser RSS 2.51 → 2.76 GB (+10%, failed).
+- Correctness / workflow: both sides passed full31 31/31 before timing.
+- Resources / failures: the CPU noise run was refused twice by the load guard (eris load 19–34 from other agents' browser runs); no CPU timing scored.
+- Evidence: evidence/noise-gpu.report.json.raw, evidence/compare-gpu.report.json.raw.
+- Conclusion / next action: measured no-go for adopting 1.31.1 on the WebGPU route; the overlay bumps all six npm assets together, so the CPU route cannot move alone. Keep the current runtime; the Q3 binding fix stays (it is a no-op on JSEP and required by any native-EP release).

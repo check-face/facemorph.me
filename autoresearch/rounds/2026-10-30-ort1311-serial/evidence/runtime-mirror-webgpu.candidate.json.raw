@@ -1,0 +1,93 @@
+{
+  "schema": "facemorph.ort-mirror/2",
+  "version": "1.31.1",
+  "npm": {
+    "package": "onnxruntime-web",
+    "url": "https://registry.npmjs.org/onnxruntime-web/-/onnxruntime-web-1.31.1.tgz",
+    "integrity": "sha512-5GeH+bWQ+HxM10z7erGlsWqryrwMbSvm/1tkIsKTT48g0fI19VXVVC435t4t7VsPdSQeS7NmuZPXrQ73k82URw=="
+  },
+  "gpuBuild": "webgpu",
+  "bundleSha256": "4843a539a43123c89c6f2b51ed04f4b59190a646c61eeb474b05d21869143894",
+  "files": [
+    {
+      "file": "ort.wasm.min.mjs",
+      "sha256": "c21d9c326d453a4a61398270c804d5979e118540597cb0c07f7b3d64e6098234",
+      "size": 53725,
+      "path": "assets/4843a539a43123c89c6f2b51ed04f4b59190a646c61eeb474b05d21869143894/ort.wasm.min.mjs"
+    },
+    {
+      "file": "ort-wasm-simd-threaded.mjs",
+      "sha256": "30ed0b5cd1182ede931fea448afb567d4dc705ec957af09f108a2be5f770dac3",
+      "size": 24738,
+      "path": "assets/4843a539a43123c89c6f2b51ed04f4b59190a646c61eeb474b05d21869143894/ort-wasm-simd-threaded.mjs"
+    },
+    {
+      "file": "ort-wasm-simd-threaded.wasm",
+      "sha256": "4b884c203b0fa48d057be3332c65513ff85aa3c5bddd6946acc0fab7ecda001d",
+      "size": 14848852,
+      "path": "assets/4843a539a43123c89c6f2b51ed04f4b59190a646c61eeb474b05d21869143894/ort-wasm-simd-threaded.wasm"
+    },
+    {
+      "file": "ort.webgpu.min.mjs",
+      "sha256": "329cd956772397a1aedd668e911195d39afefb182f6fc14aafa4f08ac8d8f379",
+      "size": 70742,
+      "path": "assets/4843a539a43123c89c6f2b51ed04f4b59190a646c61eeb474b05d21869143894/ort.webgpu.min.mjs"
+    },
+    {
+      "file": "ort-wasm-simd-threaded.asyncify.mjs",
+      "sha256": "59cf781530e1a16df2a291d78798e3ec1152467edaec402d6f9599d85047c302",
+      "size": 53457,
+      "path": "assets/4843a539a43123c89c6f2b51ed04f4b59190a646c61eeb474b05d21869143894/ort-wasm-simd-threaded.asyncify.mjs"
+    },
+    {
+      "file": "ort-wasm-simd-threaded.asyncify.wasm",
+      "sha256": "ca319e9539cd0f1e291cf56074760121eaf39650f5dbf84b6e52c07f4b2944ec",
+      "size": 28747738,
+      "path": "assets/4843a539a43123c89c6f2b51ed04f4b59190a646c61eeb474b05d21869143894/ort-wasm-simd-threaded.asyncify.wasm"
+    }
+  ],
+  "serial": {
+    "schema": "facemorph.serial-ort/1",
+    "controlDescriptorSha256": "3d27df84fd1bb14c777652edf80c9c6788541cb3b02ac7a31d1d19fb651a60bf",
+    "build": {
+      "version": "1.31.1",
+      "source": {
+        "repository": "https://github.com/microsoft/onnxruntime.git",
+        "tag": "v1.31.1",
+        "commit": "6af1a932e2286d5c58166085d24c68783033edee"
+      },
+      "toolchain": {
+        "emsdkVersion": "4.0.23",
+        "emsdkCommit": "c0bb220cb6e6f4e0fabb6f6db9efd53390ef5e56"
+      },
+      "commandSha256": "e332f8252d6e3f98171aa1c6e2a5f132f77e47a1174a61700f32ad837da83189",
+      "linkReceiptSha256": "dab984a9aae60ced412d8600653e1a890bc3ca5a05b42aea635328a3f4ba0387"
+    },
+    "memory": {
+      "unshared": true,
+      "initialPages": 256,
+      "maximumPages": 4096
+    },
+    "bundleSha256": "5caaaaa2f9be523672b7837b9298c7f92cd661d4334f5835061aba2fd350aa8e",
+    "files": [
+      {
+        "file": "ort.wasm.min.mjs",
+        "path": "assets/5caaaaa2f9be523672b7837b9298c7f92cd661d4334f5835061aba2fd350aa8e/ort.wasm.min.mjs",
+        "sha256": "c21d9c326d453a4a61398270c804d5979e118540597cb0c07f7b3d64e6098234",
+        "size": 53725
+      },
+      {
+        "file": "ort-wasm-simd.mjs",
+        "path": "assets/5caaaaa2f9be523672b7837b9298c7f92cd661d4334f5835061aba2fd350aa8e/ort-wasm-simd.mjs",
+        "sha256": "a917f93911386d120e15e4e572a1792a8535cf0c7394d40b8bb635a06682bfa7",
+        "size": 39466
+      },
+      {
+        "file": "ort-wasm-simd.wasm",
+        "path": "assets/5caaaaa2f9be523672b7837b9298c7f92cd661d4334f5835061aba2fd350aa8e/ort-wasm-simd.wasm",
+        "sha256": "afabd18de5fbd022d9bd3150bb9f5127ec97030fe430d66c91ebac2532ef0c07",
+        "size": 20631277
+      }
+    ]
+  }
+}

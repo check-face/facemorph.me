@@ -1,0 +1,228 @@
+{
+  "schema": "facemorph.full31-numerics/1",
+  "manifestSha256": "775fab8f06ee97f03efa1825d7d7bfb4b7f1b8f6c64974f3dfbbadf00b6f34e2",
+  "identity": {
+    "harnessSha256": "c2b00671df2d3b89d4f5a64f968f7eae3d28ef0e8783d50037559361404ac29d",
+    "runtimeSupportSha256": "fa76461bac79bd551fa065984a343f708208016af3a8c2d152fabc9cb0fda029",
+    "suiteSha256": "a4b85228e519552cdd71ffd5d1babbc869e4a872cc650b18677443a5e59b9a1c",
+    "pinnedSuiteSha256": "7770b21f8149e999efea9ed756c561318668a56f5a036ef48ca09e61347df3f0",
+    "distSha256": "a881e44fb46c14f5c6511578bab7f35b4c7f7b1c5976413eba65b5f9909727ff"
+  },
+  "thresholds": {
+    "maxRgb": 1,
+    "maxFloat": 0.002
+  },
+  "passed": true,
+  "cells": [
+    {
+      "requested": {
+        "browser": "chromium",
+        "engine": "ort-wasm",
+        "route": "cpu",
+        "provider": "cpu"
+      },
+      "browser": {
+        "version": "156.0.8078.4",
+        "executablePath": "/home/cdilga/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome",
+        "executableSha256": "377a9fc07b495c3b8d0ab8ec1fdfd153641759f9756fea34d8dfce4de82f5025",
+        "launchTargetPath": "/home/cdilga/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome",
+        "launchTargetSha256": "377a9fc07b495c3b8d0ab8ec1fdfd153641759f9756fea34d8dfce4de82f5025"
+      },
+      "actual": {
+        "engine": "ort-wasm",
+        "route": "cpu",
+        "provider": "cpu"
+      },
+      "adapter": null,
+      "cases": [
+        {
+          "name": "frame-00",
+          "maxRgb": 1,
+          "maxFloat": 0.0000029206275939941406,
+          "passed": true
+        },
+        {
+          "name": "frame-01",
+          "maxRgb": 1,
+          "maxFloat": 0.000003814697265625,
+          "passed": true
+        },
+        {
+          "name": "frame-02",
+          "maxRgb": 1,
+          "maxFloat": 0.000006541609764099121,
+          "passed": true
+        },
+        {
+          "name": "frame-03",
+          "maxRgb": 1,
+          "maxFloat": 0.0000032186508178710938,
+          "passed": true
+        },
+        {
+          "name": "frame-04",
+          "maxRgb": 1,
+          "maxFloat": 0.000002384185791015625,
+          "passed": true
+        },
+        {
+          "name": "frame-05",
+          "maxRgb": 1,
+          "maxFloat": 0.000007569789886474609,
+          "passed": true
+        },
+        {
+          "name": "frame-06",
+          "maxRgb": 1,
+          "maxFloat": 0.000002473592758178711,
+          "passed": true
+        },
+        {
+          "name": "frame-07",
+          "maxRgb": 1,
+          "maxFloat": 0.000003993511199951172,
+          "passed": true
+        },
+        {
+          "name": "frame-08",
+          "maxRgb": 1,
+          "maxFloat": 0.000006079673767089844,
+          "passed": true
+        },
+        {
+          "name": "frame-09",
+          "maxRgb": 1,
+          "maxFloat": 0.000004470348358154297,
+          "passed": true
+        },
+        {
+          "name": "frame-10",
+          "maxRgb": 1,
+          "maxFloat": 0.000004231929779052734,
+          "passed": true
+        },
+        {
+          "name": "frame-11",
+          "maxRgb": 1,
+          "maxFloat": 0.000009357929229736328,
+          "passed": true
+        },
+        {
+          "name": "frame-12",
+          "maxRgb": 1,
+          "maxFloat": 0.0000028014183044433594,
+          "passed": true
+        },
+        {
+          "name": "frame-13",
+          "maxRgb": 1,
+          "maxFloat": 0.000006854534149169922,
+          "passed": true
+        },
+        {
+          "name": "frame-14",
+          "maxRgb": 1,
+          "maxFloat": 0.0000020265579223632812,
+          "passed": true
+        },
+        {
+          "name": "frame-15",
+          "maxRgb": 1,
+          "maxFloat": 0.000008016824722290039,
+          "passed": true
+        },
+        {
+          "name": "frame-16",
+          "maxRgb": 1,
+          "maxFloat": 0.000002562999725341797,
+          "passed": true
+        },
+        {
+          "name": "frame-17",
+          "maxRgb": 1,
+          "maxFloat": 0.000003814697265625,
+          "passed": true
+        },
+        {
+          "name": "frame-18",
+          "maxRgb": 1,
+          "maxFloat": 0.000007927417755126953,
+          "passed": true
+        },
+        {
+          "name": "frame-19",
+          "maxRgb": 1,
+          "maxFloat": 0.000003993511199951172,
+          "passed": true
+        },
+        {
+          "name": "frame-20",
+          "maxRgb": 1,
+          "maxFloat": 0.000006258487701416016,
+          "passed": true
+        },
+        {
+          "name": "frame-21",
+          "maxRgb": 1,
+          "maxFloat": 0.000006336718797683716,
+          "passed": true
+        },
+        {
+          "name": "frame-22",
+          "maxRgb": 1,
+          "maxFloat": 0.0000019818544387817383,
+          "passed": true
+        },
+        {
+          "name": "frame-23",
+          "maxRgb": 1,
+          "maxFloat": 0.000008970499038696289,
+          "passed": true
+        },
+        {
+          "name": "frame-24",
+          "maxRgb": 1,
+          "maxFloat": 0.000002950429916381836,
+          "passed": true
+        },
+        {
+          "name": "frame-25",
+          "maxRgb": 1,
+          "maxFloat": 0.000003725290298461914,
+          "passed": true
+        },
+        {
+          "name": "encoded-synthetic-photo",
+          "maxRgb": 1,
+          "maxFloat": 0.00000667572021484375,
+          "passed": true
+        },
+        {
+          "name": "zero-noise",
+          "maxRgb": 1,
+          "maxFloat": 0.000004291534423828125,
+          "passed": true
+        },
+        {
+          "name": "alternate-noise",
+          "maxRgb": 1,
+          "maxFloat": 0.000002682209014892578,
+          "passed": true
+        },
+        {
+          "name": "trunc-psi-0",
+          "maxRgb": 1,
+          "maxFloat": 0.0000044405460357666016,
+          "passed": true
+        },
+        {
+          "name": "trunc-psi-1",
+          "maxRgb": 1,
+          "maxFloat": 0.000002205371856689453,
+          "passed": true
+        }
+      ],
+      "passed": true
+    }
+  ]
+}

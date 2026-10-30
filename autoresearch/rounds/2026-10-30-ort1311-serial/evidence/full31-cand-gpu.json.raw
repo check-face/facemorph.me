@@ -1,0 +1,233 @@
+{
+  "schema": "facemorph.full31-numerics/1",
+  "manifestSha256": "775fab8f06ee97f03efa1825d7d7bfb4b7f1b8f6c64974f3dfbbadf00b6f34e2",
+  "identity": {
+    "harnessSha256": "c2b00671df2d3b89d4f5a64f968f7eae3d28ef0e8783d50037559361404ac29d",
+    "runtimeSupportSha256": "fa76461bac79bd551fa065984a343f708208016af3a8c2d152fabc9cb0fda029",
+    "suiteSha256": "a4b85228e519552cdd71ffd5d1babbc869e4a872cc650b18677443a5e59b9a1c",
+    "pinnedSuiteSha256": "7770b21f8149e999efea9ed756c561318668a56f5a036ef48ca09e61347df3f0",
+    "distSha256": "a881e44fb46c14f5c6511578bab7f35b4c7f7b1c5976413eba65b5f9909727ff"
+  },
+  "thresholds": {
+    "maxRgb": 1,
+    "maxFloat": 0.002
+  },
+  "passed": true,
+  "cells": [
+    {
+      "requested": {
+        "browser": "chromium",
+        "engine": "ort-webgpu",
+        "route": "webgpu",
+        "provider": "webgpu"
+      },
+      "browser": {
+        "version": "156.0.8078.47",
+        "executablePath": "/home/cdilga/.local/opt/google-chrome/chrome",
+        "executableSha256": "95dc9473b4f904cb3ab0800fc7206081fcae12abc094a088bd741a13f1747b72",
+        "launchTargetPath": "/home/cdilga/.local/opt/google-chrome/google-chrome",
+        "launchTargetSha256": "aea09d69ce7f24d5901f6bfb15dd44d0c856e793e0a498f8d8393ec7d2c308ec"
+      },
+      "actual": {
+        "engine": "ort-webgpu",
+        "route": "webgpu",
+        "provider": "webgpu"
+      },
+      "adapter": {
+        "fallback": false,
+        "vendor": "nvidia",
+        "architecture": "turing",
+        "description": ""
+      },
+      "cases": [
+        {
+          "name": "frame-00",
+          "maxRgb": 1,
+          "maxFloat": 0.000007361173629760742,
+          "passed": true
+        },
+        {
+          "name": "frame-01",
+          "maxRgb": 1,
+          "maxFloat": 0.00001615285873413086,
+          "passed": true
+        },
+        {
+          "name": "frame-02",
+          "maxRgb": 1,
+          "maxFloat": 0.00001823902130126953,
+          "passed": true
+        },
+        {
+          "name": "frame-03",
+          "maxRgb": 1,
+          "maxFloat": 0.00001239776611328125,
+          "passed": true
+        },
+        {
+          "name": "frame-04",
+          "maxRgb": 1,
+          "maxFloat": 0.000031381845474243164,
+          "passed": true
+        },
+        {
+          "name": "frame-05",
+          "maxRgb": 1,
+          "maxFloat": 0.000024020671844482422,
+          "passed": true
+        },
+        {
+          "name": "frame-06",
+          "maxRgb": 1,
+          "maxFloat": 0.000012442469596862793,
+          "passed": true
+        },
+        {
+          "name": "frame-07",
+          "maxRgb": 1,
+          "maxFloat": 0.00001424551010131836,
+          "passed": true
+        },
+        {
+          "name": "frame-08",
+          "maxRgb": 1,
+          "maxFloat": 0.00001728534698486328,
+          "passed": true
+        },
+        {
+          "name": "frame-09",
+          "maxRgb": 1,
+          "maxFloat": 0.00001919269561767578,
+          "passed": true
+        },
+        {
+          "name": "frame-10",
+          "maxRgb": 1,
+          "maxFloat": 0.000011205673217773438,
+          "passed": true
+        },
+        {
+          "name": "frame-11",
+          "maxRgb": 1,
+          "maxFloat": 0.000019729137420654297,
+          "passed": true
+        },
+        {
+          "name": "frame-12",
+          "maxRgb": 1,
+          "maxFloat": 0.000011265277862548828,
+          "passed": true
+        },
+        {
+          "name": "frame-13",
+          "maxRgb": 1,
+          "maxFloat": 0.00001940131187438965,
+          "passed": true
+        },
+        {
+          "name": "frame-14",
+          "maxRgb": 1,
+          "maxFloat": 0.000005662441253662109,
+          "passed": true
+        },
+        {
+          "name": "frame-15",
+          "maxRgb": 1,
+          "maxFloat": 0.000025764107704162598,
+          "passed": true
+        },
+        {
+          "name": "frame-16",
+          "maxRgb": 1,
+          "maxFloat": 0.000011444091796875,
+          "passed": true
+        },
+        {
+          "name": "frame-17",
+          "maxRgb": 1,
+          "maxFloat": 0.000014781951904296875,
+          "passed": true
+        },
+        {
+          "name": "frame-18",
+          "maxRgb": 1,
+          "maxFloat": 0.00002631545066833496,
+          "passed": true
+        },
+        {
+          "name": "frame-19",
+          "maxRgb": 1,
+          "maxFloat": 0.000011861324310302734,
+          "passed": true
+        },
+        {
+          "name": "frame-20",
+          "maxRgb": 1,
+          "maxFloat": 0.00001436471939086914,
+          "passed": true
+        },
+        {
+          "name": "frame-21",
+          "maxRgb": 1,
+          "maxFloat": 0.00002485513687133789,
+          "passed": true
+        },
+        {
+          "name": "frame-22",
+          "maxRgb": 1,
+          "maxFloat": 0.000012099742889404297,
+          "passed": true
+        },
+        {
+          "name": "frame-23",
+          "maxRgb": 1,
+          "maxFloat": 0.00003832578659057617,
+          "passed": true
+        },
+        {
+          "name": "frame-24",
+          "maxRgb": 1,
+          "maxFloat": 0.00003319978713989258,
+          "passed": true
+        },
+        {
+          "name": "frame-25",
+          "maxRgb": 1,
+          "maxFloat": 0.00001341104507446289,
+          "passed": true
+        },
+        {
+          "name": "encoded-synthetic-photo",
+          "maxRgb": 1,
+          "maxFloat": 0.0000241696834564209,
+          "passed": true
+        },
+        {
+          "name": "zero-noise",
+          "maxRgb": 1,
+          "maxFloat": 0.000015854835510253906,
+          "passed": true
+        },
+        {
+          "name": "alternate-noise",
+          "maxRgb": 1,
+          "maxFloat": 0.000007450580596923828,
+          "passed": true
+        },
+        {
+          "name": "trunc-psi-0",
+          "maxRgb": 1,
+          "maxFloat": 0.00000858306884765625,
+          "passed": true
+        },
+        {
+          "name": "trunc-psi-1",
+          "maxRgb": 1,
+          "maxFloat": 0.000006198883056640625,
+          "passed": true
+        }
+      ],
+      "passed": true
+    }
+  ]
+}
