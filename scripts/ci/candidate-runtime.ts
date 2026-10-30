@@ -168,7 +168,9 @@ export function loadCandidateRuntime(repo: string): CandidateRuntime {
       replaced.add(runtimePath(asset.url));
     };
     control.runtime.assets.forEach(remove);
-    for (const field of ['module', 'factory', 'wasm']) remove(control.webgpu.runtime[field]);
+    // A CPU-route overlay leaves the WebGPU route's pinned control runtime (and its hosted workers) in place.
+    if (overlay.gpuBuild !== 'cpu')
+      for (const field of ['module', 'factory', 'wasm']) remove(control.webgpu.runtime[field]);
     if (controlEncoderDescriptorBytes) {
       const encoder = JSON.parse(controlEncoderDescriptorBytes.toString('utf8'));
       for (const field of ['module', 'factory', 'wasm']) remove(encoder.runtime[field]);

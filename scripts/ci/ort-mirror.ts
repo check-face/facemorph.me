@@ -17,6 +17,9 @@ const WASM_FILES = [
 ] as const;
 
 export const ORT_BUILD_FILES = {
+  // The CPU (WASM) route alone: the WebGPU route keeps the control's pinned runtime. Routes pin ORT
+  // independently when a release regresses one of them (fm-qeh: 1.31.1's native WebGPU EP measured slower).
+  cpu: [...WASM_FILES],
   jsep: [
     ...WASM_FILES,
     'ort.min.mjs',
@@ -113,7 +116,8 @@ function bundleDigest(
 }
 
 function buildName(value: unknown): OrtGpuBuild {
-  if (value !== 'jsep' && value !== 'webgpu' && value !== 'jspi') fail('unsupported GPU build');
+  if (value !== 'cpu' && value !== 'jsep' && value !== 'webgpu' && value !== 'jspi')
+    fail('unsupported GPU build');
   return value as OrtGpuBuild;
 }
 
@@ -148,7 +152,7 @@ export function validateOverlay(input: unknown): OrtMirrorOverlay {
   if (typeof overlay['bundleSha256'] !== 'string' || !SHA256.test(overlay['bundleSha256']))
     fail('invalid bundle digest');
   if (!Array.isArray(overlay['files']) || overlay['files'].length !== expectedFiles.length)
-    fail('exactly six WASM/GPU files are required');
+    fail(`exactly ${expectedFiles.length} ORT files are required for this build`);
   const files = (overlay['files'] as unknown[]).map((inputFile, index) => {
     const file = object(inputFile, 'file');
     keys(file, ['file', 'path', 'sha256', 'size'], 'file');
@@ -315,15 +319,18 @@ export function composeManifest(
       wasmPaths: `${base.origin}/runtime/assets/${overlay.bundleSha256}/`,
       assets: wasm,
     },
-    webgpu: {
-      ...structuredClone(webgpu),
-      runtime: {
-        ...structuredClone(gpuRuntime),
-        version: overlay.version,
-        module: asset(3),
-        factory: asset(4),
-        wasm: asset(5),
-      },
-    },
+    webgpu:
+      overlay.gpuBuild === 'cpu'
+        ? structuredClone(webgpu)
+        : {
+            ...structuredClone(webgpu),
+            runtime: {
+              ...structuredClone(gpuRuntime),
+              version: overlay.version,
+              module: asset(3),
+              factory: asset(4),
+              wasm: asset(5),
+            },
+          },
   };
 }

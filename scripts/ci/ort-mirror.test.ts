@@ -167,6 +167,25 @@ test('composition preserves every model, reference and unrelated field in the re
   assert.deepEqual(overlay, overlaySnapshot);
 });
 
+test('a CPU-route overlay moves only the WASM runtime; the WebGPU route keeps its pinned control runtime (fm-qeh)', (t) => {
+  const dist = fixture(t, 'cpu');
+  const overlay = generateOverlay(dist, lock, 'cpu');
+  assert.deepEqual(
+    overlay.files.map((file) => file.file),
+    ['ort.wasm.min.mjs', 'ort-wasm-simd-threaded.mjs', 'ort-wasm-simd-threaded.wasm'],
+  );
+  assert.deepEqual(verifyOverlay(dist, overlay), overlay);
+  const original = control();
+  const composed = composeManifest(original, overlay, 'https://next.facemorph.me');
+  const runtime = composed['runtime'] as typeof original.runtime;
+  assert.equal(runtime.version, lock.version);
+  assert.deepEqual(composed['webgpu'], original.webgpu);
+  assert.throws(
+    () => validateOverlay({ ...overlay, gpuBuild: 'webgpu' }),
+    /ORT files are required/,
+  );
+});
+
 for (const gpuBuild of ['webgpu', 'jspi'] as const)
   test(`${gpuBuild} stages its exact six pinned files and composes the native EP without changing models`, (t) => {
     const dist = fixture(t, gpuBuild);
@@ -224,7 +243,10 @@ for (const gpuBuild of ['webgpu', 'jspi'] as const)
     // A native build cannot be silently relabelled or transplanted under another bundle digest.
     for (const otherBuild of Object.keys(ORT_BUILD_FILES) as OrtGpuBuild[]) {
       if (otherBuild === gpuBuild) continue;
-      assert.throws(() => validateOverlay({ ...overlay, gpuBuild: otherBuild }), /filename/);
+      assert.throws(
+        () => validateOverlay({ ...overlay, gpuBuild: otherBuild }),
+        /filename|ORT files are required/,
+      );
       const other = generateOverlay(fixture(t, otherBuild), lock, otherBuild);
       assert.notEqual(other.bundleSha256, overlay.bundleSha256);
       const transplanted = {
