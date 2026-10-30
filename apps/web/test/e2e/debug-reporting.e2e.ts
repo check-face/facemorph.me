@@ -1121,7 +1121,7 @@ test(
       stdio: 'inherit',
     });
     for (const file of ['catalogue.json', '_headers', '_redirects'])
-      cpSync(join(REPO, 'deploy-next', file), join(out, file));
+      cpSync(join(built, 'deploy-next', file), join(out, file));
     const site = await startControl({
       runtime,
       artifact: out,

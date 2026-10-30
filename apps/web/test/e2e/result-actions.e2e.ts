@@ -13,7 +13,9 @@ import { INSTALL_HOOK } from '../parity/elmish-probe.ts';
 import { typeMatchesBytes } from '../../src/media/export-policy.ts';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/ci-runtime');
-const artifactRoot = process.env['FACEMORPH_RESULT_ARTIFACT'] ?? REPO;
+// The built artifact: FACEMORPH_RESULT_ARTIFACT, else the release suites' FACEMORPH_DEPLOY_OUT, else the repository's.
+const artifactRoot =
+  process.env['FACEMORPH_RESULT_ARTIFACT'] ?? process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO;
 const out = join(REPO, 'apps/web/test-results/result-actions');
 const hash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 const suffix = (name: string) => name.slice(name.lastIndexOf('-'));

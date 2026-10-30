@@ -85,7 +85,7 @@ jobs:
         shard: [1, 2, 3, 4]
     env:
       CHECK: functional:${{ matrix.shard }}
-      OPERATED: consent-requests dialogs encoder-setup morph-intent morph-guards morph-output morph-progress tiles tooltip-hits blend
+      OPERATED: consent-requests dialogs encoder-setup morph-intent morph-guards morph-output morph-progress tiles tooltip-hits blend debug-reporting result-actions
     steps:
       - uses: actions/checkout@v4
         with:
@@ -128,7 +128,11 @@ jobs:
           files=$(node --input-type=module -e "
             import { VERIFY_FUNCTIONAL as m } from './test/verify/cases/verify-functional.ts';
             const extra = process.env.OPERATED.split(' ').map((f) => f + '.e2e.ts');
-            const all = [...new Set([...m.cases.map((c) => c.test.file), ...extra])].sort();
+            // The longest suites are dealt first, one to a shard, so no two of them share a shard's hour: face-many and
+            // morph-output together took shard 1 to 35 min (run 41002185600).
+            const heavy = ['face-many', 'morph-output', 'crop-acceptance', 'blend', 'debug-reporting'].map((f) => f + '.e2e.ts');
+            const rank = (f) => (heavy.includes(f) ? heavy.indexOf(f) : heavy.length);
+            const all = [...new Set([...m.cases.map((c) => c.test.file), ...extra])].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
             console.log(all.filter((_, i) => i % 4 === ${{ matrix.shard }} - 1).map((f) => 'test/e2e/' + f).join(' '));")
           echo "shard ${{ matrix.shard }}: $files"
           node --test --test-concurrency=3 --test-timeout=2400000 $files
