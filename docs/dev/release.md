@@ -14,10 +14,10 @@ Pushes that only touch `.beads/**` or `**/*.md` skip the release.
      form the go/no-go. On a GO: `deploy`, then `next works for visitors` (post-delivery check and a
      real first face on the live site). If that live check finds next broken, the run rolls back
      on its own.
-   - `functional <suite>`: each selected operated e2e suite runs in its own hosted job (Playwright
-     image) on the run's artifact, beside the go/no-go. It never stops the switch; a failure is
-     fixed forward.
-3. `qualify.yml` starts when the release run completes. It reads the release's `selection` artifact
+3. `functional.yml` starts when the release run completes and runs each selected operated e2e suite in
+   its own hosted job (Playwright image) on the release artifact, so a deploy never waits behind a
+   long suite. A failure is fixed forward.
+4. `qualify.yml` also starts when the release run completes. It reads the release's `selection` artifact
    and runs only what that selection asks for: the engine numerics, the paired timing segments
    (face, morph, photo) against the pinned control, and the six local cells plus the phone pairs
    on live next. With nothing selected it finishes in about a minute.

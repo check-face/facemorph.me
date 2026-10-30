@@ -1,0 +1,142 @@
+name: functional
+# The operated functional suites a push can affect (fm-3yqf), on that push's release artifact. The release run's select
+# job records them (scripts/ci/select-checks.mjs, artifact 'selection'); this workflow starts when the release run
+# completes, so a deploy to next never waits behind a long suite. One hosted job per suite in the Playwright image. A
+# failure is fixed forward (P0 on fm-jzuq). Every suite: dispatch qualify.yml full=true. Its own concurrency group: a
+# newer pending run replaces an older one, so it always checks the newest build.
+on:
+  workflow_run:
+    workflows: [release]
+    types: [completed]
+defaults:
+  run:
+    shell: bash
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: functional
+  cancel-in-progress: false
+env:
+  RUN: ${{ github.event.workflow_run.id }}
+  COMMIT: ${{ github.event.workflow_run.head_sha }}
+  ARTIFACT: next-site-${{ github.event.workflow_run.head_sha }}
+  FETCH: gh run download ${{ github.event.workflow_run.id }} -R ${{ github.repository }} -n next-site-${{ github.event.workflow_run.head_sha }} -D /tmp/next-site-${{ github.event.workflow_run.id }}
+jobs:
+  # The release run's selection and artifact digest. A release that built nothing (rollback, control, live, promote)
+  # or recorded no selection has nothing here.
+  meta:
+    if: github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      functional: ${{ steps.meta.outputs.functional }}
+      digest: ${{ steps.meta.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.COMMIT }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - id: meta
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh run download "$RUN" -R "$GITHUB_REPOSITORY" -n selection -D sel 2>/dev/null \
+            && gh run download "$RUN" -R "$GITHUB_REPOSITORY" -n "$ARTIFACT" -D artifact 2>/dev/null; then
+            functional=$(node -p 'JSON.stringify(JSON.parse(require("fs").readFileSync("sel/selection.json","utf8")).functional)')
+            digest=$(node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; console.log(treeDigest('artifact/deploy-next'))")
+          else
+            functional='[]'; digest=''
+          fi
+          printf 'functional=%s\ndigest=%s\n' "$functional" "$digest" | tee -a "$GITHUB_OUTPUT"
+          echo "Release run $RUN, ${COMMIT::7}: artifact $digest; suites: $functional" >> "$GITHUB_STEP_SUMMARY"
+
+  functional:
+    needs: meta
+    if: needs.meta.outputs.functional != '[]' && needs.meta.outputs.functional != ''
+    name: functional ${{ matrix.suite }}
+    runs-on: ubuntu-latest
+    # Node 24 and the pinned Playwright's Chromium, Firefox and WebKit with their libraries.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(needs.meta.outputs.functional || '[]') }}
+    env:
+      CHECK: functional:${{ matrix.suite }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.COMMIT }}
+      - run: apt-get update -qq && apt-get install -y -qq unzip >/dev/null # fetch-control unzips the pinned control
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci && npm run build # the packages' entry points, and apps/web/dist for the check pages
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT }}
+          run-id: ${{ env.RUN }}
+          github-token: ${{ github.token }}
+          path: artifact
+      - name: The artifact is the one built in this run
+        env:
+          DIGEST: ${{ needs.meta.outputs.digest }}
+        run: |
+          got=$(node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; console.log(treeDigest('artifact/deploy-next'))")
+          echo "artifact digest $got (built: $DIGEST)"
+          test "$got" = "$DIGEST"
+      - uses: ./.github/actions/setup-runtime
+      - name: ${{ matrix.suite }} on this artifact
+        working-directory: apps/web
+        env:
+          FACEMORPH_DEPLOY_OUT: ${{ github.workspace }}/artifact # the suites serve its deploy-next/
+          FACEMORPH_REQUIRE_RUNTIME: '1'
+          GITHUB_TOKEN: ${{ github.token }}
+          HOME: /root # Firefox refuses a $HOME the container user does not own (runs 40860018900, 40863182995)
+          # face.many at the phone and desktop widths, at one, two, three and a strip of 30 faces (its full matrix is the
+          # layout owner's local run).
+          FACE_MANY_WIDTHS: 390,1280
+          FACE_MANY_COUNTS: 1,2,3,30
+        run: node --test --test-timeout=1500000 test/e2e/${{ matrix.suite }}.e2e.ts
+      - name: Record the failure
+        if: failure() || cancelled()
+        run: |
+          node scripts/ci/failures.mjs add --dir failures --check "$CHECK" --bundle "bundle-functional-${{ matrix.suite }}" \
+            --repro "$FETCH && cd apps/web && FACEMORPH_DEPLOY_OUT=/tmp/next-site-${{ env.RUN }} FACEMORPH_REQUIRE_RUNTIME=1 node --test test/e2e/${{ matrix.suite }}.e2e.ts"
+      - uses: actions/upload-artifact@v4
+        if: failure() || cancelled()
+        with:
+          name: failure-functional-${{ matrix.suite }}
+          path: failures/
+      - uses: actions/upload-artifact@v4
+        if: failure() || cancelled()
+        with:
+          name: bundle-functional-${{ matrix.suite }}
+          path: apps/web/test-results/
+          retention-days: 14
+
+  report:
+    needs: [meta, functional]
+    if: always() && needs.meta.result == 'success'
+    name: every failing check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: failure-*
+          path: failures
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci/failures.mjs summary --dir failures --repo ${{ github.repository }} --run ${{ github.run_id }}
