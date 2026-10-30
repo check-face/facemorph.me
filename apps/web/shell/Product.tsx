@@ -27,6 +27,7 @@ import { FacesLayout } from './render/FacesLayout.tsx';
 import { createUndoCanvas } from './render/undo-canvas.ts';
 import { MorphSlot } from './render/MorphSlot.tsx';
 import { ProviderSelector } from './render/ProviderSelector.tsx';
+import { ModeSwitch } from './render/ModeSwitch.tsx';
 import { VideoSlot } from './render/VideoSlot.tsx';
 import { NamesDialog, CropDialog, DownloadDialog } from './render/Dialogs.tsx';
 import { BatchDialog } from './render/BatchDialog.tsx';
@@ -124,21 +125,26 @@ export function Product({ store }: { store: Store }) {
         </>
       }
     >
+      <ProviderSelector
+        provider={s.Provider}
+        busy={s.Busy}
+        onProvider={(provider) => dispatch(msg('Provider', provider))}
+        encoderSetup={{
+          available: s.Downloads.known && s.Downloads.photoAvailable && !s.Downloads.photoReady,
+          active: s.EncoderSetup === 'active',
+          onPrepare: () => dispatch(msg('PrepareEncoder')),
+          onCancel: () => dispatch(msg('CancelEncoderSetup')),
+        }}
+      />
+      {/* Morph | Blend (fm-56e6): Morph is the default; Blend is #blend. */}
+      <ModeSwitch
+        mode={blendOpen ? 'blend' : 'morph'}
+        onMode={(mode) => (mode === 'blend' ? enterBlend(window) : leaveBlend(window))}
+      />
       {blendOpen ? (
-        <BlendView state={s} dispatch={dispatch} onBack={() => leaveBlend(window)} />
+        <BlendView state={s} dispatch={dispatch} />
       ) : (
         <>
-          <ProviderSelector
-            provider={s.Provider}
-            busy={s.Busy}
-            onProvider={(provider) => dispatch(msg('Provider', provider))}
-            encoderSetup={{
-              available: s.Downloads.known && s.Downloads.photoAvailable && !s.Downloads.photoReady,
-              active: s.EncoderSetup === 'active',
-              onPrepare: () => dispatch(msg('PrepareEncoder')),
-              onCancel: () => dispatch(msg('CancelEncoderSetup')),
-            }}
-          />
           <FacesLayout
             inputs={s.Inputs}
             onAddAt={(at) => dispatch(msg('AddAt', at))}

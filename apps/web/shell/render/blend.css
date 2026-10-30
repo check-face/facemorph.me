@@ -1,7 +1,9 @@
-/* The blend view (fm-2kse). Desktop: the result large and kept in view on the right, the slots in a grid of compact
- * tiles (2-4 columns) on the left, each weight under its slot. Phone: the result pinned at the top at a smaller
- * size, the slots in one column. Past what fits, the slot list scrolls inside its panel; the page never scrolls
- * sideways. */
+/* The blend view (fm-2kse, fm-56e6). Desktop: the result large and kept in view on the right, the slots in a grid of
+ * compact tiles (2-4 columns) on the left, each weight under its slot; past what fits, the slot list scrolls inside
+ * its panel. Narrower than 900 px the result sits above the slots in the page's flow (never pinned over them).
+ * Phones (< 600 px) follow the morph strip (fm-vd4i): the slots are one whole face per view in a sideways strip,
+ * each the ordinary face tile (image full width with Remove inside it, field and action below) with its weight.
+ * The page never scrolls sideways. */
 
 .next-blend {
   width: 100%;
@@ -135,6 +137,8 @@
   min-height: 44px;
 }
 .next-blend-slots {
+  /* A containing block, so visually hidden absolute parts of a tile are clipped by the panel, not the page. */
+  position: relative;
   display: grid;
   /* 2-4 columns: never narrower than a usable compact tile, never more than four. */
   grid-template-columns: repeat(auto-fill, minmax(max(230px, calc((100% - 3 * 0.75rem) / 4)), 1fr));
@@ -157,46 +161,48 @@
   padding-bottom: 0.4rem;
 }
 
-/* Compact rows: thumbnail, field, weight. */
-.next-blend-slots .next-face {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  align-content: start;
-  align-items: start;
-  gap: 8px;
-  max-width: none;
-  padding: 0.5rem 0.5rem 0;
-}
-.next-blend-slots .next-face .next-face-image {
-  grid-column: 1;
-  grid-row: 1 / span 3;
-  width: 96px;
-}
-.next-blend-slots .next-input-row {
-  grid-column: 2;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-  min-width: 0;
-}
-.next-blend-slots .next-input-row > .next-field {
-  flex: 0 0 auto;
-  min-width: 0;
-}
-.next-blend-slots .next-face-generate {
-  min-height: 44px;
-}
-.next-blend-slots .next-face-hint {
-  inset: 48px 4px 0;
-  display: grid;
-  place-items: center;
-  margin: 0;
-  font-size: 0.75rem;
-  line-height: 1.2;
-}
-.next-blend-slots .next-tile-status {
-  grid-column: 2;
-  min-width: 0;
+/* Compact rows from 600 px: thumbnail, field, weight. */
+@media (min-width: 600px) {
+  .next-blend-slots .next-face {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    align-content: start;
+    align-items: start;
+    gap: 8px;
+    max-width: none;
+    padding: 0.5rem 0.5rem 0;
+  }
+  .next-blend-slots .next-face .next-face-image {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+    width: 96px;
+  }
+  .next-blend-slots .next-input-row {
+    grid-column: 2;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 0;
+  }
+  .next-blend-slots .next-input-row > .next-field {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+  .next-blend-slots .next-face-generate {
+    min-height: 44px;
+  }
+  .next-blend-slots .next-face-hint {
+    inset: 48px 4px 0;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+  .next-blend-slots .next-tile-status {
+    grid-column: 2;
+    min-width: 0;
+  }
 }
 /* A slot's own Share/Save is not a blend output; the result has the export controls. */
 .next-blend-slots .next-face-actions {
@@ -227,27 +233,43 @@
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: 'result' 'panel';
   }
-  /* Pinned at the top at a smaller size: the image beside its actions. */
+  /* In the page's flow above the slots: nothing is pinned over the controls below it. */
   .next-blend-result {
-    top: 0;
-    display: grid;
-    grid-template-columns: 132px minmax(0, 1fr);
-    align-items: start;
-    gap: 0.4rem 0.6rem;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
-  }
-  .next-blend-frame {
-    grid-row: 1 / span 3;
-  }
-  .next-blend-placeholder {
-    font-size: 0.8rem;
-    padding: 0.4rem;
-  }
-  .next-blend-actions {
-    grid-column: 1 / -1;
+    position: static;
+    width: 100%;
+    max-width: 440px;
+    justify-self: center;
+    box-sizing: border-box;
   }
   .next-blend-slots {
-    grid-template-columns: minmax(0, 1fr);
-    max-height: 60vh;
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
+/* Phones: the slots are a sideways strip of whole faces, as the morph strip is (fm-vd4i). */
+@media (max-width: 599px) {
+  .next-blend-slots {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    padding: 2px 0 8px;
+  }
+  .next-blend-slot {
+    flex: 0 0 calc(100% - 40px);
+    width: calc(100% - 40px);
+    scroll-snap-align: center;
+  }
+  .next-blend-slots .next-face {
+    max-width: none;
+    padding: 0.5rem;
+  }
+  .next-blend-controls {
+    justify-content: center;
   }
 }

@@ -1,12 +1,12 @@
-// The blend view's slot list and weights (fm-2kse), kept with the tab's session: a reload in the same tab restores
-// them, a new tab starts without. Like the typed words (session-words.ts) they live only in sessionStorage; a photo
-// slot keeps its place, weight and file name, and its pixels stay in this tab's memory only. Storage that is absent
-// or throws simply keeps nothing.
+// The blend view's weights by face id (fm-2kse, fm-56e6), kept with the tab's session: a reload in the same tab
+// restores them, a new tab starts without. The faces themselves are the morph session's (one shared list). Like the
+// typed words (session-words.ts) they live only in sessionStorage; storage that is absent or throws keeps nothing.
+// A version-1 record of separate blend slots migrates to the shared list (restoreWeights).
 import {
-  restoreSlots,
-  storedSlots,
-  type BlendSlot,
+  restoreWeights,
+  storedWeights,
   type BlendState,
+  type BlendWeights,
 } from '../../src/controller/blend.ts';
 
 export const BLEND_KEY = 'facemorph-blend-v1';
@@ -25,18 +25,18 @@ export function rememberBlend(
   const s = storage(scope);
   if (!s || !blend) return;
   try {
-    s.setItem(BLEND_KEY, JSON.stringify(storedSlots(blend)));
+    s.setItem(BLEND_KEY, JSON.stringify(storedWeights(blend)));
   } catch {
     /* full or blocked: nothing kept */
   }
 }
-export function restoreBlend(scope?: { readonly sessionStorage?: Storage }): readonly BlendSlot[] {
+export function restoreBlend(scope?: { readonly sessionStorage?: Storage }): BlendWeights {
   const s = storage(scope);
-  if (!s) return [];
+  if (!s) return {};
   try {
     const text = s.getItem(BLEND_KEY);
-    return text ? restoreSlots(JSON.parse(text)) : [];
+    return text ? restoreWeights(JSON.parse(text)) : {};
   } catch {
-    return [];
+    return {};
   }
 }

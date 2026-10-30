@@ -139,11 +139,8 @@ export interface Payloads {
   /** The view's OK: one admission check, then every pick lands in click order. */
   BatchOk: readonly [];
   // ---- the blend view (fm-2kse) ----
-  /** The view opened (seeds the slots on first open) or closed (cancels a pending blend synthesis). */
+  /** The view opened or closed (closing cancels a pending blend synthesis). */
   BlendView: readonly [boolean];
-  /** A new empty slot at weight 1/N; the runner supplies its id. */
-  BlendAdd: readonly [];
-  BlendRemove: readonly [string];
   /** A released slider or a committed keyboard step: one regeneration. */
   BlendWeight: readonly [string, number];
   /** Every weight at once (Shuffle weights), in slot order. */
@@ -153,7 +150,7 @@ export interface Payloads {
   /** Make it 1: every weight scaled in proportion. */
   BlendNormalize: readonly [];
   BlendRun: readonly [];
-  /** A slot's face finished as a blend dependency. */
+  /** A face the blend waited for finished on the way. */
   BlendSlotReady: readonly [Face];
   BlendCompleted: readonly [number, Face];
   BlendFailed: readonly [number, string];

@@ -1,33 +1,26 @@
-// The blend view (face.blend-view, fm-2kse). Blend* messages own the slot list, weights and the blend run; every
-// per-face message aimed at a slot (words, seed, names, photo, crop, Generate/Cancel) runs the existing reducer
-// through a lens that shows it the slots as its Inputs, so slots behave exactly like faces while never changing a
-// morph face, the morph video or the remembered morph session.
+// The blend view (face.blend-view fm-2kse, fm-56e6). Blend and Morph share one list of faces: every per-face message
+// (words, seed, names, photo, crop, Generate, Remove and its Undo, Choose faces) is the morph's own and shows in
+// both modes. Blend* messages own only the weights (by face id) and the one-synthesis blend and its result.
 import { msg, type Msg } from '../msg.ts';
 import { unchanged, type Effect, type Transition } from '../effects.ts';
-import type { Face, State } from '../state.ts';
+import type { State } from '../state.ts';
 import { gateScope } from '../derived.ts';
 import { admitTo, refusal, type AdmissionFacts } from '../admission.ts';
 import {
   BLEND_RESULT,
-  addSlot,
   blendRefusal,
+  blendSlots,
   emptyBlend,
-  isBlendId,
   makeItOne,
-  removeSlot,
   resetWeights,
-  seedSlots,
   setWeight,
   usedSlots,
   withWeights,
-  type BlendSlot,
   type BlendState,
 } from '../blend.ts';
 
-/** Fresh slot ids from the effect runner (randomness stays outside the reducers). */
 export interface BlendFacts extends AdmissionFacts {
-  readonly blendIds?: readonly string[];
-  /** Add to morph's new morph face id. */
+  /** Add to morph's new face id. */
   readonly newFaceId?: string;
 }
 const GRANT_REFUSAL = /not covered by an approved download|needs more data than was approved/;
@@ -37,17 +30,18 @@ const withBlend = (state: State, blend: BlendState): State => ({ ...state, Blend
 
 /** Runs the blend of the current weights: refused in one line, asked about through the consent modal, or queued. */
 function run(state: State, blend: BlendState): Transition {
-  const refusal = blendRefusal(blend.slots);
+  const slots = blendSlots(state.Inputs, blend.weights);
+  const refused = blendRefusal(slots);
   const cancel: Effect[] = blend.running !== null ? [{ type: 'cancelBlend' }] : [];
-  if (refusal)
+  if (refused)
     return {
-      state: withBlend(state, { ...blend, running: null, error: refusal, retry: false }),
+      state: withBlend(state, { ...blend, running: null, error: refused, retry: false }),
       effects: cancel,
     };
-  const used = usedSlots(blend.slots);
-  // The existing download question: photo scope when a weighted photo slot still needs its encode.
+  const used = usedSlots(slots);
+  // The existing download question: photo scope when a weighted photo face still needs its encode.
   const needsPhoto = used.some(
-    (slot) => slot.input.mode === 'photo' && !blend.faces.some((face) => face.id === slot.input.id),
+    (slot) => slot.input.mode === 'photo' && !state.Faces.some((face) => face.id === slot.input.id),
   );
   const scope = gateScope(
     {
@@ -86,88 +80,42 @@ export function blend(message: Msg, state: State, facts: BlendFacts = {}): Trans
     case 'BlendView': {
       const [open] = message.args;
       if (!open)
-        // Leaving the view cancels a pending blend synthesis; slot photo encodes keep running.
+        // Leaving the view cancels a pending blend synthesis; face photo encodes keep running.
         return current.running === null
           ? unchanged(state)
           : {
               state: withBlend(state, { ...current, running: null }),
               effects: [{ type: 'cancelBlend' }],
             };
-      if (state.Blend) return unchanged(state);
-      const ids = facts.blendIds ?? [];
-      const seeded = seedSlots(state.Inputs, state.Faces, ids);
-      const slots: readonly BlendSlot[] = seeded.slots.length
-        ? seeded.slots
-        : ids.at(-1)
-          ? addSlot([], ids.at(-1)!)
-          : [];
-      const copied = new Map(seeded.copies.map(([from, to]) => [to, from]));
-      const faces: Face[] = [];
-      for (const slot of slots) {
-        const from = copied.get(slot.input.id);
-        const face = from && state.Faces.find((item) => item.id === from);
-        if (face) faces.push({ ...face, id: slot.input.id });
-      }
-      return {
-        state: withBlend(state, { ...emptyBlend(), slots, faces }),
-        effects: seeded.copies.map(([from, to]) => ({ type: 'copyFace', from, to })),
-      };
-    }
-    case 'BlendAdd': {
-      const id = facts.blendIds?.[0];
-      if (!id) return unchanged(state);
-      return {
-        state: withBlend(state, { ...current, slots: addSlot(current.slots, id) }),
-        effects: [],
-      };
-    }
-    case 'BlendRemove': {
-      const [id] = message.args;
-      if (current.slots.length <= 1 || !current.slots.some((slot) => slot.input.id === id))
-        return unchanged(state);
-      const next = {
-        ...current,
-        slots: removeSlot(current.slots, id),
-        faces: current.faces.filter((face) => face.id !== id),
-      };
-      const transition = changed(
-        {
-          ...state,
-          PendingJobs: state.PendingJobs.filter(
-            (job) => !(job.type === 'RunFace' && job.args[0] === id),
-          ),
-        },
-        next,
-      );
-      return {
-        ...transition,
-        effects: [
-          { type: 'cancelSlot', id },
-          { type: 'invalidateFace', id },
-          ...transition.effects,
-        ],
-      };
+      return state.Blend
+        ? unchanged(state)
+        : { state: withBlend(state, emptyBlend()), effects: [] };
     }
     case 'BlendWeight': {
       const [id, weight] = message.args;
-      return changed(state, { ...current, slots: setWeight(current.slots, id, weight) });
+      if (!state.Inputs.some((input) => input.id === id)) return unchanged(state);
+      return changed(state, { ...current, weights: setWeight(current.weights, id, weight) });
     }
     case 'BlendWeights':
-      return changed(state, { ...current, slots: withWeights(current.slots, message.args[0]) });
+      return changed(state, {
+        ...current,
+        weights: withWeights(state.Inputs, current.weights, message.args[0]),
+      });
     case 'BlendReset':
-      return changed(state, { ...current, slots: resetWeights(current.slots) });
+      return changed(state, { ...current, weights: resetWeights() });
     case 'BlendNormalize':
-      return changed(state, { ...current, slots: makeItOne(current.slots) });
+      return changed(state, {
+        ...current,
+        weights: makeItOne(blendSlots(state.Inputs, current.weights), current.weights),
+      });
     case 'BlendRun':
       return run(state, current);
     case 'BlendSlotReady': {
+      // A face the blend waited for finished on the way: it is the shared list's face, shown in both modes.
       const [face] = message.args;
-      if (!current.slots.some((slot) => slot.input.id === face.id)) return unchanged(state);
+      if (!state.Inputs.some((input) => input.id === face.id)) return unchanged(state);
       return {
-        state: withBlend(state, {
-          ...current,
-          faces: [...current.faces.filter((item) => item.id !== face.id), face],
-        }),
+        state: { ...state, Faces: [...state.Faces.filter((item) => item.id !== face.id), face] },
         effects: [],
       };
     }
@@ -249,139 +197,4 @@ export function blend(message: Msg, state: State, facts: BlendFacts = {}): Trans
     default:
       return null;
   }
-}
-
-// ---- the slot lens --------------------------------------------------------------------------------------------------
-
-/** The blend slot a per-face message is aimed at, or null when it is a morph face's (or nobody's). */
-export function blendSlotTarget(message: Msg, state: State): string | null {
-  const blendState = state.Blend;
-  if (!blendState) return null;
-  let id: string | null | undefined = null;
-  switch (message.type) {
-    case 'Edit':
-    case 'Mode':
-    case 'Photo':
-    case 'PickPhoto':
-    case 'PhotoRefused':
-    case 'PhotoFailed':
-    case 'Photos':
-    case 'CancelFace':
-    case 'RunFace':
-    case 'NamePicked':
-    case 'BrowseNames':
-    case 'PreviewLoaded':
-    case 'RequestCrop':
-    case 'Cropped':
-    case 'UseAsPhoto':
-    case 'ResumePhoto':
-      id = message.args[0];
-      break;
-    case 'Classified':
-      id = message.args[3];
-      break;
-    case 'CachedFaceChecked':
-      id = message.args[0].id;
-      break;
-    case 'ChooseName':
-    case 'SearchNames':
-    case 'CloseNames':
-    case 'MoreNames':
-    case 'NamesLoaded':
-    case 'NamesFailed':
-      id = state.Browse;
-      break;
-    case 'CropAdjust':
-    case 'CropUse':
-    case 'CropViewport':
-    case 'CropPan':
-    case 'CropResize':
-    case 'CropRotate':
-    case 'CropTurn':
-    case 'CropDetected':
-    case 'CropAccept':
-    case 'CropCancel':
-      id = state.Crop?.faceId;
-      break;
-    case 'GateAccept':
-    case 'GateCancel': {
-      const pending = state.Gate?.[1];
-      if (pending?.type === 'BlendRun') return BLEND_RESULT;
-      return pending ? blendSlotTarget(pending, state) : null;
-    }
-    default:
-      return null;
-  }
-  return id && isBlendId(id) && blendState.slots.some((slot) => slot.input.id === id) ? id : null;
-}
-
-/** Effects that belong to the morph session only: a slot change never touches them. */
-const MORPH_ONLY = new Set<Effect['type']>([
-  'rememberView',
-  'invalidateArrivalRestore',
-  'invalidateMorph',
-]);
-
-/** Runs `reduce` with the slots as Inputs and the slot faces as Faces, then puts the morph's own fields back. */
-export function throughSlots(
-  message: Msg,
-  state: State,
-  reduce: (message: Msg, state: State) => Transition | null,
-): Transition | null {
-  const blendState = state.Blend!;
-  const { Blend: _blend, Undo: _undo, ...morph } = state;
-  const projected: State = {
-    ...morph,
-    Inputs: blendState.slots.map((slot) => slot.input),
-    Faces: blendState.faces,
-    VideoUrl: '',
-    PendingMorph: false,
-  };
-  const result = reduce(message, projected);
-  if (!result) return null;
-  const next = result.state;
-  const weights = new Map(blendState.slots.map((slot) => [slot.input.id, slot.weight]));
-  // Only slot ids stay slots; a reducer never invents morph faces here (multi-photo batches are not slot fills).
-  const slots = next.Inputs.filter((input) => isBlendId(input.id)).map((input) => ({
-    input,
-    weight: weights.get(input.id) ?? 1 / Math.max(1, next.Inputs.length),
-  }));
-  const slotJob = (job: Msg) => job.type === 'RunFace' && isBlendId(job.args[0]);
-  const kept = state.PendingJobs.filter(
-    (job) => !slotJob(job) && !next.PendingJobs.some((other) => other === job),
-  );
-  const startedJob = next.JobId !== state.JobId;
-  const { Blend: _b, Undo: _u, ...rest } = next;
-  return {
-    state: {
-      ...rest,
-      ...(state.Undo ? { Undo: state.Undo } : {}),
-      Inputs: state.Inputs,
-      Faces: state.Faces,
-      VideoUrl: state.VideoUrl,
-      PendingMorph: state.PendingMorph,
-      PendingJobs: [...kept, ...next.PendingJobs],
-      RunInputs: startedJob ? next.RunInputs : state.RunInputs,
-      RunSettings: startedJob ? next.RunSettings : state.RunSettings,
-      Blend: { ...blendState, slots, faces: next.Faces },
-    },
-    effects: result.effects.filter((effect) => !MORPH_ONLY.has(effect.type)),
-  };
-}
-
-/** A finished main job's output also carries slot faces generated by a slot's Generate. */
-export function withSlotFaces(state: State, faces: readonly Face[]): State {
-  const blendState = state.Blend;
-  if (!blendState) return state;
-  const ids = new Set(blendState.slots.map((slot) => slot.input.id));
-  const arrived = faces.filter((face) => ids.has(face.id));
-  if (!arrived.length) return state;
-  const replaced = new Set(arrived.map((face) => face.id));
-  return {
-    ...state,
-    Blend: {
-      ...blendState,
-      faces: [...blendState.faces.filter((face) => !replaced.has(face.id)), ...arrived],
-    },
-  };
 }

@@ -941,7 +941,7 @@ def journey_morph(phone, gpu=None):
 
 def journey_blend(phone, gpu=None):
     """The blend view (fm-2kse) from the two faces the earlier journeys made: More options, Blend faces and Blend,
-    each a real tap at its visible position; the blended face shown is the result. Then Back to the faces."""
+    each a real tap at its visible position; the blended face shown is the result. Then Morph (the mode switch)."""
     t0 = time.time()
     toggle = 'button[aria-controls="next-overflow"]'
     if phone.js(f"document.querySelector('{toggle}')?.getAttribute('aria-expanded')") != 'true':
@@ -963,7 +963,7 @@ def journey_blend(phone, gpu=None):
     route = phone.js(f"document.querySelector('{S['route']}')?.innerText||''").strip()
     if gpu is not None and route:
         check_route(route, gpu)
-    phone.tap('.next-blend-back')
+    phone.tap('.next-mode-morph')
     phone.wait("!document.querySelector('.next-blend')", 60)
     return {'blendS': round(blendS, 2), 'totalS': round(time.time() - t0, 2), 'slots': slots, 'route': route[:80],
             'url': phone.page.url}

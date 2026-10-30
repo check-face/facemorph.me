@@ -9,8 +9,7 @@ import { batch, type BatchFacts } from './batch.ts';
 import { crop, faceFirst } from './crop.ts';
 import { sameInputs } from './schedule.ts';
 import { commitUndo, NEXT_ACTIONS, undo, type UndoFacts } from './undo.ts';
-import { blend, blendSlotTarget, throughSlots, withSlotFaces, type BlendFacts } from './blend.ts';
-import { isBlendId } from '../blend.ts';
+import { blend, type BlendFacts } from './blend.ts';
 import type { Msg } from '../msg.ts';
 import type { State } from '../state.ts';
 import { viewSnapshot, type Transition } from '../effects.ts';
@@ -113,8 +112,6 @@ export const CASES = {
   Retry: jobs,
   RestoredLast: jobs,
   BlendView: blend,
-  BlendAdd: blend,
-  BlendRemove: blend,
   BlendWeight: blend,
   BlendWeights: blend,
   BlendReset: blend,
@@ -128,18 +125,7 @@ export const CASES = {
 } satisfies Record<Msg['type'], ControllerReducer>;
 /** Compose guard priority and the classic remember-view wrapper around each pure transition. */
 export function reduce(message: Msg, state: State, facts: ControllerFacts = {}): Transition | null {
-  // A per-face message aimed at a blend slot (fm-2kse) runs the same reducers over the slots, never the morph faces.
-  if (blendSlotTarget(message, state) !== null)
-    return throughSlots(message, state, (lensed, projected) => reduce(lensed, projected, facts));
-  const result = reduceFaces(message, state, facts);
-  if (!result || !state.Blend || message.type !== 'Completed') return result;
-  // A slot's own Generate finishes as an ordinary face job: its face joins the slot, the morph video stays.
-  const slotJob = state.LastRun?.type === 'RunFace' && isBlendId(state.LastRun.args[0]);
-  const next = withSlotFaces(result.state, message.args[1].faces);
-  return {
-    ...result,
-    state: slotJob ? { ...next, VideoUrl: state.VideoUrl } : next,
-  };
+  return reduceFaces(message, state, facts);
 }
 function reduceFaces(message: Msg, state: State, facts: ControllerFacts): Transition | null {
   // A person's next action ends an open Undo notice first (fm-id4c): the hidden faces are released, then it applies.

@@ -223,16 +223,6 @@ export function createController(
       ...(message.type === 'AddAt' || message.type === 'BlendAddToMorph'
         ? { newFaceId: `face-${crypto.randomUUID().replaceAll('-', '')}` }
         : {}),
-      // Blend slot ids (fm-2kse): one per morph face plus a spare when the view first opens, one per added slot.
-      ...((message.type === 'BlendView' && message.args[0] && !state.Blend) ||
-      message.type === 'BlendAdd'
-        ? {
-            blendIds: Array.from(
-              { length: message.type === 'BlendAdd' ? 1 : state.Inputs.length + 1 },
-              () => `blend-${crypto.randomUUID().replaceAll('-', '')}`,
-            ),
-          }
-        : {}),
       ...(message.type === 'StartOver'
         ? {
             startOverIds: [
@@ -340,10 +330,9 @@ export function createController(
       },
     );
   }
-  /** A morph face or a blend slot (fm-2kse) with this id. */
+  /** The face with this id (Blend and Morph share one list, fm-56e6). */
   const inputOf = (state: State, id: string): Input | undefined =>
-    state.Inputs.find((input) => input.id === id) ??
-    state.Blend?.slots.find((slot) => slot.input.id === id)?.input;
+    state.Inputs.find((input) => input.id === id);
   /** The blend view's current parent intent; a newer one supersedes it inside the service. */
   let blendHandle: OperationHandle | null = null;
   function runBlend(effect: Extract<Effect, { type: 'runBlend' }>): void {

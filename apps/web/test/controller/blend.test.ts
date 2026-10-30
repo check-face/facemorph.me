@@ -1,6 +1,7 @@
-// The blend view (face.blend-view, fm-2kse) as pure model, reducers and route: `#blend` routing, first-open seeding,
-// copies, weights (1/N, Reset, Make it 1, the sum line, 0.05 steps in 0-1, Shuffle), all-zero refusal, weight-0
-// skipping, no slot count limit and session persistence of slots and weights.
+// The blend view (fm-2kse, fm-56e6) as pure model, reducers and route. Blend and Morph share one list of faces with a
+// weight per face (by id; unset = an equal share): a face added, edited or removed in either mode is the same face;
+// weights (Reset, Make it 1, the sum line, 0.05 steps in 0-1, Shuffle), the all-zero refusal, weight-0 skipping,
+// one regeneration per commit, Add to morph, session persistence and migration of the older separate slots.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { msg, type Msg } from '../../src/controller/msg.ts';
@@ -10,18 +11,13 @@ import type { Face, Input, State } from '../../src/controller/state.ts';
 import { init } from '../../src/controller/init.ts';
 import {
   BLEND_RESULT,
-  addSlot,
-  blendRefusal,
+  blendSlots,
   emptyBlend,
-  makeItOne,
-  resetWeights,
-  restoreSlots,
+  restoreWeights,
   shuffleWeights,
   stepWeight,
-  storedSlots,
   sumLine,
   weightSum,
-  type BlendSlot,
 } from '../../src/controller/blend.ts';
 import {
   BLEND_HASH,
@@ -65,400 +61,183 @@ const morph = (count: number, extra: Partial<State> = {}): State => {
   }));
   return { ...base, Inputs: inputs, Faces: [], ...extra };
 };
-const ids = (n: number) => Array.from({ length: n }, (_, i) => `blend-${i}`);
 const step = (s: State, m: Msg, facts = {}) => {
   const t = reduce(m, s, facts);
   assert.ok(t, m.type);
   return t;
 };
-const open = (s: State) => step(s, msg('BlendView', true), { blendIds: ids(s.Inputs.length + 1) });
-const weights = (s: State) => s.Blend!.slots.map((slot) => slot.weight);
+const open = (s: State) => step(s, msg('BlendView', true));
+const weights = (s: State) => blendSlots(s.Inputs, s.Blend!.weights).map((slot) => slot.weight);
 const runs = (effects: readonly Effect[]) =>
   effects.filter((e): e is Extract<Effect, { type: 'runBlend' }> => e.type === 'runBlend');
 const close = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-9, `${a} ≈ ${b}`);
 
-// ---- seeding and copies ---------------------------------------------------------------------------------------------
+// ---- one shared list of faces ---------------------------------------------------------------------------------------
 
-test('first open copies every latent-capable morph face as a slot at equal weights, in order', () => {
-  const photo = new File([new Uint8Array(4)], 'p.jpg', { type: 'image/jpeg' });
-  const s = morph(2, {
-    Inputs: [
-      { id: 'face-a', mode: 'text', value: 'ada', file: null },
-      { id: 'face-b', mode: 'text', value: '', file: null }, // no latent yet and cannot get one
-      { id: 'face-c', mode: 'photo', value: 'p.jpg', file: photo },
-      { id: 'face-d', mode: 'seed', value: '42', file: null },
-      { id: 'face-e', mode: 'project', value: 'Restored face', file: null }, // finished: has a latent
-    ],
-    Faces: [face('face-a'), face('face-e')],
-  });
-  const opened = open(s);
-  const slots = opened.state.Blend!.slots;
-  assert.deepEqual(
-    slots.map((slot) => [slot.input.mode, slot.input.value]),
-    [
-      ['text', 'ada'],
-      ['photo', 'p.jpg'],
-      ['seed', '42'],
-      ['project', 'Restored face'],
-    ],
-  );
-  assert.ok(slots.every((slot) => slot.input.id.startsWith('blend-')));
-  for (const w of weights(opened.state)) close(w, 1 / 4);
-  // Finished morph faces are copied (latent and pixels) under the slot's own id, never shared.
-  assert.deepEqual(
-    opened.effects.filter((e) => e.type === 'copyFace'),
-    [
-      { type: 'copyFace', from: 'face-a', to: slots[0]!.input.id },
-      { type: 'copyFace', from: 'face-e', to: slots[3]!.input.id },
-    ],
-  );
-  assert.deepEqual(
-    opened.state.Blend!.faces.map((f) => f.id),
-    [slots[0]!.input.id, slots[3]!.input.id],
-  );
-  assert.equal(opened.state.Inputs, s.Inputs, 'the morph faces are untouched');
-  // A second open keeps the slots as they are.
-  assert.equal(open(opened.state).state.Blend, opened.state.Blend);
+test('Blend shows the morph faces themselves at equal shares, also for a 150-face row; nothing is copied', () => {
+  const row = morph(3);
+  const opened = open(row);
+  assert.equal(opened.state.Inputs, row.Inputs);
+  assert.deepEqual(opened.effects, [], 'no copies');
+  for (const w of weights(opened.state)) close(w, 1 / 3);
+  for (const w of weights(open(morph(150)).state)) close(w, 1 / 150);
 });
 
-test('first open from a 150-face morph row seeds 150 slots at 1/150', () => {
-  const opened = open(morph(150));
-  assert.equal(opened.state.Blend!.slots.length, 150);
-  for (const w of weights(opened.state)) close(w, 1 / 150);
-  close(weightSum(opened.state.Blend!.slots), 1);
-});
-
-test('slots are copies: editing a slot never changes a morph face, or the reverse', () => {
-  const s = open(morph(2, { VideoUrl: 'blob:video' })).state;
-  const slot = s.Blend!.slots[0]!.input.id;
-  const edited = step(s, msg('Edit', slot, 'grace hopper'));
-  assert.equal(edited.state.Blend!.slots[0]!.input.value, 'grace hopper');
-  assert.deepEqual(edited.state.Inputs, s.Inputs, 'morph faces unchanged');
-  assert.equal(edited.state.VideoUrl, 'blob:video', 'the morph video stays');
-  assert.ok(
-    !edited.effects.some((e) =>
-      ['rememberView', 'invalidateMorph', 'invalidateArrivalRestore'].includes(e.type),
-    ),
-    'no morph session effect from a slot edit',
-  );
+test('add, edit, remove with Undo and Start over act on the one list in either mode', () => {
+  let s = open(morph(2)).state;
+  s = step(s, msg('BlendWeight', 'face-0', 0.7)).state;
+  // A face added (as Add face does in either mode) has an equal share; the set weight stays.
+  s = step(s, msg('AddAt', s.Inputs.length), { newFaceId: 'face-new' }).state;
   assert.deepEqual(
-    edited.effects.filter((e) => e.type === 'invalidateFace'),
-    [{ type: 'invalidateFace', id: slot }],
+    s.Inputs.map((i) => i.id),
+    ['face-0', 'face-1', 'face-new'],
   );
-  const morphEdit = step(edited.state, msg('Edit', 'face-0', 'changed'));
-  assert.equal(morphEdit.state.Inputs[0]!.value, 'changed');
-  assert.deepEqual(morphEdit.state.Blend!.slots, edited.state.Blend!.slots, 'slots unchanged');
-  // Mode and names reach the slot too, through the same reducers.
-  const seeded = step(edited.state, msg('Mode', slot, 'seed'));
-  assert.equal(seeded.state.Blend!.slots[0]!.input.mode, 'seed');
-  const browsing = step(seeded.state, msg('BrowseNames', slot));
-  assert.equal(browsing.state.Browse, slot);
-  const chosen = step(browsing.state, msg('ChooseName', 'ada'));
+  close(weights(s)[0]!, 0.7);
+  close(weights(s)[2]!, 1 / 3);
+  s = step(s, msg('Edit', 'face-new', 'grace hopper')).state;
+  assert.equal(s.Inputs[2]!.value, 'grace hopper');
+  // Remove has the morph's Undo; Undo brings the face back with its weight.
+  const removed = step(s, msg('Remove', 'face-0')).state;
   assert.deepEqual(
-    [chosen.state.Blend!.slots[0]!.input.mode, chosen.state.Blend!.slots[0]!.input.value],
-    ['text', 'ada'],
+    removed.Inputs.map((i) => i.id),
+    ['face-1', 'face-new'],
   );
-  assert.deepEqual(chosen.state.Inputs, s.Inputs);
-  // The pick asks for that name's published result for the slot (fm-ejwq), never a generation.
-  assert.ok(chosen.effects.some((e) => e.type === 'pickName' && e.id === slot));
-  // The slot's own Generate is an ordinary face job aimed at the slot.
-  const generated = step(
-    { ...chosen.state, PendingJobs: [], Busy: false, PreparingFaces: new Set<string>() },
-    msg('RunFace', slot),
-  );
-  const execute = generated.effects.find((e) => e.type === 'execute');
-  assert.ok(execute && execute.type === 'execute');
-  assert.equal(execute.request.target, slot);
+  assert.ok(removed.Undo, 'the same Undo notice');
+  const undone = step(removed, msg('Undo')).state;
   assert.deepEqual(
-    execute.request.inputs.map((i) => i.id),
-    [slot],
+    undone.Inputs.map((i) => i.id),
+    ['face-0', 'face-1', 'face-new'],
   );
-  assert.ok(!generated.effects.some((e) => e.type === 'rememberView'));
-  // Its finished face joins the slot, and the morph video stays.
-  const done = step(
-    { ...generated.state, VideoUrl: 'blob:video' },
-    msg('Completed', generated.state.JobId, {
-      errorMessage: '',
-      faces: [face(slot), face('face-0')],
-      videoUrl: '',
-      projectJson: '',
-      message: 'Face updated.',
-      restored: false,
-      inputs: [],
-      kind: '',
-      width: 0,
-      pinch: false,
-      frames: 16,
-      fps: 16,
-      cropFace: null,
-      refusal: null,
-    }),
+  close(weights(undone)[0]!, 0.7);
+  // Start over clears the one list (two fresh empty faces) for both modes.
+  const over = step(undone, msg('StartOver'), { startOverIds: ['face-a', 'face-b'] }).state;
+  assert.deepEqual(
+    over.Inputs.map((i) => i.id),
+    ['face-a', 'face-b'],
   );
-  assert.ok(done.state.Blend!.faces.some((f) => f.id === slot));
-  assert.equal(done.state.VideoUrl, 'blob:video');
+  for (const w of weights(over)) close(w, 0.5);
 });
 
 // ---- weights --------------------------------------------------------------------------------------------------------
 
-test('a new slot gets 1/N and the other weights are left alone; there is no slot count limit', () => {
+test('Reset gives 1/N; Make it 1 scales every weight in proportion; Shuffle adds up to 1 within 0-1', () => {
   let s = open(morph(3)).state;
-  s = step(s, msg('BlendWeight', s.Blend!.slots[0]!.input.id, 0.6)).state;
+  s = step(s, msg('BlendWeight', 'face-0', 1)).state;
+  s = step(s, msg('BlendWeight', 'face-1', 0.5)).state;
+  // face-2 keeps its equal share (1/3).
   const before = weights(s);
-  s = step(s, msg('BlendAdd'), { blendIds: ['blend-new'] }).state;
-  assert.deepEqual(weights(s).slice(0, 3), before);
-  close(weights(s)[3]!, 1 / 4);
-  let many: readonly BlendSlot[] = [];
-  for (let i = 0; i < 1000; i++) many = addSlot(many, `blend-${i}`);
-  assert.equal(many.length, 1000);
-  close(many[999]!.weight, 1 / 1000);
-  // A thousand weighted word slots still blend: one weighted sum, never a count refusal.
-  const words = many.map((slot, i) => ({ ...slot, input: { ...slot.input, value: `w ${i}` } }));
-  assert.equal(blendRefusal(words), null);
-  const ran = step({ ...base, Blend: { ...emptyBlend(), slots: words } }, msg('BlendRun'));
-  assert.equal(runs(ran.effects)[0]!.inputs.length, 1000);
-});
-
-test('Reset gives 1/N; Make it 1 scales every weight in proportion', () => {
-  const slots = [0.2, 0.4, 0.9, 0].map((weight, i) => ({
-    input: { id: `blend-${i}`, mode: 'text' as const, value: `w${i}`, file: null },
-    weight,
-  }));
-  for (const slot of resetWeights(slots)) close(slot.weight, 1 / 4);
-  const scaled = makeItOne(slots);
-  close(weightSum(scaled), 1);
-  for (let i = 0; i < 3; i++) close(scaled[i]!.weight / scaled[0]!.weight, slots[i]!.weight / 0.2);
-  assert.equal(scaled[3]!.weight, 0);
-  // All-zero weights cannot be scaled: they stay, and the run is refused.
-  const zero = slots.map((slot) => ({ ...slot, weight: 0 }));
-  assert.deepEqual(makeItOne(zero), zero);
-  // Through the reducer.
-  const s = { ...base, Blend: { ...emptyBlend(), slots } };
-  close(weightSum(step(s, msg('BlendNormalize')).state.Blend!.slots), 1);
-  for (const w of weights(step(s, msg('BlendReset')).state)) close(w, 0.25);
-});
-
-test('the sum line shows only outside 0.8-1.2', () => {
-  const at = (...ws: number[]) =>
-    sumLine(
-      ws.map((weight, i) => ({
-        input: { id: `blend-${i}`, mode: 'text' as const, value: 'x', file: null },
-        weight,
-      })),
+  const made = step(s, msg('BlendNormalize')).state;
+  close(weightSum(blendSlots(made.Inputs, made.Blend!.weights)), 1);
+  weights(made).forEach((w, i) => close(w, before[i]! / before.reduce((a, b) => a + b, 0)));
+  for (const w of weights(step(made, msg('BlendReset')).state)) close(w, 1 / 3);
+  for (let k = 0; k < 20; k++) {
+    const w = shuffleWeights(5, Math.random);
+    close(
+      w.reduce((a, b) => a + b, 0),
+      1,
     );
-  assert.equal(at(0.5, 0.5), null);
-  assert.equal(at(0.4, 0.4), null, '0.8 is inside');
-  assert.equal(at(0.6, 0.6), null, '1.2 is inside');
-  assert.equal(at(0.35, 0.4), 'Weights add up to 0.75. Faces usually look most natural at 1.');
-  assert.equal(at(0.7, 0.65), 'Weights add up to 1.35. Faces usually look most natural at 1.');
-  assert.equal(at(1 / 3, 1 / 3, 1 / 3), null, 'thirds round to 1');
-});
-
-test('weights step by 0.05 within 0-1; values outside are never exposed', () => {
-  assert.equal(stepWeight(0.37), 0.35);
-  assert.equal(stepWeight(0.38), 0.4);
-  assert.equal(stepWeight(0.1), 0.1, 'old 0.1 values stay reproducible');
-  assert.equal(stepWeight(-0.5), 0);
-  assert.equal(stepWeight(1.7), 1);
-  assert.equal(stepWeight(Number.NaN), 0);
-  const s = open(morph(2)).state;
-  const id = s.Blend!.slots[0]!.input.id;
-  assert.equal(step(s, msg('BlendWeight', id, 2)).state.Blend!.slots[0]!.weight, 1);
-  assert.equal(step(s, msg('BlendWeight', id, -2)).state.Blend!.slots[0]!.weight, 0);
-});
-
-test('Shuffle weights: random weights within 0-1 that add up to 1', () => {
-  let seed = 7;
-  const random = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
-  for (const n of [1, 2, 3, 8, 16, 40, 100]) {
-    for (let k = 0; k < 20; k++) {
-      const ws = shuffleWeights(n, random);
-      assert.equal(ws.length, n);
-      close(
-        ws.reduce((a, b) => a + b, 0),
-        1,
-      );
-      assert.ok(ws.every((w) => w >= 0 && w <= 1));
-    }
+    assert.ok(w.every((x) => x >= 0 && x <= 1));
   }
-  // One press is one regeneration once a blend has been asked for.
-  let s = open(morph(3)).state;
-  s = step(s, msg('BlendRun')).state;
-  const pressed = step(s, msg('BlendWeights', shuffleWeights(3, random)));
-  assert.equal(runs(pressed.effects).length, 1);
-  close(weightSum(pressed.state.Blend!.slots), 1);
+  const shuffled = step(s, msg('BlendWeights', [0.2, 0.3, 0.5])).state;
+  assert.deepEqual(weights(shuffled), [0.2, 0.3, 0.5]);
+});
+
+test('the sum line shows only outside 0.8-1.2; weights step by 0.05 within 0-1', () => {
+  const slots = (ws: number[]) =>
+    ws.map((weight, i) => ({ input: morph(ws.length).Inputs[i]!, weight }));
+  assert.equal(sumLine(slots([0.5, 0.5])), null);
+  assert.equal(sumLine(slots([0.4, 0.4])), null);
+  assert.match(
+    sumLine(slots([1, 0.35]))!,
+    /Weights add up to 1\.35\. Faces usually look most natural at 1\./,
+  );
+  assert.match(sumLine(slots([0.3, 0.4]))!, /add up to 0\.70/);
+  assert.deepEqual(
+    [stepWeight(0.33), stepWeight(1.4), stepWeight(-0.2), stepWeight(0.1)],
+    [0.35, 1, 0, 0.1],
+  );
 });
 
 // ---- running ---------------------------------------------------------------------------------------------------------
 
-test('all-zero weights are refused with one plain line; weight-0 slots are skipped', () => {
+test('all-zero weights are refused in one line; weight-0 faces are skipped; one run per commit, newest wins', () => {
   let s = open(morph(3)).state;
-  const [a, b, c] = s.Blend!.slots.map((slot) => slot.input.id) as [string, string, string];
-  s = step(s, msg('BlendWeight', a, 0)).state;
-  const ran = step(s, msg('BlendRun'));
-  const [run] = runs(ran.effects);
-  assert.ok(run);
-  assert.deepEqual(
-    run.inputs.map((i) => i.id),
-    [b, c],
-  );
-  close(run.weights[0]!, 1 / 3);
-  s = step(ran.state, msg('BlendWeight', b, 0)).state;
-  const zero = step(s, msg('BlendWeight', c, 0));
-  assert.equal(zero.state.Blend!.error, 'Give at least one face a weight other than 0.');
-  assert.equal(zero.state.Blend!.running, null);
-  assert.equal(runs(zero.effects).length, 0);
-  assert.ok(
-    zero.effects.some((e) => e.type === 'cancelBlend'),
-    'the pending blend is cancelled',
-  );
-});
-
-test('one regeneration per committed weight; a newer change supersedes; results install by revision', () => {
-  let s = open(morph(2)).state;
-  const id = s.Blend!.slots[0]!.input.id;
-  // Before any blend was asked for, weights only move.
-  assert.equal(runs(step(s, msg('BlendWeight', id, 0.3)).effects).length, 0);
+  s = step(s, msg('BlendWeights', [0, 0, 0])).state;
+  const refused = step(s, msg('BlendRun'));
+  assert.equal(refused.state.Blend!.error, 'Give at least one face a weight other than 0.');
+  assert.equal(runs(refused.effects).length, 0);
+  s = step(s, msg('BlendWeights', [0.5, 0, 0.5])).state;
   const first = step(s, msg('BlendRun'));
-  s = first.state;
-  const second = step(s, msg('BlendWeight', id, 0.7));
-  assert.equal(runs(second.effects).length, 1);
+  assert.deepEqual(
+    runs(first.effects)[0]!.inputs.map((i) => i.id),
+    ['face-0', 'face-2'],
+  );
+  const second = step(first.state, msg('BlendWeight', 'face-0', 0.7));
   const [older, newer] = [runs(first.effects)[0]!.revision, runs(second.effects)[0]!.revision];
   assert.ok(newer > older);
-  s = second.state;
-  // The superseded blend settles without a result; the newest installs.
-  assert.equal(step(s, msg('BlendCompleted', older, face('x'))).state.Blend, s.Blend);
-  const done = step(s, msg('BlendCompleted', newer, face('x'))).state;
-  assert.equal(done.Blend!.running, null);
+  assert.equal(
+    step(second.state, msg('BlendCompleted', older, face('x'))).state.Blend,
+    second.state.Blend,
+  );
+  const done = step(second.state, msg('BlendCompleted', newer, face('x'))).state;
   assert.equal(done.Blend!.faces.find((f) => f.id === BLEND_RESULT)?.url, 'blob:x');
-  // A failure offers Retry; a refused model file asks through the existing download question.
-  const again = step(done, msg('BlendRun'));
-  const rev = runs(again.effects)[0]!.revision;
-  const failed = step(again.state, msg('BlendFailed', rev, 'Out of memory.')).state;
-  assert.deepEqual([failed.Blend!.error, failed.Blend!.retry], ['Out of memory.', true]);
-  const again2 = step(failed, msg('BlendRun'));
-  const refused = step(
-    again2.state,
-    msg(
-      'BlendFailed',
-      runs(again2.effects)[0]!.revision,
-      'File x is not covered by an approved download.',
-    ),
-  ).state;
-  assert.deepEqual(refused.Gate, ['route', msg('BlendRun')]);
-});
-
-test('a missing generator model opens the existing download question; Accept runs the blend', () => {
-  const s = open(
-    morph(2, { Downloads: { ...base.Downloads, routeReady: false }, DownloadConsent: new Set() }),
-  ).state;
-  const asked = step(s, msg('BlendRun'));
-  assert.deepEqual(asked.state.Gate, ['route', msg('BlendRun')]);
-  assert.equal(runs(asked.effects).length, 0);
-  const accepted = step(asked.state, msg('GateAccept', 'route'));
-  assert.equal(accepted.state.Gate, null);
-  assert.ok(accepted.effects.some((e) => e.type === 'dispatch' && e.message.type === 'BlendRun'));
-  assert.equal(runs(step(accepted.state, msg('BlendRun')).effects).length, 1);
-});
-
-test('leaving the view cancels a pending blend synthesis only', () => {
-  const s = step(open(morph(2)).state, msg('BlendRun')).state;
-  const left = step(s, msg('BlendView', false));
+  // A face the blend waited for joins the shared list's faces, shown in both modes.
+  assert.ok(
+    step(done, msg('BlendSlotReady', face('face-0'))).state.Faces.some((f) => f.id === 'face-0'),
+  );
+  // Leaving the view cancels a pending blend synthesis only.
+  const pending = step(done, msg('BlendRun')).state;
+  const left = step(pending, msg('BlendView', false));
   assert.deepEqual(left.effects, [{ type: 'cancelBlend' }]);
-  assert.equal(left.state.Blend!.running, null);
-  assert.deepEqual(left.state.Blend!.slots, s.Blend!.slots, 'slots kept');
-  assert.equal(step(left.state, msg('BlendView', false)).effects.length, 0);
+  assert.equal(left.state.Inputs, pending.Inputs);
 });
 
-test('Add to morph puts the shown blend at the end of a long morph row through the admission check', () => {
+test('Add to morph puts the shown blend at the end of a long row through the admission check', () => {
   for (const count of [3, 64, 150]) {
     const opened = step(open(morph(count)).state, msg('BlendRun'));
     const revision = runs(opened.effects)[0]!.revision;
     const shown = step(
       opened.state,
-      msg('BlendCompleted', revision, {
-        ...face('x'),
-        label: 'Blend of 3 faces',
-      }),
+      msg('BlendCompleted', revision, { ...face('x'), label: 'Blend of 3 faces' }),
     ).state;
-    const added = step(shown, msg('BlendAddToMorph'), {
-      newFaceId: 'face-new',
-    });
-    const last = added.state.Inputs.at(-1)!;
-    assert.equal(added.state.Inputs.length, count + 1);
-    assert.deepEqual(last, {
+    const added = step(shown, msg('BlendAddToMorph'), { newFaceId: 'face-new' });
+    assert.deepEqual(added.state.Inputs.at(-1), {
       id: 'face-new',
       mode: 'project',
       value: 'Blend of 3 faces',
       file: null,
     });
-    assert.deepEqual(
-      added.state.Inputs.slice(0, count),
-      shown.Inputs,
-      'the row before it is unchanged',
-    );
-    const copy = added.state.Faces.find((f) => f.id === 'face-new')!;
-    assert.deepEqual([copy.label, copy.raw, copy.url], ['Blend of 3 faces', true, '']);
+    assert.deepEqual(added.state.Inputs.slice(0, count), shown.Inputs);
     assert.ok(
       added.effects.some(
         (e) => e.type === 'copyFace' && e.from === BLEND_RESULT && e.to === 'face-new',
       ),
     );
     assert.ok(
-      added.effects.some((e) => e.type === 'rememberView'),
-      'the session keeps the new face',
-    );
-    assert.ok(
       !added.effects.some((e) => e.type === 'runBlend' || e.type === 'dispatch'),
       'zero inference',
     );
     assert.equal(added.state.Status, `Blend of 3 faces added to the morph as face ${count + 1}.`);
-    assert.equal(added.state.Blend, shown.Blend, 'the blend view is unchanged');
-    // A real budget one over: its plain message, nothing added.
     const refused = step(shown, msg('BlendAddToMorph'), {
       newFaceId: 'face-new',
       storedSessionBytes: Number.MAX_SAFE_INTEGER,
     });
     assert.equal(refused.state.Inputs, shown.Inputs);
     assert.match(refused.state.Status, /^Not added: a saved session can hold at most/);
-    assert.ok(refused.effects.some((e) => e.type === 'admissionRefused'));
   }
-  // Nothing to add before a blend is shown, or while a newer one is pending.
-  const s = open(morph(2)).state;
-  assert.equal(step(s, msg('BlendAddToMorph'), { newFaceId: 'face-new' }).state, s);
 });
 
 // ---- persistence ------------------------------------------------------------------------------------------------------
 
-test('session persistence: slots and weights survive a reload in the same tab; photo pixels do not', () => {
-  const photo = new File([new Uint8Array(4)], 'me.jpg', { type: 'image/jpeg' });
-  const blend = {
-    ...emptyBlend(),
-    slots: [
-      { input: { id: 'blend-a', mode: 'text' as const, value: 'ada', file: null }, weight: 0.25 },
-      { input: { id: 'blend-b', mode: 'seed' as const, value: '42', file: null }, weight: 0.5 },
-      { input: { id: 'blend-c', mode: 'photo' as const, value: '', file: photo }, weight: 0.25 },
-    ],
-  };
+test('weights survive a reload by face id; the older separate slots migrate to the shared list', () => {
   const items = new Map<string, string>();
   const sessionStorage = {
     getItem: (k: string) => items.get(k) ?? null,
     setItem: (k: string, v: string) => void items.set(k, v),
   } as unknown as Storage;
-  rememberBlend(blend, { sessionStorage });
-  assert.ok(!items.get(BLEND_KEY)!.includes('data:'), 'no pixels stored');
+  rememberBlend(emptyBlend({ 'face-0': 0.25, 'face-1': 0.5 }), { sessionStorage });
   const restored = restoreBlend({ sessionStorage });
-  assert.deepEqual(
-    restored.map((slot) => [slot.input.id, slot.input.mode, slot.input.value, slot.weight]),
-    [
-      ['blend-a', 'text', 'ada', 0.25],
-      ['blend-b', 'seed', '42', 0.5],
-      ['blend-c', 'photo', '', 0.25],
-    ],
-  );
-  assert.equal(restored[2]!.input.file, null);
-  // The restored photo slot asks for its photo again before it can blend.
-  assert.equal(blendRefusal(restored), 'Face 3: choose its photo again.');
-  // init carries the restored slots into the session, and the view keeps them on open.
+  assert.deepEqual(restored, { 'face-0': 0.25, 'face-1': 0.5 });
   const started = init({
     today: '2026-10-28',
     url: 'https://next.facemorph.me/#blend',
@@ -467,28 +246,32 @@ test('session persistence: slots and weights survive a reload in the same tab; p
     sliderPosition: 1,
     blend: restored,
   }).state;
-  assert.deepEqual(started.Blend!.slots, restored);
-  assert.deepEqual(open(started).state.Blend!.slots, restored);
-  // Malformed or foreign records read as nothing.
-  assert.deepEqual(restoreSlots({ v: 99, slots: [] }), []);
-  assert.deepEqual(
-    restoreSlots({ v: 1, slots: [{ id: 'face-1', mode: 'text', value: '', weight: 1 }] }),
-    [],
+  const s = open({ ...started, Inputs: morph(3).Inputs });
+  const w = weights(s.state);
+  assert.deepEqual([w[0], w[1]], [0.25, 0.5]);
+  close(w[2]!, 1 / 3);
+  // Version 1 (separate slots): the slots are dropped, a weight is kept where its id is a face's.
+  items.set(
+    BLEND_KEY,
+    JSON.stringify({
+      v: 1,
+      slots: [
+        { id: 'blend-a', mode: 'text', value: 'ada', weight: 0.4 },
+        { id: 'face-1', mode: 'seed', value: '42', weight: 0.6 },
+      ],
+    }),
   );
-  assert.deepEqual(storedSlots(blend).slots[2], {
-    id: 'blend-c',
-    mode: 'photo',
-    value: 'me.jpg',
-    weight: 0.25,
-  });
-  // Absent or throwing storage keeps nothing and never throws.
+  const migrated = restoreBlend({ sessionStorage });
+  const faces = blendSlots(morph(2).Inputs, migrated).map((slot) => slot.weight);
+  assert.deepEqual(faces, [0.5, 0.6]);
+  assert.deepEqual(restoreWeights({ v: 99 }), {});
   const throwing = {
     get sessionStorage(): Storage {
       throw new Error('blocked');
     },
   };
-  assert.doesNotThrow(() => rememberBlend(blend, throwing));
-  assert.deepEqual(restoreBlend(throwing), []);
+  assert.doesNotThrow(() => rememberBlend(emptyBlend(), throwing));
+  assert.deepEqual(restoreBlend(throwing), {});
 });
 
 // ---- `#blend` routing -------------------------------------------------------------------------------------------------

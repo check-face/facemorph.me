@@ -30,14 +30,12 @@ export function scheduling(state: State): {
     ),
     options: {
       busy: state.Busy,
-      blockedFaces: [...state.Inputs, ...(state.Blend?.slots.map((slot) => slot.input) ?? [])]
-        .filter(
-          (input) =>
-            state.PreparingFaces.has(input.id) ||
-            state.Crop?.faceId === input.id ||
-            state.CropQueue.some((crop) => crop.faceId === input.id),
-        )
-        .map((input) => input.id),
+      blockedFaces: state.Inputs.filter(
+        (input) =>
+          state.PreparingFaces.has(input.id) ||
+          state.Crop?.faceId === input.id ||
+          state.CropQueue.some((crop) => crop.faceId === input.id),
+      ).map((input) => input.id),
       blockMorph:
         state.PreparingFaces.size > 0 ||
         state.Crop !== null ||
@@ -51,11 +49,7 @@ export function schedule(state: State, effects: readonly Effect[] = []): Transit
     state: {
       ...state,
       PendingJobs: state.PendingJobs.filter(
-        (job) =>
-          job.type !== 'RunFace' ||
-          state.Inputs.some((input) => input.id === job.args[0]) ||
-          // A blend slot's queued Generate (fm-2kse) is kept like a face's.
-          !!state.Blend?.slots.some((slot) => slot.input.id === job.args[0]),
+        (job) => job.type !== 'RunFace' || state.Inputs.some((input) => input.id === job.args[0]),
       ),
     },
     effects: [...effects, { type: 'requestNext' }],

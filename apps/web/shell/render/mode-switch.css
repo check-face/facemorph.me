@@ -1,0 +1,12 @@
+/* Morph | Blend (fm-56e6): right after the processing selector, centred, 44 px targets at every width. */
+.next-mode-row {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 0 auto 0.75rem;
+}
+.next-mode-switch .MuiButton-root {
+  min-height: 44px;
+  min-width: 112px;
+  font-weight: 600;
+}

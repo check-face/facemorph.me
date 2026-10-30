@@ -5,7 +5,7 @@
 // Screenshots per case are in test-results/blend/.
 //
 // Cases (BLEND_CASES=run,counts,layout selects some):
-//   run     1280 mouse and 390 touch: open by Blend faces (More options) and by `#blend`, Back to morph and browser
+//   run     1280 mouse and 390 touch: open by Blend faces (More options) and by `#blend`, Morph (the mode switch) and browser
 //           Back; fill three slots (typed words, a picked name, a crop-confirmed photo encoded on CPU); Blend asks
 //           the existing download question, then shows the result with Save. Drag a weight: no blend request
 //           during the drag, exactly one per release, "Updating…" with Save off until the new file; two quick
@@ -15,14 +15,21 @@
 //           pending blend while a slot photo encode keeps running.
 //   output  1280 mouse and 390 touch: blend two faces; Add to morph puts "Blend of 2 faces" at the end of the morph
 //           row with no model request; Save as PNG writes the full 1024 x 1024 frame named blend-2-faces… with its
-//           recipe (slot kinds, latent digests, weights; no typed words); Back to morph shows the new face; the saved
+//           recipe (slot kinds, latent digests, weights; no typed words); Morph shows the new face; the saved
 //           PNG opened on a face is recovered with no model request; Blend faces returns to the view intact.
+//   fill    1280 mouse and 390 touch: with three slots filled, one pick of a group photo (two faces), a portrait and a
+//           face this app saved opens one Choose faces view on slot 3; picked saved, A2, A1, B1 in that order, OK
+//           fills slot 3 and three new slots after it in click order; the saved face installs with no model request.
 //   counts  1, 2, 3, 8, 16, 40 and 100 slots at 1280 and 390: the slot panel scrolls inside itself, the result box
 //           stays in the viewport after scrolling to the last slot, compact rows (thumbnail, field, weight), every
 //           weight slider and Remove hit by elementFromPoint at their centres, no horizontal page scroll; at 100:
 //           sum line, Reset and Make it 1 operated, and exactly one blend synthesis per release.
-//   layout  3 and 16 slots at every sweep width: result on the right with 2-4 slot columns on desktop, pinned at
-//           the top with one column on phones; no horizontal page scroll and no clipped control.
+//   layout  3 and 16 slots at every sweep width: result on the right with 2-4 slot columns on desktop, above the
+//           slots in the page's flow below 900 px, one whole face per view in a sideways strip on phones; no
+//           horizontal page scroll and no clipped control.
+//   mode    fm-56e6, 360/390/412 touch and 1280/1920 mouse, light and dark, 2, 4 and 10 slots: Morph | Blend right
+//           after the processing selector in view on arrival, Morph the default; switching both ways keeps faces;
+//           no overlapping or duplicated tiles; Remove, weight, field, Blend and the result hit by elementFromPoint.
 //   FACEMORPH_DEPLOY_OUT=<dir with deploy-next/> node --test test/e2e/blend.e2e.ts
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -46,7 +53,9 @@ import { readRecovery } from 'stylegan-js';
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
 const out = resolve(process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO);
 const results = join(REPO, 'apps/web/test-results/blend');
-const CASES = new Set((process.env['BLEND_CASES'] ?? 'run,output,counts,layout').split(','));
+const CASES = new Set(
+  (process.env['BLEND_CASES'] ?? 'run,output,fill,counts,layout,mode').split(','),
+);
 const MODEL = /^\/runtime\/(assets|chunks|encoder-stream|photo)\//;
 const PHOTO = join(REPO, 'tests/crop/fixtures/non-square.jpg');
 // A different photo for the restored slot, so its encode is real work rather than this profile's cached result.
@@ -63,6 +72,8 @@ type BlendModel = {
   revision: number;
 };
 type W = Window & {
+  /** The blend view as a person sees it (fm-56e6): the shared faces with their effective weights. */
+  __blendView(): BlendModel;
   __fmStore: {
     getState(): {
       Blend?: BlendModel;
@@ -75,9 +86,28 @@ type W = Window & {
   __FACEMORPH_OPCTL_TRACE__: Trace;
 };
 
+const close = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-9, `${a} ≈ ${b}`);
 const TRACE_HOOK = `window.__FACEMORPH_OPCTL_TRACE__ = [];`;
+/** Blend and Morph share one list (fm-56e6): a slot is a face with its weight (unset = an equal share). */
+const VIEW_HOOK = `window.__blendView = () => {
+  const s = window.__fmStore.getState();
+  const w = (s.Blend && s.Blend.weights) || {};
+  const n = s.Inputs.length;
+  return {
+    slots: s.Inputs.map((input) => ({ input, weight: Object.hasOwn(w, input.id) ? w[input.id] : 1 / n })),
+    faces: [...s.Faces, ...((s.Blend && s.Blend.faces) || [])],
+    running: s.Blend ? s.Blend.running : null,
+    error: s.Blend ? s.Blend.error : '',
+    revision: s.Blend ? s.Blend.revision : 0,
+  };
+};`;
 
-async function newPage(browser: Browser, width: number, touch: boolean) {
+async function newPage(
+  browser: Browser,
+  width: number,
+  touch: boolean,
+  scheme: 'light' | 'dark' = process.env['BLEND_SCHEME'] === 'dark' ? 'dark' : 'light',
+) {
   const context: BrowserContext = await browser.newContext({
     ...(touch ? devices['iPhone 13'] : {}),
     viewport: { width, height: touch ? 844 : 900 },
@@ -86,17 +116,30 @@ async function newPage(browser: Browser, width: number, touch: boolean) {
     ignoreHTTPSErrors: true,
     acceptDownloads: true,
     // BLEND_SCHEME=dark repeats a case in the dark theme.
-    colorScheme: process.env['BLEND_SCHEME'] === 'dark' ? 'dark' : 'light',
+    colorScheme: scheme,
   });
   await context.addInitScript(STORE_HOOK);
   await context.addInitScript(TRACE_HOOK);
+  await context.addInitScript(VIEW_HOOK);
   const page = await context.newPage();
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   return { context, page, errors };
 }
-const operate = async (page: Page, control: Locator, touch: boolean) =>
+const operate = async (page: Page, control: Locator, touch: boolean) => {
+  // On phones the faces are a snapping sideways strip: bring the control in and let the snap settle first.
+  if (
+    touch &&
+    (await control.evaluate((el) => !!el.closest('.next-blend-slot')).catch(() => false))
+  ) {
+    // As a person swipes: that face centred in the strip.
+    await control.evaluate((el) =>
+      el.closest('.next-blend-slot')!.scrollIntoView({ inline: 'center', block: 'center' }),
+    );
+    await page.waitForTimeout(400);
+  }
   assert.ok((await press(page, control, { touch })).inside, `${control} press landed outside`);
+};
 async function dismissToasts(page: Page, touch: boolean) {
   for (const control of [
     page.locator('.next-model-toast').getByRole('button', { name: 'Not now' }),
@@ -117,7 +160,11 @@ async function cpu(page: Page) {
   await page.getByRole('button', { name: 'More options' }).click();
 }
 const blendOf = (page: Page) =>
-  page.evaluate(() => (window as unknown as W).__fmStore.getState().Blend ?? null);
+  page.evaluate(() =>
+    (window as unknown as W).__fmStore.getState().Blend
+      ? (window as unknown as W).__blendView()
+      : null,
+  );
 const trace = (page: Page) =>
   page.evaluate(() => [...(window as unknown as W).__FACEMORPH_OPCTL_TRACE__]);
 const blendRequests = (events: Trace) =>
@@ -141,13 +188,15 @@ async function setSlots(page: Page, n: number) {
   await page.evaluate((n) => {
     const store = (window as unknown as W).__fmStore;
     const send = (type: string, ...args: unknown[]) => store.dispatch({ type, args });
-    const slots = () => store.getState().Blend!.slots;
-    while (slots().length < n) send('BlendAdd');
-    while (slots().length > n) send('BlendRemove', slots().at(-1)!.input.id);
-    slots().forEach((slot, i) => {
-      if (slot.input.mode !== 'text') send('Mode', slot.input.id, 'text');
-      send('Edit', slot.input.id, `blend words ${i + 1}`);
+    // The faces are the morph's own (fm-56e6): Add face and Remove are its, weights back to equal shares.
+    const faces = () => store.getState().Inputs;
+    while (faces().length < n) send('AddAt', faces().length);
+    while (faces().length > n) send('Remove', faces().at(-1)!.id);
+    faces().forEach((face, i) => {
+      if ((face as { mode?: string }).mode !== 'text') send('Mode', face.id, 'text');
+      send('Edit', face.id, `blend words ${i + 1}`);
     });
+    send('BlendReset');
   }, n);
   await page.waitForFunction((n) => document.querySelectorAll('.next-blend-slot').length === n, n);
 }
@@ -263,8 +312,8 @@ test(
           'seeded with copies of the morph faces',
         );
         await page.screenshot({ path: at('opened') });
-        // Back to morph returns to the main page with the session intact.
-        await operate(page, page.getByRole('button', { name: 'Back to morph' }), touch);
+        // Morph (the mode switch) returns to the main page with the session intact.
+        await operate(page, page.locator('.next-mode-morph'), touch);
         await page.locator('section.next-face').nth(1).waitFor();
         assert.equal(new URL(page.url()).hash, '');
         // The deep link, loaded fresh, opens the view straight away; browser Back returns to the main page.
@@ -341,8 +390,7 @@ test(
         // (again once its schedule is discovered, or after the picked name's own generation).
         const encoded = (id: string) =>
           page.evaluate(
-            (id) =>
-              (window as unknown as W).__fmStore.getState().Blend!.faces.some((f) => f.id === id),
+            (id) => (window as unknown as W).__blendView().faces.some((f) => f.id === id),
             id,
           );
         const photoId = (await blendOf(page))!.slots[2]!.input.id;
@@ -392,7 +440,7 @@ test(
         assert.equal((await blendOf(page))!.error, '');
         await page.screenshot({ path: at('result') });
         // Drag a weight: nothing during the drag, exactly one blend per release, "Updating…" with Save off.
-        const weight0 = slot(0).getByLabel('Weight for Blend face 1');
+        const weight0 = slot(0).getByLabel('Weight for Face 1');
         const before = blendRequests(await trace(page)).length;
         const during = await drag(page, weight0, 0.3, 0.8, touch);
         assert.equal(during, 0, 'no blend request during the drag');
@@ -422,9 +470,9 @@ test(
           touch,
         );
         await page.waitForFunction(() =>
-          (window as unknown as W).__fmStore
-            .getState()
-            .Blend!.slots.every((s) => Math.abs(s.weight - 1 / 3) < 1e-9),
+          (window as unknown as W)
+            .__blendView()
+            .slots.every((s) => Math.abs(s.weight - 1 / 3) < 1e-9),
         );
         assert.equal(await page.locator('.next-blend-sum').innerText(), 'Sum 1.00');
         await waitBlend(page);
@@ -473,15 +521,17 @@ test(
         await operate(page, retry, touch);
         await waitBlend(page);
         assert.equal((await blendOf(page))!.error, '');
-        // Reload in the view restores slots and weights.
-        const kept = (await blendOf(page))!.slots.map((s) => [s.input.id, s.input.mode, s.weight]);
+        // Reload in the view restores the faces (the morph session's) and their weights.
+        const kept = (await blendOf(page))!.slots.map((s) => [s.input.id, s.weight]);
+        await page.waitForTimeout(1500); // the session write after the last finished face
         await page.reload();
         await page.locator('.next-blend').waitFor();
-        const restored = (await blendOf(page))!.slots.map((s) => [
-          s.input.id,
-          s.input.mode,
-          s.weight,
-        ]);
+        await page.waitForFunction(
+          (n) => (window as unknown as W).__fmStore.getState().Inputs.length === n,
+          kept.length,
+          { timeout: 60_000 },
+        );
+        const restored = (await blendOf(page))!.slots.map((s) => [s.input.id, s.weight]);
         assert.deepEqual(restored, kept, 'slots and weights restored');
         assert.equal(
           (await blendOf(page))!.slots[0]!.input.value,
@@ -507,7 +557,6 @@ test(
         assert.equal(new URL(page.url()).hash, '#blend');
         // Leaving the view cancels a pending blend synthesis while a slot photo encode keeps running. A restored
         // photo slot asks for its photo again (its pixels stayed in the old tab's memory): choose one.
-        assert.match((await blendOf(page))!.slots[2]!.input.mode, /photo/);
         await operate(page, slot(2).getByRole('button', { name: 'Change mode' }), touch);
         const again = page.waitForEvent('filechooser');
         await operate(
@@ -557,7 +606,7 @@ test(
             ).length > n,
           pendingFrom,
         );
-        await operate(page, page.getByRole('button', { name: 'Back to morph' }), touch);
+        await operate(page, page.locator('.next-mode-morph'), touch);
         await page.locator('section.next-face').nth(1).waitFor();
         const pendingId = blendRequests(await trace(page))[pendingFrom]!;
         await page.waitForFunction(
@@ -570,20 +619,20 @@ test(
         );
         // The slot's photo encode finishes after the view closed.
         await page.waitForFunction(
-          (id) =>
-            (window as unknown as W).__fmStore.getState().Blend!.faces.some((f) => f.id === id),
+          (id) => (window as unknown as W).__blendView().faces.some((f) => f.id === id),
           photoSlot,
           { timeout: 900_000 },
         );
         const final = await trace(page);
         assert.ok(!computed(final, pendingId), 'the pending blend never synthesized');
         assert.equal(settled(final, pendingId)?.outcome, 'cancelled');
+        // One list (fm-56e6): the faces filled in Blend are the morph's faces.
         assert.deepEqual(
           await page.evaluate(() =>
             (window as unknown as W).__fmStore.getState().Inputs.map((i) => i.value),
           ),
-          morphFaces,
-          'the morph faces are as they were',
+          (await blendOf(page))!.slots.map((slot) => slot.input.value),
+          'Morph shows the faces filled in Blend',
         );
         assert.deepEqual(errors, []);
       } finally {
@@ -628,7 +677,6 @@ test(
         await page.locator('section.next-face').nth(1).waitFor();
         await dismissToasts(page, touch);
         await cpu(page);
-        const morphBefore = await inputs();
         await page.goto(`${ORIGIN}/#blend`);
         await page.locator('.next-blend').waitFor();
         await setSlots(page, 2);
@@ -646,6 +694,7 @@ test(
         await ready.waitFor({ timeout: 120_000 });
 
         // Add to morph: the blend joins the end of the morph row with no model request and no blend run.
+        const morphBefore = await inputs();
         const requestsBefore = modelRequests.length;
         const blendsBefore = blendRequests(await trace(page)).length;
         const add = page.getByRole('button', { name: 'Add to morph' });
@@ -710,8 +759,8 @@ test(
           'no typed words',
         );
 
-        // Back to morph: the new face is at the end of the row and drawn.
-        await operate(page, page.getByRole('button', { name: 'Back to morph' }), touch);
+        // Morph: the new face is at the end of the row and drawn.
+        await operate(page, page.locator('.next-mode-morph'), touch);
         const tiles = page.locator('section.next-face');
         await tiles.nth(1).waitFor();
         const added = tiles.nth(afterAdd.length - 1);
@@ -791,6 +840,12 @@ async function geometry(page: Page) {
       result: rect(document.querySelector('.next-blend-result')),
       panel: rect(document.querySelector('.next-blend-slots')),
       columns: new Set(slots.map((s) => Math.round(s.getBoundingClientRect().x))).size,
+      rows: new Set(slots.map((s) => Math.round(s.getBoundingClientRect().y))).size,
+      slotWidths: slots.map((s) => s.getBoundingClientRect().width),
+      stripScrolls: (() => {
+        const el = document.querySelector('.next-blend-slots')!;
+        return el.scrollWidth > el.clientWidth + 1;
+      })(),
       thumbs: slots.map((s) => rect(s.querySelector('.next-face-image'))!.w),
       fields: slots.every((s) => !!s.querySelector('.next-field input')),
       weights: slots.every((s) => !!s.querySelector('input[type=range]')),
@@ -806,15 +861,373 @@ async function clipped(page: Page) {
     )) {
       const r = el.getBoundingClientRect();
       if (!r.width || !r.height) continue;
+      const box = el.closest('.next-blend-slots')?.getBoundingClientRect();
+      // On phones the slots are a sideways strip: a face scrolled out of the strip is out of view, not clipped.
+      const slot = el.closest('.next-blend-slot')?.getBoundingClientRect();
+      if (box && slot && (slot.right <= box.left + 0.5 || slot.left >= box.right - 0.5)) continue;
+      if (slot && box && (slot.left < box.left - 0.5 || slot.right > box.right + 0.5)) continue;
       if (r.left < -0.5 || r.right > document.documentElement.clientWidth + 0.5)
         out.push(`${el.outerHTML.slice(0, 80)} outside the viewport`);
-      const box = el.closest('.next-blend-slots')?.getBoundingClientRect();
       if (box && (r.left < box.left - 0.5 || r.right > box.right + 0.5))
         out.push(`${el.outerHTML.slice(0, 80)} clipped sideways by the slot panel`);
     }
     return out;
   });
 }
+
+test(
+  'blend fill: one Choose faces pick fills a slot and new slots after it in click order',
+  { timeout: 3_600_000, skip: !CASES.has('fill') },
+  async (t) => {
+    const b = await setup(t);
+    if (!b) return;
+    const GROUP = join(REPO, 'tests/crop/fixtures/multi-face.jpg');
+    for (const [name, width, touch] of [
+      ['desktop', 1280, false],
+      ['phone', 390, true],
+    ] as const) {
+      const at = (step: string) => join(results, `fill-${name}-${step}.png`);
+      const { context, page, errors } = await newPage(b, width, touch);
+      const modelRequests: string[] = [];
+      page.on('request', (request) => {
+        const path = new URL(request.url()).pathname;
+        if (MODEL.test(path)) modelRequests.push(path);
+      });
+      const accept = page.locator('.next-download-accept');
+      try {
+        await page.goto(ORIGIN);
+        await page.locator('section.next-face').nth(1).waitFor();
+        await dismissToasts(page, touch);
+        await cpu(page);
+        // Setup: a face this app saves itself (face 1, generated on the CPU) is the saved still.
+        const tile = page.locator('section.next-face').nth(0);
+        await tile.locator('.next-input-row .next-face-generate').click(); // setup
+        for (const end = Date.now() + 900_000; ;) {
+          assert.ok(Date.now() < end, 'face 1 generated in time');
+          const done = await page.evaluate(
+            () =>
+              (window as unknown as W).__fmStore.getState().Busy === false &&
+              ((window as unknown as W).__fmStore.getState() as unknown as { Faces: unknown[] })
+                .Faces.length > 0,
+          );
+          if (done) break;
+          if (await accept.isVisible()) await accept.click(); // setup
+          else await page.waitForTimeout(500);
+        }
+        const download = page.waitForEvent('download');
+        await tile.getByRole('button', { name: 'Save image', exact: true }).click(); // setup
+        const saved = join(
+          results,
+          `fill-${name}-saved${(await download).suggestedFilename().slice(-5)}`,
+        );
+        writeFileSync(saved, readFileSync((await (await download).path())!));
+
+        await operate(page, page.locator('.next-mode-blend'), touch);
+        await page.locator('.next-blend').waitFor();
+        await setSlots(page, 3);
+        const before = (await blendOf(page))!.slots;
+        const target = before[2]!.input.id;
+        // Setup: the slot's own file input takes the three files at once.
+        await page.locator(`#photo-${target}`).setInputFiles([GROUP, PHOTO, saved]);
+        const view = page.locator('.next-batch');
+        // Faces first: the view asks the photo-setup decision itself, then finds the faces.
+        for (const end = Date.now() + 1_800_000; ;) {
+          assert.ok(Date.now() < end, 'the faces were found in time');
+          const ready = await page.evaluate(() => {
+            const batch = (
+              (window as unknown as W).__fmStore.getState() as unknown as {
+                Batch?: { groups: { role: string; status: string; detection: string }[] };
+              }
+            ).Batch;
+            return (
+              !!batch &&
+              batch.groups.every(
+                (g) => g.status !== 'loading' && (g.role !== 'photo' || g.detection === 'done'),
+              )
+            );
+          });
+          if (ready && (await view.isVisible())) break;
+          if (await accept.isVisible()) await operate(page, accept, touch);
+          else await page.waitForTimeout(500);
+        }
+        const candidates = ['f2#0', 'f0#1', 'f0#0', 'f1#0'];
+        for (const candidate of candidates)
+          await operate(page, view.locator(`[data-next-candidate="${candidate}"]`), touch);
+        await page.screenshot({ path: at('picked') });
+        const requestsAtOk = modelRequests.length;
+        await operate(page, view.getByRole('button', { name: 'Add 4 faces' }), touch);
+        await view.waitFor({ state: 'detached' });
+        // The saved face installs in slot 3 with no model request; the photos fill new slots after it.
+        await page.waitForFunction(
+          (id) => (window as unknown as W).__blendView().faces.some((f) => f.id === id),
+          target,
+          { timeout: 120_000 },
+        );
+        assert.deepEqual(modelRequests.slice(requestsAtOk), [], 'the saved face needs no model');
+        const after = (await blendOf(page))!.slots;
+        assert.equal(after.length, 6, 'slot 3 and three new slots');
+        assert.deepEqual(
+          after.slice(0, 3).map((slot) => slot.input.id),
+          before.map((slot) => slot.input.id),
+          'the slots before keep their places',
+        );
+        assert.equal(after[2]!.input.mode, 'project', 'slot 3 holds the saved face');
+        // One list (fm-56e6): the new faces are the morph's faces too.
+        assert.deepEqual(
+          await page.evaluate(() =>
+            (window as unknown as W).__fmStore.getState().Inputs.map((i) => i.id),
+          ),
+          after.map((slot) => slot.input.id),
+          'Morph has the same faces',
+        );
+        await page.waitForFunction(
+          () =>
+            (window as unknown as W)
+              .__blendView()
+              .slots.slice(3)
+              .every((slot) => slot.input.mode === 'photo'),
+          null,
+          { timeout: 120_000 },
+        );
+        for (const slot of after) close(slot.weight, 1 / 6);
+        await page.screenshot({ path: at('filled') });
+        assert.deepEqual(errors, []);
+      } finally {
+        await context.close();
+      }
+    }
+  },
+);
+
+/** Whether a real press at the control's centre would land on it (elementFromPoint), after bringing it into view. */
+async function hits(page: Page, control: Locator) {
+  await control.scrollIntoViewIfNeeded();
+  const box = (await control.boundingBox())!;
+  return control.evaluate(
+    (el, p) => {
+      const at = document.elementFromPoint(p.x, p.y);
+      return !!at && (at === el || el.contains(at));
+    },
+    { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+  );
+}
+
+test(
+  'mode switch: Morph | Blend after the processing selector; the blend view at phone and desktop widths',
+  { timeout: 2_400_000, skip: !CASES.has('mode') },
+  async (t) => {
+    const b = await setup(t);
+    if (!b) return;
+    for (const [width, touch] of [
+      [360, true],
+      [390, true],
+      [412, true],
+      [1280, false],
+      [1920, false],
+    ] as const) {
+      for (const scheme of ['light', 'dark'] as const) {
+        const name = `${width}-${scheme}`;
+        const { context, page, errors } = await newPage(b, width, touch, scheme);
+        try {
+          await page.goto(ORIGIN);
+          await page.locator('section.next-face').nth(1).waitFor();
+          // Morph is the default; the switch sits right after the processing selector, in view on arrival.
+          const morphButton = page.locator('.next-mode-morph');
+          const blendButton = page.locator('.next-mode-blend');
+          assert.equal(
+            await morphButton.getAttribute('aria-pressed'),
+            'true',
+            `${name}: Morph default`,
+          );
+          assert.equal(await page.locator('.next-blend').count(), 0);
+          const placed = await page.evaluate(() => {
+            const provider = document.querySelector('.next-provider-row')!.getBoundingClientRect();
+            const row = document.querySelector('.next-mode-row')!;
+            const r = row.getBoundingClientRect();
+            return {
+              after: row.previousElementSibling?.classList.contains('next-provider-row') ?? false,
+              below: r.top >= provider.bottom - 0.5,
+              inView: r.bottom <= innerHeight,
+            };
+          });
+          assert.deepEqual(
+            placed,
+            { after: true, below: true, inView: true },
+            `${name}: placement`,
+          );
+          await dismissToasts(page, touch);
+          await operate(page, blendButton, touch);
+          await page.locator('.next-blend').waitFor();
+          assert.equal(new URL(page.url()).hash, '#blend');
+          assert.equal(await blendButton.getAttribute('aria-pressed'), 'true');
+          for (const count of [2, 4, 10]) {
+            const at = `${name}-${count}`;
+            await setSlots(page, count);
+            await page.evaluate(() => scrollTo(0, 0));
+            const g = await geometry(page);
+            assert.ok(g.pageScrollX <= 0, `${at}: no sideways page scroll (${g.pageScrollX})`);
+            assert.deepEqual(await clipped(page), [], `${at}: no clipped control`);
+            // No overlapping or duplicated tiles.
+            const tiles = await page.evaluate(() => {
+              const slots = [...document.querySelectorAll('.next-blend-slot')];
+              const rects = slots.map((s) => s.getBoundingClientRect());
+              let overlaps = 0;
+              for (let i = 0; i < rects.length; i++)
+                for (let j = i + 1; j < rects.length; j++) {
+                  const a = rects[i]!,
+                    c = rects[j]!;
+                  if (
+                    Math.min(a.right, c.right) - Math.max(a.left, c.left) > 1 &&
+                    Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top) > 1
+                  )
+                    overlaps++;
+                }
+              const labels = slots.map(
+                (s) => s.querySelector('.next-field label')?.textContent?.trim() ?? '',
+              );
+              return { overlaps, labels, unique: new Set(labels).size };
+            });
+            assert.equal(tiles.overlaps, 0, `${at}: no overlapping tiles`);
+            assert.equal(tiles.unique, count, `${at}: no duplicated tiles (${tiles.labels})`);
+            await page.screenshot({ path: join(results, `mode-${at}.png`), fullPage: true });
+            // Remove, weight, field at the first, a middle and the last slot; Blend and the result.
+            for (const i of new Set([0, Math.floor(count / 2), count - 1])) {
+              const slot = page.locator('.next-blend-slot').nth(i);
+              for (const control of [
+                slot.locator('.next-face-close'),
+                slot.locator('input[type=range]'),
+                slot.locator('.next-field input'),
+              ])
+                assert.ok(await hits(page, control), `${at}: slot ${i + 1} ${control} hit`);
+            }
+            assert.ok(await hits(page, page.locator('.next-blend-action')), `${at}: Blend hit`);
+            assert.ok(await hits(page, page.locator('.next-blend-frame')), `${at}: result hit`);
+          }
+          // One list (fm-56e6). Setup: one weight set, so switching is seen to keep weights too.
+          await page.evaluate(() => {
+            const store = (window as unknown as W).__fmStore;
+            store.dispatch({ type: 'BlendWeight', args: [store.getState().Inputs[0]!.id, 0.3] });
+          });
+          const ids = () =>
+            page.evaluate(() =>
+              (window as unknown as W).__fmStore.getState().Inputs.map((i) => i.id),
+            );
+          const kept = (await blendOf(page))!.slots;
+          // Switching modes several times keeps the same faces and weights.
+          for (let round = 0; round < 3; round++) {
+            await page.evaluate(() => scrollTo(0, 0));
+            await operate(page, morphButton, touch);
+            await page.locator('section.next-face').nth(1).waitFor();
+            assert.equal(await page.locator('.next-blend').count(), 0);
+            assert.deepEqual(
+              await ids(),
+              kept.map((slot) => slot.input.id),
+              `${name}: Morph shows the same faces`,
+            );
+            await page.evaluate(() => scrollTo(0, 0));
+            await operate(page, blendButton, touch);
+            await page.locator('.next-blend').waitFor();
+            assert.deepEqual(
+              (await blendOf(page))!.slots,
+              kept,
+              `${name}: Blend keeps faces and weights`,
+            );
+          }
+          // A face added in Morph shows in Blend.
+          await page.evaluate(() => scrollTo(0, 0));
+          await operate(page, morphButton, touch);
+          await page.locator('section.next-face').nth(1).waitFor();
+          const add = page.locator('.next-connector-add').last();
+          await add.scrollIntoViewIfNeeded();
+          await operate(page, add, touch);
+          await page.waitForFunction(
+            (n) => (window as unknown as W).__fmStore.getState().Inputs.length === n,
+            kept.length + 1,
+          );
+          await page.screenshot({ path: join(results, `mode-${name}-morph.png`) });
+          await page.evaluate(() => scrollTo(0, 0));
+          await operate(page, blendButton, touch);
+          await page.locator('.next-blend').waitFor();
+          assert.equal(
+            await page.locator('.next-blend-slot').count(),
+            kept.length + 1,
+            `${name}: added in Morph, shown in Blend`,
+          );
+          // Removed in Blend: Undo there restores it in both.
+          const before = await ids();
+          const second = page.locator('.next-blend-slot').nth(1).locator('.next-face-close');
+          assert.ok(await hits(page, second));
+          await operate(page, second, touch);
+          await page.waitForFunction(
+            (n) => (window as unknown as W).__fmStore.getState().Inputs.length === n,
+            before.length - 1,
+          );
+          const undo = page.locator('.next-blend .next-undo');
+          await undo.scrollIntoViewIfNeeded();
+          await operate(page, undo, touch);
+          await page.waitForFunction(
+            (n) => (window as unknown as W).__fmStore.getState().Inputs.length === n,
+            before.length,
+          );
+          assert.deepEqual(await ids(), before, `${name}: Undo restores the face in its place`);
+          await page.evaluate(() => scrollTo(0, 0));
+          await operate(page, morphButton, touch);
+          await page.locator('section.next-face').nth(1).waitFor();
+          assert.equal(
+            (await page.locator('section.next-face').count()) >= Math.min(before.length, 3),
+            true,
+          );
+          assert.deepEqual(await ids(), before, `${name}: restored in Morph too`);
+          // A reload in Blend restores the faces and their weights. The morph session keeps generated faces, so
+          // two faces are generated first (by blending them, which generates its faces on the way).
+          if (width === 1280 && scheme === 'light') {
+            await page.evaluate(() => scrollTo(0, 0));
+            await operate(page, blendButton, touch);
+            await page.locator('.next-blend').waitFor();
+            await setSlots(page, 2);
+            await page.evaluate(() => {
+              const store = (window as unknown as W).__fmStore;
+              store.dispatch({ type: 'BlendWeight', args: [store.getState().Inputs[0]!.id, 0.3] });
+            });
+            await operate(page, page.locator('.next-blend-action'), touch);
+            const accept = page.locator('.next-download-accept');
+            for (const end = Date.now() + 900_000; ;) {
+              const b = await blendOf(page);
+              if (b && b.revision > 0 && b.running === null) break;
+              assert.ok(Date.now() < end, 'the blend finished in time');
+              if (await accept.isVisible()) await operate(page, accept, touch);
+              else await page.waitForTimeout(500);
+            }
+            const atReload = (await blendOf(page))!.slots.map((slot) => [
+              slot.input.id,
+              slot.weight,
+            ]);
+            await page.waitForTimeout(1500); // the session write after the faces finished
+            await page.reload();
+            await page.locator('.next-blend').waitFor();
+            await page.waitForFunction(
+              (n) =>
+                (window as unknown as W)
+                  .__blendView()
+                  .faces.filter((f) => !f.id.startsWith('blend-')).length === n,
+              atReload.length,
+              { timeout: 60_000 },
+            );
+            assert.deepEqual(
+              (await blendOf(page))!.slots.map((slot) => [slot.input.id, slot.weight]),
+              atReload,
+              `${name}: reload restores the faces and their weights`,
+            );
+            await page.screenshot({ path: join(results, `mode-${name}-reloaded.png`) });
+          }
+          assert.deepEqual(errors, []);
+        } finally {
+          await context.close();
+        }
+      }
+    }
+  },
+);
 
 test(
   'blend counts: 1 to 100 slots at 1280 and 390 px scroll inside the panel with every control hit',
@@ -839,11 +1252,18 @@ test(
           await setSlots(page, count);
           const g = await geometry(page);
           assert.ok(g.pageScrollX <= 0, `${at}: no horizontal page scroll (${g.pageScrollX})`);
-          assert.ok(g.fields && g.weights, `${at}: compact rows hold field and weight`);
-          assert.ok(
-            g.thumbs.every((w) => w > 0 && w <= 120),
-            `${at}: compact thumbnails (${Math.max(...g.thumbs)} px)`,
-          );
+          assert.ok(g.fields && g.weights, `${at}: every slot holds field and weight`);
+          if (touch)
+            // Phones (fm-56e6): whole faces, the image as wide as the tile, in one sideways strip.
+            assert.ok(
+              g.rows === 1 && g.thumbs.every((w, i) => w >= g.slotWidths[i]! - 24),
+              `${at}: one strip of whole faces (${g.rows} rows, ${Math.min(...g.thumbs)} px images)`,
+            );
+          else
+            assert.ok(
+              g.thumbs.every((w) => w > 0 && w <= 120),
+              `${at}: compact thumbnails (${Math.max(...g.thumbs)} px)`,
+            );
           assert.deepEqual(await clipped(page), [], `${at}: no clipped control`);
           // Every slot's weight slider and Remove at their centres, after scrolling the panel to it.
           const slots = page.locator('.next-blend-slot');
@@ -867,13 +1287,15 @@ test(
           }
           if (count === 1)
             assert.equal(await page.locator('.next-face-close').count(), 0, 'one slot: no Remove');
-          // After scrolling to the last slot the result box is still inside the viewport.
+          // Desktop: after scrolling to the last slot the result box is still inside the viewport.
           const after = await geometry(page);
-          assert.ok(
-            after.result!.y >= -0.5 && after.result!.y < after.vh && after.result!.b > 0,
-            `${at}: result in view after the last slot (${after.result!.y})`,
-          );
-          if (count > 8) {
+          if (!touch)
+            assert.ok(
+              after.result!.y >= -0.5 && after.result!.y < after.vh && after.result!.b > 0,
+              `${at}: result in view after the last slot (${after.result!.y})`,
+            );
+          else if (count > 1) assert.ok(after.stripScrolls, `${at}: the strip scrolls sideways`);
+          if (count > 8 && !touch) {
             const panel = await page
               .locator('.next-blend-slots')
               .evaluate((el) => el.scrollHeight > el.clientHeight);
@@ -882,13 +1304,13 @@ test(
           await page.screenshot({ path: join(results, `counts-${at}.png`) });
         }
         // At 100 slots: the sum line, Reset and Make it 1 work.
-        // A person scrolls the page back up to the controls under the pinned result.
+        // A person scrolls the page back up to the controls under the result.
         await page.evaluate(() => scrollTo(0, 0));
         await page.evaluate(() => {
           const store = (window as unknown as W).__fmStore;
           store.dispatch({
             type: 'BlendWeights',
-            args: [store.getState().Blend!.slots.map(() => 0.05)],
+            args: [(window as unknown as W).__blendView().slots.map(() => 0.05)],
           }); // setup
         });
         await page.locator('.next-blend-sum-line').waitFor();
@@ -900,7 +1322,7 @@ test(
           const store = (window as unknown as W).__fmStore;
           store.dispatch({
             type: 'BlendWeights',
-            args: [store.getState().Blend!.slots.map((_, i) => (i ? 0 : 1))],
+            args: [(window as unknown as W).__blendView().slots.map((_, i) => (i ? 0 : 1))],
           }); // setup
         });
         await operate(
@@ -909,9 +1331,9 @@ test(
           touch,
         );
         await page.waitForFunction(() =>
-          (window as unknown as W).__fmStore
-            .getState()
-            .Blend!.slots.every((s) => Math.abs(s.weight - 0.01) < 1e-9),
+          (window as unknown as W)
+            .__blendView()
+            .slots.every((s) => Math.abs(s.weight - 0.01) < 1e-9),
         );
         assert.equal(await page.locator('.next-blend-sum').innerText(), 'Sum 1.00');
         // One blend synthesis per release at 100 slots (desktop: the slot faces generate as its dependencies).
@@ -945,7 +1367,7 @@ test(
 );
 
 test(
-  'blend layout: result right with 2-4 columns on desktop, pinned on top with one column on phones',
+  'blend layout: result right with 2-4 columns on desktop, above the slots below 900 px, a strip on phones',
   { timeout: 1_800_000, skip: !CASES.has('layout') },
   async (t) => {
     const b = await setup(t);
@@ -970,21 +1392,19 @@ test(
             );
           } else {
             assert.ok(g.result!.b <= g.panel!.y + 0.5, `${at}: the result is above the slots`);
-            assert.equal(g.columns, 1, `${at}: one column`);
-            // Pinned: after scrolling the page to the last slot the result is still at the top.
-            await page.locator('.next-blend-slot').last().scrollIntoViewIfNeeded();
-            const after = await geometry(page);
-            // It never leaves the viewport: at the top once the page has scrolled past it, else where it was.
-            assert.ok(
-              after.result!.y >= -0.5 && after.result!.y <= Math.max(1, g.result!.y + 0.5),
-              `${at}: result pinned at the top (${after.result!.y})`,
-            );
+            // In the page's flow, never pinned over the controls below it (fm-56e6).
             assert.equal(
               await page
                 .locator('.next-blend-result')
                 .evaluate((el) => getComputedStyle(el).position),
-              'sticky',
+              'static',
             );
+            if (width < 600)
+              assert.ok(
+                g.rows === 1 && g.slotWidths.every((w) => w >= g.panel!.w - 48),
+                `${at}: one whole face per view in a strip (${g.rows} rows)`,
+              );
+            else assert.ok(g.columns >= 1 && g.columns <= 4, `${at}: ${g.columns} slot columns`);
           }
           await page.screenshot({ path: join(results, `layout-${at}.png`) });
           await page.evaluate(() => scrollTo(0, 0));

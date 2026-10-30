@@ -7,6 +7,7 @@ import { msg, type Msg } from '../../src/controller/msg.ts';
 import type { Face, State } from '../../src/controller/state.ts';
 import {
   BLEND_RESULT,
+  blendSlots,
   formatWeight,
   shuffleWeights,
   stepWeight,
@@ -22,7 +23,8 @@ import './blend.css';
 
 type Dispatch = (message: Msg) => void;
 
-export const slotLabel = (index: number): string => `Blend face ${index + 1}`;
+/** Blend and Morph share one list of faces (fm-56e6): the blend view names them by place. */
+export const slotLabel = (index: number): string => `Face ${index + 1}`;
 
 /** A slot's weight: a 0-1 slider in steps of 0.05 and its value as text. Dragging only moves the thumb; the
  *  released slider (or a committed keyboard step) is the one change that regenerates. */
@@ -100,14 +102,12 @@ function ResultImage({ face, revision }: { readonly face: Face; readonly revisio
 export function BlendView({
   state: s,
   dispatch,
-  onBack,
 }: {
   readonly state: State;
   readonly dispatch: Dispatch;
-  readonly onBack: () => void;
 }) {
   const blend = s.Blend;
-  const slots = blend?.slots ?? [];
+  const slots = blendSlots(s.Inputs, blend?.weights ?? {});
   const result = blend?.faces.find((face) => face.id === BLEND_RESULT);
   const updating = blend?.running != null;
   const resultRevision = result ? facade.exportResultRevision(BLEND_RESULT) : 0;
@@ -138,9 +138,6 @@ export function BlendView({
       data-next-blend-running={String(updating)}
     >
       <div className="next-blend-head">
-        <Button color="inherit" variant="outlined" className="next-blend-back" onClick={onBack}>
-          Back to morph
-        </Button>
         <h2 className="next-blend-title">Blend faces</h2>
       </div>
       <div className="next-blend-body">
@@ -237,9 +234,33 @@ export function BlendView({
             >
               Shuffle weights
             </Button>
-            <Button color="inherit" variant="text" onClick={() => dispatch(msg('BlendAdd'))}>
+            <Button
+              color="inherit"
+              variant="text"
+              onClick={() => dispatch(msg('AddAt', s.Inputs.length))}
+            >
               Add face
             </Button>
+          </div>
+          {/* Remove and Start over have the same Undo here as in Morph: the faces are one list. */}
+          <div className="next-undo-notice" role="status" aria-live="polite">
+            {s.Undo ? (
+              <>
+                <span>
+                  {s.Undo.kind === 'start-over'
+                    ? `Started over: ${s.Undo.hidden.length} ${s.Undo.hidden.length === 1 ? 'face' : 'faces'} cleared.`
+                    : `Removed ${slotLabel(s.Undo.index)}.`}
+                </span>
+                <Button
+                  variant="text"
+                  size="small"
+                  className="next-undo"
+                  onClick={() => dispatch(msg('Undo'))}
+                >
+                  Undo
+                </Button>
+              </>
+            ) : null}
           </div>
           {line && (
             <p className="next-blend-sum-line" role="note">
@@ -258,7 +279,7 @@ export function BlendView({
             {slots.map((slot, index) => {
               const item = slot.input;
               const label = slotLabel(index);
-              const found = blend?.faces.find((face) => face.id === item.id);
+              const found = s.Faces.find((face) => face.id === item.id);
               // A compact thumbnail: the face's file when it has one, so a hundred slots hold no full canvases.
               const face = found && found.url ? { ...found, raw: false } : found;
               return (
@@ -287,22 +308,25 @@ export function BlendView({
                     photoEncodingAvailable={photoEncodingAvailable}
                     onNotice={(message) => dispatch(msg('PhotoError', message))}
                     onResultNotice={(message) => dispatch(msg('Notice', message))}
-                    removable={slots.length > 1}
+                    removable={s.Inputs.length > 1}
                     onEdit={(value) => dispatch(msg('Edit', item.id, value))}
                     onMode={(mode) => dispatch(msg('Mode', item.id, mode))}
                     onBrowse={() => dispatch(msg('BrowseNames', item.id))}
-                    onPhoto={(files) => dispatch(msg('PickPhoto', item.id, files.slice(0, 1)))}
+                    onPhoto={(files) => dispatch(msg('PickPhoto', item.id, files))}
                     onRequestCrop={() => dispatch(msg('RequestCrop', item.id))}
                     onResumePhoto={
                       s.PausedPhotos?.has(item.id)
                         ? () => dispatch(msg('ResumePhoto', item.id))
                         : undefined
                     }
-                    // One slot takes one photo; filling many slots from one batch is not this view's entry.
-                    onPhotos={(files) => dispatch(msg('PickPhoto', item.id, files.slice(0, 1)))}
+                    // Several files (or a photo with several faces) open one Choose faces view: its picks fill this
+                    // slot and new slots right after it.
+                    onPhotos={(files) => dispatch(msg('Photos', item.id, files))}
                     onRun={() => dispatch(msg('RunFace', item.id))}
                     onCancel={() => dispatch(msg('CancelFace', item.id))}
-                    onRemove={() => dispatch(msg('BlendRemove', item.id))}
+                    onRemove={() => dispatch(msg('Remove', item.id))}
+                    held={s.Held?.get(item.id)}
+                    onUseAsPhoto={() => dispatch(msg('UseAsPhoto', item.id))}
                     onShare={() => dispatch(msg('Share', item.id))}
                     onSave={() => dispatch(msg('Save', item.id))}
                     drawFace={(canvas, id) => {
