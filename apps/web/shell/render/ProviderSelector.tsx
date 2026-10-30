@@ -45,11 +45,6 @@ export function ProviderSelector({
       ) : encoderSetup?.available ? (
         <Button onClick={encoderSetup.onPrepare}>Prepare encoder</Button>
       ) : null}
-      <p className="next-provider-note">
-        Leave processing on automatic unless you are comparing routes. Forced routes still need to
-        pass this device’s checks. <a href="#computer-requirements">Using a computer</a> ·{' '}
-        <a href="#supported-browsers">Supported browsers</a>
-      </p>
     </div>
   );
 }
