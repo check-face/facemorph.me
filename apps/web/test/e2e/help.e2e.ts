@@ -173,6 +173,40 @@ test(
             /download (the|our) (desktop |native )?app|install (the|our) (desktop|native) app/i,
           );
 
+          // The selector's Help links (fm-5kpx renders them beside Processing mode, above the first face): each one a
+          // person sees there, pressed where it is, opens its Help topic below the page and brings it on screen.
+          const row = page.locator('.next-provider-row');
+          const firstFace = page.locator('section.next-face').first();
+          for (const [id, label] of [
+            ['computer-requirements', 'Using a computer'],
+            ['supported-browsers', 'Supported browsers'],
+          ] as const) {
+            await page.evaluate(() => scrollTo(0, 0)); // setup: the page as it first opens
+            assert.equal(await page.locator(`a[href="#${id}"]:visible`).count(), 1, id);
+            const link = row.getByRole('link', { name: label, exact: true });
+            const [rowBox, faceBox] = await Promise.all([
+              row.boundingBox(),
+              firstFace.boundingBox(),
+            ]);
+            assert.ok(
+              rowBox && faceBox && rowBox.y + rowBox.height <= faceBox.y + 1,
+              `${id}: row above the first face`,
+            );
+            assert.ok(await inView(link), `${id}: on screen as the page opens`);
+            await shot(`selector-${id}-link`);
+            const landed = await operate(link);
+            assert.equal(landed.href, `${ORIGIN}/#${id}`);
+            await page.waitForFunction((h) => location.hash === h, `#${id}`);
+            const topic = page.locator(`details#${id}`);
+            assert.equal(await topic.evaluate((d) => (d as HTMLDetailsElement).open), true, id);
+            await page.waitForTimeout(300);
+            assert.ok(
+              await inView(topic.locator('summary')),
+              `${id}: the opened topic is on screen`,
+            );
+            await shot(`selector-${id}-topic`);
+          }
+
           // The saved-file format reference (fm-fy2.7): open Keep your originals, press its link.
           const originals = page.locator('details#help-keep-originals');
           await operate(originals.locator('summary'));
