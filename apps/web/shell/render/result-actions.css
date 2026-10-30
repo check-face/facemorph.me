@@ -1,0 +1,123 @@
+/* Save/Share row (fm-7u7z): one row of actions, then the filename as quiet text that becomes a minimal
+   inline field when tapped. Colours come from the MUI theme or `currentColor`, so nothing draws as a
+   white native box in the dark theme. */
+.next-result-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  flex: 1 1 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.next-result .next-result-actions {
+  align-items: center;
+}
+.next-result-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+}
+.next-result .next-result-row {
+  justify-content: center;
+}
+.next-result-actions .MuiButton-root {
+  min-height: 40px;
+  text-transform: none;
+}
+.next-result-save .next-result-format {
+  min-width: 0;
+  padding-left: 0.6rem;
+  padding-right: 0.25rem;
+  gap: 0.1rem;
+}
+.next-result-actions .next-video-format {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+.next-result-failed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+}
+.next-result-failed [role='alert'] {
+  color: #c62828;
+}
+@media (prefers-color-scheme: dark) {
+  .next-result-failed [role='alert'] {
+    color: #ffb4ab;
+  }
+}
+.next-result-failed .MuiButton-root {
+  min-height: 32px;
+  text-decoration: underline;
+}
+
+/* The format menu: name on the left, what it is for on the right. */
+.next-result-format-menu .MuiMenuItem-root {
+  min-width: 11rem;
+  min-height: 40px;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+.next-result-format-note {
+  font-size: 0.8rem;
+  opacity: 0.65;
+}
+
+/* Filename at rest: small muted text, no label, no box. Hover/focus show the faint pencil and an
+   underline; focus makes it an inline field. */
+.next-result-filename {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 0.8rem;
+  opacity: 0.7;
+  cursor: text;
+}
+.next-result-filename input {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  padding: 0.15rem 0;
+  margin: 0;
+  min-width: 0;
+  max-width: 100%;
+  field-sizing: content;
+  text-overflow: ellipsis;
+  outline: none;
+  cursor: text;
+}
+.next-result-filename input:disabled {
+  cursor: default;
+}
+.next-result-filename-pencil.MuiSvgIcon-root {
+  font-size: 0.95rem;
+  flex: 0 0 auto;
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+.next-result-filename[data-next-ready]:hover input {
+  border-bottom-style: dashed;
+  border-bottom-color: currentColor;
+}
+.next-result-filename[data-next-ready]:hover .next-result-filename-pencil,
+.next-result-filename:focus-within .next-result-filename-pencil {
+  opacity: 0.8;
+}
+.next-result-filename:focus-within {
+  opacity: 1;
+}
+.next-result-filename input:focus {
+  border-bottom-style: solid;
+  border-bottom-color: currentColor;
+}

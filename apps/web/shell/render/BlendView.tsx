@@ -193,6 +193,7 @@ export function BlendView({
                   share: (file) => facade.handPreparedMedia(BLEND_RESULT, file, 'share'),
                 }}
                 onNotice={(message) => dispatch(msg('Notice', message))}
+                inlineRetry
               />
             </div>
           )}

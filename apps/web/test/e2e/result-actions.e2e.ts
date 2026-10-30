@@ -181,6 +181,8 @@ test(
           await pending.waitFor();
           assert.ok(await pending.isDisabled());
           assert.ok(await save.isDisabled());
+          // fm-7u7z: the state is the Save button's own label; its accessible name stays Save image.
+          assert.match((await save.textContent()) ?? '', /^Saving…/);
           assert.ok(await tile.locator('canvas[role=img],img.next-face-img').isVisible());
           await shot('preparing-file');
           await failedResponse;
@@ -219,6 +221,18 @@ test(
             'format/failure/retry dispatch zero inference',
           );
           const filename = tile.getByLabel('Image filename');
+          // fm-7u7z: at rest the filename is quiet text — no label, border or background box.
+          assert.deepEqual(
+            await filename.evaluate((input) => {
+              const style = getComputedStyle(input);
+              return {
+                label: input.closest('label')?.textContent ?? '',
+                border: style.borderTopWidth,
+                background: style.backgroundColor,
+              };
+            }),
+            { label: '', border: '0px', background: 'rgba(0, 0, 0, 0)' },
+          );
           for (const name of ['', 'a'.repeat(200), 'path/to\\face\u202ename.webp']) {
             await operate(filename);
             await page.keyboard.press('Control+A');
@@ -268,14 +282,12 @@ test(
           await page.keyboard.press('Tab');
           assert.ok((await videoName.inputValue()).endsWith(suffix(movie.name)));
           await page.locator('[data-next-video-width="512"]').waitFor();
-          assert.ok(
-            await page
-              .getByText(
-                'Video; reopening this file as a project is not available in this release.',
-                { exact: true },
-              )
-              .isVisible(),
-          );
+          // fm-7u7z: no helper sentences under the row; recovery is explained in Help.
+          for (const gone of [
+            'Includes editable face data',
+            'Video; reopening this file as a project is not available in this release.',
+          ])
+            assert.equal(await page.getByText(gone).count(), 0, `${gone} is not shown`);
           await shot('video-actions');
           // The prepared export identity survives the real session restore. No inference.
           const beforeReload = modelRequests.length;

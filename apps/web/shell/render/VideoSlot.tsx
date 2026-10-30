@@ -169,10 +169,8 @@ export function VideoSlot(p: VideoSlotProps) {
                   ? { width: size.w, height: size.h }
                   : undefined
               }
+              inlineRetry
             />
-            {resultFile.status === 'failed' && (
-              <Button onClick={resultFile.retry}>Retry file preparation</Button>
-            )}
           </>
         ) : (
           <>

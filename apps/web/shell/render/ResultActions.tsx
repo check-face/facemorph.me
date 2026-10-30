@@ -1,7 +1,15 @@
 // Prepared result controls (fm-qh1s). File preparation is separate from the click
 // gesture: the adapter hands an already prepared file to Save or the system share sheet.
+// Layout (fm-7u7z): one row — Save with its format on the button, Share beside it when the browser can
+// share — and the filename as quiet text underneath that becomes an inline field when tapped.
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import Button from '@mui/material/Button';
-import { useEffect, useRef, useState } from 'react';
+import ButtonGroup from '@mui/material/ButtonGroup';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import { useEffect, useId, useRef, useState } from 'react';
+import './result-actions.css';
 
 export type StillFormat = 'webp' | 'png';
 export interface PreparedResult {
@@ -127,26 +135,44 @@ function canShare(file: PreparedResult | undefined): boolean {
   }
 }
 
+const FORMATS: readonly {
+  readonly value: StillFormat;
+  readonly name: string;
+  readonly note: string;
+}[] = [
+  { value: 'webp', name: 'WebP', note: 'smaller' },
+  { value: 'png', name: 'PNG', note: 'lossless' },
+];
+
 export function ResultActions({
   kind,
   state,
   files,
   onNotice,
   resolution,
+  inlineRetry = false,
 }: {
   readonly kind: 'image' | 'video';
   readonly state: ResultFileState;
   readonly files: ResultFiles;
   readonly onNotice?: ((message: string) => void) | undefined;
   readonly resolution?: { readonly width: number; readonly height: number } | undefined;
+  /** Show Retry in this row on failure; the face tile keeps its own Retry in the operation slot. */
+  readonly inlineRetry?: boolean;
 }) {
   const [edit, setEdit] = useState<{ digest: string; name: string }>();
+  const [menu, setMenu] = useState<HTMLElement | null>(null);
+  const cancelled = useRef(false);
+  const menuId = useId();
   const file = state.file;
   const name = edit?.digest === file?.digest ? (edit?.name ?? '') : (file?.filename ?? '');
   const ready = state.status === 'ready' && !!file;
+  const preparing = state.status === 'preparing';
   const share = file
     ? canShare(file)
     : typeof navigator.share === 'function' && typeof navigator.canShare === 'function';
+  const format = file?.mime === 'image/png' ? 'png' : state.format;
+  const formatName = FORMATS.find((f) => f.value === format)?.name ?? 'WebP';
   const hand = (sharing: boolean) => {
     if (!ready) return;
     const failed = () =>
@@ -160,76 +186,142 @@ export function ResultActions({
       failed();
     }
   };
-  return (
+  const choose = (next: StillFormat) => {
+    setMenu(null);
+    if (next !== state.format) state.setFormat(next);
+    else if (state.status === 'failed') state.retry();
+  };
+  const noun = kind === 'image' ? 'image' : 'video';
+  // The accessible name stays "Save image" / "Save video" through preparation; only the visible label
+  // carries the state, so the control a person or test is holding never changes identity.
+  const saveLabel = (
     <>
-      {share && (
-        <Button
-          color="inherit"
-          variant={share ? 'contained' : 'text'}
-          disabled={!ready}
-          onClick={() => hand(true)}
-        >
-          {kind === 'image' ? 'Share image' : 'Share morph'}
-        </Button>
-      )}
-      <Button
-        color="inherit"
-        variant={share ? 'text' : 'contained'}
-        disabled={!ready}
-        onClick={() => hand(false)}
-      >
-        {kind === 'image' ? 'Save image' : 'Save video'}
-      </Button>
-      {kind === 'image' ? (
-        <label className="next-result-format">
-          Format{' '}
-          <select
-            aria-label="Image format"
-            value={file?.mime === 'image/png' ? 'png' : state.format}
-            onChange={(event) => {
-              const format = event.target.value as StillFormat;
-              if (format === state.format) state.retry();
-              else state.setFormat(format);
-            }}
-          >
-            <option value="webp">WebP</option>
-            <option value="png">PNG (lossless)</option>
-          </select>
-        </label>
+      {preparing ? (
+        <span aria-hidden="true">Saving…</span>
+      ) : kind === 'image' ? (
+        'Save'
       ) : (
-        <span className="next-video-format" data-next-video-width={resolution?.width}>
-          MP4{resolution ? ` · ${resolution.width} × ${resolution.height}` : ''}
-        </span>
+        'Save video'
       )}
-      <label
-        className="next-result-filename"
-        style={{ minWidth: 0, flex: '1 1 100%', maxWidth: '100%' }}
-      >
-        Filename{' '}
+      {(preparing || kind === 'image') && (
+        <span className="next-sr">{preparing ? `Save ${noun}` : ' image'}</span>
+      )}
+    </>
+  );
+  return (
+    <div className="next-result-actions" data-next-result-status={state.status}>
+      <div className="next-result-row">
+        {kind === 'image' ? (
+          <ButtonGroup
+            variant="contained"
+            disableElevation
+            className="next-result-save"
+            aria-label="Save"
+          >
+            <Button disabled={!ready} onClick={() => hand(false)}>
+              {saveLabel}
+            </Button>
+            <Button
+              className="next-result-format"
+              aria-label={`Image format: ${formatName}`}
+              aria-haspopup="menu"
+              aria-expanded={menu ? 'true' : undefined}
+              aria-controls={menu ? menuId : undefined}
+              disabled={state.status === 'idle'}
+              onClick={(event) => setMenu(event.currentTarget)}
+            >
+              {formatName}
+              <ArrowDropDownIcon fontSize="small" aria-hidden="true" />
+            </Button>
+          </ButtonGroup>
+        ) : (
+          <Button
+            variant="contained"
+            disableElevation
+            className="next-result-save"
+            disabled={!ready}
+            onClick={() => hand(false)}
+          >
+            {saveLabel}
+          </Button>
+        )}
+        {share && (
+          <Button
+            color="inherit"
+            variant="outlined"
+            className="next-result-share"
+            disabled={!ready}
+            onClick={() => hand(true)}
+          >
+            Share<span className="next-sr">{kind === 'image' ? ' image' : ' morph'}</span>
+          </Button>
+        )}
+        {kind === 'video' && (
+          <span className="next-video-format" data-next-video-width={resolution?.width}>
+            MP4{resolution ? ` · ${resolution.width} × ${resolution.height}` : ''}
+          </span>
+        )}
+        {state.status === 'failed' && (
+          <span className="next-result-failed">
+            <span role="alert">Couldn’t prepare the file.</span>
+            {inlineRetry && (
+              <Button
+                size="small"
+                color="inherit"
+                aria-label="Retry file preparation"
+                onClick={state.retry}
+              >
+                Retry
+              </Button>
+            )}
+          </span>
+        )}
+      </div>
+      {kind === 'image' && (
+        <Menu
+          id={menuId}
+          anchorEl={menu}
+          open={!!menu}
+          onClose={() => setMenu(null)}
+          slotProps={{ list: { 'aria-label': 'Image format', dense: true } }}
+          className="next-result-format-menu"
+        >
+          {FORMATS.map((f) => (
+            <MenuItem key={f.value} selected={f.value === format} onClick={() => choose(f.value)}>
+              <span className="next-result-format-name">{f.name}</span>
+              <span className="next-result-format-note">{f.note}</span>
+            </MenuItem>
+          ))}
+        </Menu>
+      )}
+      <label className="next-result-filename" data-next-ready={ready ? 'true' : undefined}>
         <input
           aria-label={kind === 'image' ? 'Image filename' : 'Video filename'}
           value={name}
           disabled={!ready}
-          style={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}
+          spellCheck={false}
+          autoComplete="off"
+          size={Math.max(8, Math.min(name.length + 1, 64))}
           onChange={(event) => file && setEdit({ digest: file.digest, name: event.target.value })}
           onBlur={() => {
+            if (cancelled.current) {
+              cancelled.current = false;
+              if (file) setEdit({ digest: file.digest, name: file.filename });
+              return;
+            }
             const named = state.rename(name);
             if (named) setEdit({ digest: named.digest, name: named.filename });
           }}
           onKeyDown={(event) => {
             if (event.key === 'Enter') event.currentTarget.blur();
+            if (event.key === 'Escape') {
+              cancelled.current = true;
+              event.currentTarget.blur();
+            }
           }}
         />
+        <EditOutlinedIcon className="next-result-filename-pencil" aria-hidden="true" />
       </label>
-      <span className="next-result-format-help" style={{ flexBasis: '100%', fontSize: '.8rem' }}>
-        {kind === 'image'
-          ? 'Includes editable face data'
-          : 'Video; reopening this file as a project is not available in this release.'}
-      </span>
-      {state.status === 'preparing' && <span role="status">Preparing file…</span>}
-      {state.status === 'failed' && (
-        <span role="alert">The file could not be prepared. Your result is still here.</span>
-      )}
-    </>
+    </div>
   );
 }
