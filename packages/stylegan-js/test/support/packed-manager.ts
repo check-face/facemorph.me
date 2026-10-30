@@ -6,7 +6,7 @@
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { REPO } from './packed.ts';
+import { releaseTarball, REPO } from './packed.ts';
 
 export const MANAGER = join(REPO, 'packages/browser-model-manager');
 
@@ -20,9 +20,12 @@ const run = (cmd: string, args: string[], cwd: string) =>
 
 /**
  * Builds the manager's src/ into `work`/manager-stage/dist and packs it; the tarball path. `styleganStage` is the
- * directory packFresh staged (its dist/ holds the declarations the manager compiles against).
+ * directory packFresh staged (its dist/ holds the declarations the manager compiles against). With
+ * FACEMORPH_PACKED_TARBALLS set, the release tarball instead (releaseTarball).
  */
 export function packManagerFresh(work: string, styleganStage = join(work, 'stage')): string {
+  const given = releaseTarball('browser-model-manager');
+  if (given) return given;
   const stage = join(work, 'manager-stage');
   mkdirSync(stage, { recursive: true });
   const dts = (p: string) => join(styleganStage, 'dist', p);

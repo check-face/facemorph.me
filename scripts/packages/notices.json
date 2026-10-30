@@ -1,0 +1,119 @@
+{
+  "$comment": "Third-party material per published artifact, checked by check-notices.mjs against the files actually in each packed tarball and in the model-conv build context, and against each artifact's notice file. A component's `files` are regular expressions over artifact paths; `mentions` must each appear in the notice file. `python` rows are the packages requirements.lock installs into the image; `metadata` is the licence string the installed distribution declares (License-Expression, else its License classifiers, else the first line of License), compared with --image.",
+  "ownOrigins": "\\b(?:the candidate|candidate'?s|classic|the app'?s|the app\\b|FaceMorph|this package|this repository|facemorph\\.me-classic)",
+  "ownPackages": ["stylegan-js", "browser-model-manager", "cloudflare-model-host"],
+  "artifacts": {
+    "stylegan-js": {
+      "noticeFile": "THIRD_PARTY_NOTICES",
+      "components": [
+        {
+          "name": "MT19937 reference implementation (mt19937ar.c)",
+          "licence": "BSD-3-Clause",
+          "files": ["^dist/engine/identity\\.js$"],
+          "mentions": ["MT19937 (mt19937ar.c)", "Makoto Matsumoto and Takuji Nishimura"]
+        },
+        {
+          "name": "NumPy legacy RandomState",
+          "licence": "BSD-3-Clause",
+          "files": ["^dist/engine/identity\\.js$"],
+          "mentions": ["--- NumPy ---", "NumPy Developers"]
+        }
+      ],
+      "notBundled": [
+        {
+          "name": "ONNX Runtime Web",
+          "mentions": ["ONNX Runtime Web (MIT, Microsoft) is not part of this package"]
+        }
+      ]
+    },
+    "browser-model-manager": {
+      "noticeFile": "THIRD_PARTY_NOTICES",
+      "components": [],
+      "notBundled": [
+        { "name": "ONNX Runtime Web", "mentions": ["ONNX Runtime Web, MIT, Microsoft"] }
+      ]
+    },
+    "cloudflare-model-host": {
+      "noticeFile": "THIRD_PARTY_NOTICES",
+      "components": [],
+      "notBundled": []
+    },
+    "model-conv-context": {
+      "noticeFile": "NOTICE.md",
+      "components": [
+        {
+          "name": "encoder4editing (e4e)",
+          "licence": "MIT",
+          "files": ["^model_conv/vendor/e4e/"],
+          "mentions": [
+            "omertov/encoder4editing",
+            "Copyright (c) 2021 omertov",
+            "model_conv/vendor/e4e/LICENSE"
+          ]
+        },
+        {
+          "name": "InsightFace_Pytorch (ArcFace blocks in e4e's helpers.py)",
+          "licence": "MIT",
+          "files": ["^model_conv/vendor/e4e/models/encoders/helpers\\.py$"],
+          "mentions": ["TreB1eN/InsightFace_Pytorch"]
+        },
+        {
+          "name": "rosinality/stylegan2-pytorch (EqualLinear, via e4e)",
+          "licence": "MIT",
+          "files": ["^model_conv/vendor/e4e/models/encoders/equal_linear\\.py$"],
+          "mentions": ["rosinality/stylegan2-pytorch"]
+        }
+      ],
+      "sources": [
+        {
+          "name": "Python base image",
+          "match": "^python:3\\.12-slim@sha256:[0-9a-f]{64}$",
+          "mentions": ["python:3.12-slim", "Python Software Foundation License"]
+        },
+        {
+          "name": "NVlabs/stylegan2-ada-pytorch",
+          "match": "^https://github\\.com/NVlabs/stylegan2-ada-pytorch/archive/",
+          "mentions": ["NVlabs/stylegan2-ada-pytorch", "NVIDIA Source Code License"]
+        }
+      ],
+      "python": [
+        {
+          "name": "certifi",
+          "licence": "MPL-2.0",
+          "metadata": "Mozilla Public License 2.0 (MPL 2.0)"
+        },
+        { "name": "charset-normalizer", "licence": "MIT", "metadata": "MIT" },
+        { "name": "click", "licence": "BSD-3-Clause", "metadata": "BSD-3-Clause" },
+        { "name": "filelock", "licence": "MIT", "metadata": "MIT" },
+        { "name": "flatbuffers", "licence": "Apache-2.0", "metadata": "Apache Software License" },
+        { "name": "fsspec", "licence": "BSD-3-Clause", "metadata": "BSD-3-Clause" },
+        { "name": "idna", "licence": "BSD-3-Clause", "metadata": "BSD-3-Clause" },
+        { "name": "jinja2", "licence": "BSD-3-Clause", "metadata": "BSD License" },
+        { "name": "markupsafe", "licence": "BSD-3-Clause", "metadata": "BSD-3-Clause" },
+        { "name": "ml-dtypes", "licence": "Apache-2.0", "metadata": "Apache-2.0" },
+        { "name": "mpmath", "licence": "BSD-3-Clause", "metadata": "BSD License" },
+        { "name": "networkx", "licence": "BSD-3-Clause", "metadata": "BSD-3-Clause" },
+        { "name": "numpy", "licence": "BSD-3-Clause", "metadata": "BSD License" },
+        { "name": "onnx", "licence": "Apache-2.0", "metadata": "Apache License v2.0" },
+        { "name": "onnxruntime", "licence": "MIT", "metadata": "MIT License" },
+        {
+          "name": "packaging",
+          "licence": "Apache-2.0 OR BSD-2-Clause",
+          "metadata": "Apache-2.0 OR BSD-2-Clause"
+        },
+        { "name": "protobuf", "licence": "BSD-3-Clause", "metadata": "3-Clause BSD License" },
+        { "name": "requests", "licence": "Apache-2.0", "metadata": "Apache Software License" },
+        { "name": "setuptools", "licence": "MIT", "metadata": "MIT" },
+        { "name": "sympy", "licence": "BSD-3-Clause", "metadata": "BSD License" },
+        {
+          "name": "torch",
+          "licence": "Apache-2.0 AND Apache-2.0 WITH LLVM-exception AND BSD-2-Clause AND BSD-3-Clause AND BSL-1.0 AND MIT",
+          "metadata": "Apache-2.0 AND Apache-2.0 WITH LLVM-exception AND BSD-2-Clause AND BSD-3-Clause AND BSL-1.0 AND MIT"
+        },
+        { "name": "typing-extensions", "licence": "PSF-2.0", "metadata": "PSF-2.0" },
+        { "name": "urllib3", "licence": "MIT", "metadata": "MIT" },
+        { "name": "pip", "licence": "MIT", "metadata": "MIT License", "base": true }
+      ]
+    }
+  }
+}

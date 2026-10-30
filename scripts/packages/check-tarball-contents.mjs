@@ -6,6 +6,7 @@
 // rules); a profile change is a reviewed diff with its self-test fixture in check-tarball-contents.test.mjs.
 //   node scripts/packages/check-tarball-contents.mjs --profile <stylegan-js|browser-model-manager|
 //     cloudflare-model-host|model-conv-context> --input <tarball.tgz | build-context dir> --report <out.json>
+//     [--docker-context]   for a directory: scan only what `docker build` sends (its .dockerignore applied)
 // Exit 0 clean, 1 findings, 2 usage error or unknown profile (never passes silently).
 // Report: {scanVersion, profile, input, inputSha256, files: [{path, bytes, sha256}], findings: [{rule, path,
 // detail}], requiredMissing: [], outcome}. For a directory input, inputSha256 is a sha256 over the sorted
@@ -294,14 +295,26 @@ function readEntries(root, relPaths, stripPackage) {
   return { files, findings };
 }
 
-export function scanInput({ profile, input }) {
+/** The files `docker build` sends from the context directory `dir`: every file .dockerignore does not exclude, plus
+ * the Dockerfile and .dockerignore themselves (Docker always reads both). Without a .dockerignore, every file. */
+export function dockerContextEntries(dir) {
+  const all = walk(dir);
+  const di = join(dir, '.dockerignore');
+  if (!existsSync(di)) return all;
+  const lines = readFileSync(di, 'utf8').split(/\r?\n/);
+  return all.filter(
+    (e) => e.path === 'Dockerfile' || e.path === '.dockerignore' || !dockerIgnored(lines, e.path),
+  );
+}
+
+export function scanInput({ profile, input, dockerContext = false }) {
   const st = statSync(input);
   let inputSha;
   let entries;
   let cleanup = null;
   const extra = [];
   if (st.isDirectory()) {
-    const r = readEntries(input, walk(input), false);
+    const r = readEntries(input, dockerContext ? dockerContextEntries(input) : walk(input), false);
     entries = r.files;
     extra.push(...r.findings);
     inputSha = sha256(
@@ -359,13 +372,15 @@ export function scanInput({ profile, input }) {
 
 function usage(msg) {
   process.stderr.write(
-    `${msg}\nusage: check-tarball-contents.mjs --profile <${PROFILES.join('|')}> --input <tarball.tgz|dir> --report <out.json>\n`,
+    `${msg}\nusage: check-tarball-contents.mjs --profile <${PROFILES.join('|')}> --input <tarball.tgz|dir> --report <out.json> [--docker-context]\n`,
   );
   return 2;
 }
 
 export function main(argv) {
   const args = {};
+  const dockerContext = argv.includes('--docker-context');
+  argv = argv.filter((a) => a !== '--docker-context');
   for (let i = 0; i < argv.length; i += 2) {
     const k = argv[i];
     if (!['--profile', '--input', '--report'].includes(k)) return usage(`unknown argument ${k}`);
@@ -378,7 +393,9 @@ export function main(argv) {
   if (!existsSync(args.input)) return usage(`input not found: ${args.input}`);
   let scan;
   try {
-    scan = scanInput({ profile, input: args.input });
+    if (dockerContext && !statSync(args.input).isDirectory())
+      return usage('--docker-context needs a directory input');
+    scan = scanInput({ profile, input: args.input, dockerContext });
   } catch (e) {
     return usage(`cannot read input: ${e.message}`);
   }

@@ -10,21 +10,41 @@
 // Both variants run in Playwright Chromium, each in a fresh context: manager-loaded (the manager acquires and
 // verifies the AFHQ assets and the CPU runtime under one grant; the engine reads its verified local reader) and
 // caller-loaded (the caller's own verifying reader; no manager module requested). Each loads AFHQ cat on the CPU,
-// maps seeds 0 and 1, synthesizes them, renders a five-frame morph with renderMorph, exports seed 0 as PNG and
-// lossless WebP with recovery metadata and reopens both. Checked here: the example's own report (exact endpoints,
-// exact reopen of latent, model identity and pixels); both seeds' W+ and raw output against the upstream reference
-// at AFHQ cat's declared tolerance; zero requests of any class at construction and status reads; zero requests
-// during generation for the manager-loaded variant; and across the whole run no request naming a face detector,
-// the FFHQ e4e encoder, its streamed shards or any photo-pipeline asset. Absent the converted model, its reference
-// or the pinned runtime, it reports untested.
+// maps seeds 0, 1 and 2, synthesizes them, renders a nine-frame morph through the three with renderMorph, exports
+// seed 0 as PNG and lossless WebP with recovery metadata and reopens both, and checks combination. Checked here: the
+// example's own report (each seed's morph frame exact, exact reopen of latent, model identity and pixels, an
+// equal-shaped latent from another checkpoint refused as mixed-model); seeds 0 and 1's W+ and raw output against the
+// upstream reference at AFHQ cat's declared tolerance; zero requests of any class at construction and status reads;
+// zero requests during generation for the manager-loaded variant; and across the whole run no request naming a face
+// detector, the FFHQ e4e encoder, its streamed shards or any photo-pipeline asset. Absent the converted model, its
+// reference or the pinned runtime, it reports untested.
+// The clean project is made by running the example README's `docs-test: run` block verbatim, with the packed
+// tarballs in place of the two package names (the only substitution, reported).
+// Environment (the clean-consumer smoke, scripts/packages/clean-consumer-smoke.mjs, sets these):
+//   FACEMORPH_PACKED_TARBALLS     install these release tarballs instead of packing fresh (test/support/packed.ts)
+//   FACEMORPH_AFHQ_CAT            the converted model directory
+//   FACEMORPH_AFHQ_CAT_FRESH=1    accept a fresh conversion: its verify.json must pass and name the reference's
+//                                 checkpoint, instead of its manifest matching the recorded conversion's digest
+//   FACEMORPH_AFHQ_CAT_REFERENCE  directory holding the upstream reference files (default <model>/reference); each
+//                                 file must match reference.json's digest
+//   FACEMORPH_NONFACE_REPORT      write each variant's report, requests by step and reference errors to this file
 //   node --test packages/stylegan-js/test/engine/nonface-example.test.ts
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { createServer, type Server } from 'node:https';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { extname, join, normalize } from 'node:path';
+import { dirname, extname, join, normalize } from 'node:path';
 import test, { after, before } from 'node:test';
 import { attachPlaywright, DEFAULT_HOST_MAP } from '../../../../scripts/ci/intercept/playwright.ts';
 import {
@@ -34,22 +54,23 @@ import {
   type NetworkRecord,
 } from '../../../../scripts/ci/intercept/record.ts';
 import { packManagerFresh } from '../support/packed-manager.ts';
-import {
-  compileClean,
-  installClean,
-  PKG,
-  packFresh,
-  REPO,
-  repoVersion,
-} from '../support/packed.ts';
+import { compileClean, PKG, packFresh, REPO } from '../support/packed.ts';
 import { acquiredManifest, RUNTIME, UNTESTED } from './support/runtime.ts';
 
 const MODEL = process.env['FACEMORPH_AFHQ_CAT'] ?? join(REPO, 'packages/model-conv/out/afhqcat');
+const FRESH = process.env['FACEMORPH_AFHQ_CAT_FRESH'] === '1';
+const REFERENCE_DIR = process.env['FACEMORPH_AFHQ_CAT_REFERENCE'] ?? join(MODEL, 'reference');
+const REPORT = process.env['FACEMORPH_NONFACE_REPORT'];
 const REFERENCE = JSON.parse(
   readFileSync(new URL('../vectors/afhq-cat-512/reference.json', import.meta.url), 'utf8'),
 ) as {
+  checkpointSha256: string;
   tolerance: { rawFloat: number; rgb: number };
-  cases: { seed: number; w: { file: string }; raw: { file: string } }[];
+  cases: {
+    seed: number;
+    w: { file: string; sha256: string };
+    raw: { file: string; sha256: string };
+  }[];
   converted: { manifestSha256: string };
 };
 const sha256File = (p: string) =>
@@ -58,21 +79,47 @@ const runtime = acquiredManifest();
 const HAVE_MODEL =
   existsSync(join(MODEL, 'manifest.json')) &&
   REFERENCE.cases.every(
+    (c) => existsSync(join(REFERENCE_DIR, c.w.file)) && existsSync(join(REFERENCE_DIR, c.raw.file)),
+  );
+/** A fresh conversion is accepted when model-conv's own verify passed against the reference's checkpoint. */
+const freshVerified = () => {
+  const verify = join(MODEL, 'verify.json');
+  if (!existsSync(verify)) return false;
+  const v = JSON.parse(readFileSync(verify, 'utf8')) as {
+    passed?: boolean;
+    manifestSha256?: string;
+    reference?: { checkpointSha256?: string };
+  };
+  return (
+    v.passed === true &&
+    v.reference?.checkpointSha256 === REFERENCE.checkpointSha256 &&
+    v.manifestSha256 === sha256File(join(MODEL, 'manifest.json'))
+  );
+};
+const referenceIntact = () =>
+  REFERENCE.cases.every(
     (c) =>
-      existsSync(join(MODEL, 'reference', c.w.file)) &&
-      existsSync(join(MODEL, 'reference', c.raw.file)),
+      sha256File(join(REFERENCE_DIR, c.w.file)) === c.w.sha256 &&
+      sha256File(join(REFERENCE_DIR, c.raw.file)) === c.raw.sha256,
   );
 const SKIP = !runtime
   ? UNTESTED
   : !HAVE_MODEL
-    ? `untested: the converted AFHQ cat model and its reference are not at ${MODEL}`
-    : sha256File(join(MODEL, 'manifest.json')) !== REFERENCE.converted.manifestSha256
-      ? `untested: ${MODEL}/manifest.json is not the converted model the reference names`
-      : false;
+    ? `untested: the converted AFHQ cat model is not at ${MODEL} or its reference is not at ${REFERENCE_DIR}`
+    : !referenceIntact()
+      ? `untested: the reference files in ${REFERENCE_DIR} do not match reference.json`
+      : FRESH
+        ? freshVerified()
+          ? false
+          : `untested: ${MODEL}/verify.json does not show a passed verification of this manifest against the reference checkpoint`
+        : sha256File(join(MODEL, 'manifest.json')) !== REFERENCE.converted.manifestSha256
+          ? `untested: ${MODEL}/manifest.json is not the converted model the reference names`
+          : false;
+const reports: Record<string, unknown> = {};
 
 const work = mkdtempSync(join(tmpdir(), 'stylegan-js-nonface-example-'));
 after(() => rmSync(work, { recursive: true, force: true }));
-const project = join(work, 'consumer');
+const project = join(work, 'app');
 let compiled: ReturnType<typeof compileClean> | null = null;
 const timings: Record<string, number> = {};
 
@@ -142,13 +189,27 @@ const modelServed: string[] = [];
 before(async () => {
   if (SKIP) return;
   let t = performance.now();
-  const stylegan = packFresh(work);
-  const manager = packManagerFresh(work);
+  const stylegan = packFresh(join(work, 'pack'));
+  const manager = packManagerFresh(join(work, 'pack'));
   timings['pack'] = performance.now() - t;
+  // The README block verbatim, from a directory whose ../packages is this checkout's (the block copies the example
+  // from there), with the tarballs in place of the registry names.
   t = performance.now();
-  installClean(project, stylegan, [manager, `typescript@${repoVersion('typescript')}`]);
-  timings['install'] = performance.now() - t;
-  cpSync(join(PKG, 'examples/non-face'), project, { recursive: true });
+  const block = readmeRunBlock();
+  const install = 'npm install stylegan-js browser-model-manager typescript';
+  assert.ok(block.includes(install), `the README block installs with "${install}"`);
+  const bash = block.replace(install, `npm install ${stylegan} ${manager} typescript`);
+  const root = join(work, 'root');
+  mkdirSync(root);
+  symlinkSync(join(REPO, 'packages'), join(root, 'packages'));
+  execFileSync('bash', ['-euo', 'pipefail', '-c', bash], {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    maxBuffer: 1 << 28,
+  });
+  symlinkSync(join(root, 'app'), project);
+  timings['readme'] = performance.now() - t;
   t = performance.now();
   compiled = compileClean(project);
   timings['compile'] = performance.now() - t;
@@ -163,7 +224,7 @@ before(async () => {
     appServed,
   );
   modelServer = staticServer(
-    { '/afhq/': MODEL + '/', '/runtime/': RUNTIME + '/' },
+    { '/afhq/': MODEL + '/', '/afhq-reference/': REFERENCE_DIR + '/', '/runtime/': RUNTIME + '/' },
     { 'access-control-allow-origin': '*', 'cross-origin-resource-policy': 'cross-origin' },
     modelServed,
   );
@@ -173,7 +234,22 @@ before(async () => {
 after(() => {
   appServer?.close();
   modelServer?.close();
+  if (REPORT && !SKIP) {
+    mkdirSync(dirname(REPORT), { recursive: true });
+    writeFileSync(
+      REPORT,
+      `${JSON.stringify({ model: MODEL, fresh: FRESH, ...reports }, null, 2)}\n`,
+    );
+  }
 });
+
+/** The example README's `docs-test: run` block. */
+function readmeRunBlock(): string {
+  const readme = readFileSync(join(PKG, 'examples/non-face/README.md'), 'utf8');
+  const m = /<!-- docs-test: run -->\n```sh\n([\s\S]*?)```/.exec(readme);
+  assert.ok(m, 'examples/non-face/README.md has a docs-test: run block');
+  return m[1]!;
+}
 
 /** Every digest of the photo pipeline in the runtime manifest: detector, e4e encoder and chunks, the stream. */
 function photoDigests(m: Record<string, unknown>): Set<string> {
@@ -251,6 +327,10 @@ interface RunReport {
     frames: { index: number; visitId: string | null; sha256: string }[];
     endpoints: { index: number; seed: number; latentExact: boolean; maxRgb: number }[];
     ms: number;
+  };
+  combine: {
+    sameModel: { ok: boolean; inputs: number };
+    otherCheckpoint: { ok: boolean; code: string | null; index: number | null };
   };
   exports: {
     mime: string;
@@ -343,32 +423,34 @@ async function journey(
       'the manager-loaded engine reads only local verified bytes',
     );
 
-  // The example's report: two 512 px faces, five frames whose endpoints are exactly the two faces, exact reopen.
+  // The example's report: three 512 px faces, nine frames in which each seed's frame is exactly that face.
   assert.deepEqual(
     run.faces.map((f) => [f.seed, f.width, f.height]),
     [
       [0, 512, 512],
       [1, 512, 512],
+      [2, 512, 512],
     ],
   );
-  assert.notEqual(run.faces[0]!.sha256, run.faces[1]!.sha256, 'two different faces');
+  assert.equal(new Set(run.faces.map((f) => f.sha256)).size, 3, 'three different faces');
   assert.equal(run.morph.status, 'complete');
-  assert.equal(run.morph.totalFrames, 5);
-  assert.equal(run.morph.written, 5);
+  assert.equal(run.morph.totalFrames, 9);
+  assert.equal(run.morph.written, 9);
   assert.deepEqual(
     run.morph.frames.map((f) => f.index),
-    [0, 1, 2, 3, 4],
+    [0, 1, 2, 3, 4, 5, 6, 7, 8],
   );
   assert.deepEqual(
-    [run.morph.frames[0]!.visitId, run.morph.frames[4]!.visitId],
-    ['seed-0', 'seed-1'],
+    [0, 4, 8].map((i) => run.morph.frames[i]!.visitId),
+    ['seed-0', 'seed-1', 'seed-2'],
   );
   assert.deepEqual(
-    [run.morph.frames[0]!.sha256, run.morph.frames[4]!.sha256],
-    [run.faces[0]!.sha256, run.faces[1]!.sha256],
-    'the morph endpoints are the two faces, byte for byte',
+    [0, 4, 8].map((i) => run.morph.frames[i]!.sha256),
+    run.faces.map((f) => f.sha256),
+    "each seed's frame is that face, byte for byte",
   );
-  assert.equal(new Set(run.morph.frames.map((f) => f.sha256)).size, 5, 'five distinct frames');
+  assert.equal(new Set(run.morph.frames.map((f) => f.sha256)).size, 9, 'nine distinct frames');
+  assert.equal(run.morph.endpoints.length, 3);
   for (const e of run.morph.endpoints)
     assert.ok(e.latentExact && e.maxRgb === 0, JSON.stringify(e));
   assert.deepEqual(
@@ -390,9 +472,14 @@ async function journey(
       ['parsed', 3, 0, true, true, true, true, 0],
       `${e.mime} reopens exactly`,
     );
+  assert.deepEqual(run.combine, {
+    sameModel: { ok: true, inputs: 3 },
+    otherCheckpoint: { ok: false, code: 'mixed-model', index: 1 },
+  });
 
-  // Both seeds against the upstream reference, at AFHQ cat's own declared tolerance, compared in the page.
+  // Seeds 0 and 1 against the upstream reference, at AFHQ cat's own declared tolerance, compared in the page.
   step(net.rec, 'compare');
+  const referenceErrors: { seed: number; w: number; raw: number; rgb: number }[] = [];
   for (const [i, c] of REFERENCE.cases.entries()) {
     const err = await inPage<{ w: number; raw: number; rgb: number }>(
       page,
@@ -404,8 +491,9 @@ async function journey(
        const expected = toRgba8(rr, 512, 512);
        let rgb = 0; for (let k = 0; k < expected.length; k++) rgb = Math.max(rgb, Math.abs(rgba[k] - expected[k]));
        return { w: max(face.w, rw), raw: max(face.raw, rr), rgb };`,
-      { base: `${modelOrigin}/afhq/reference/`, i, w: c.w.file, raw: c.raw.file },
+      { base: `${modelOrigin}/afhq-reference/`, i, w: c.w.file, raw: c.raw.file },
     );
+    referenceErrors.push({ seed: c.seed, ...err });
     t.diagnostic(
       `${variant}: seed ${c.seed} W+ ${err.w.toExponential(2)}, raw ${err.raw.toExponential(2)}, RGB ${err.rgb} ` +
         `(tolerance raw ${REFERENCE.tolerance.rawFloat}, RGB ${REFERENCE.tolerance.rgb})`,
@@ -470,6 +558,27 @@ async function journey(
       `model host served ${modelServed.length - model0}; engine reads ${reads.length}; ` +
       `${forbidden.size} photo-pipeline digests checked, none requested or read`,
   );
+  const byClass = (rs: { hostClass: string; url: string }[]) =>
+    rs.map((r) => ({ hostClass: r.hostClass, url: r.url }));
+  reports[variant] = {
+    load,
+    run,
+    referenceErrors,
+    tolerance: REFERENCE.tolerance,
+    liveSessionsAfterDispose: inspect?.liveSessions ?? null,
+    requests: {
+      construct: byClass(inStep(net.rec, 'construct')),
+      load: byClass(loadRequests),
+      run: byClass(runRequests),
+      total: urls.length,
+    },
+    photoPipelineRequests: named,
+    photoDigestsChecked: forbidden.size,
+    managerModuleRequests:
+      variant === 'caller'
+        ? [...urls, ...appServed.slice(app0)].filter((u) => u.includes('browser-model-manager'))
+        : null,
+  };
   await context.close();
 }
 
@@ -489,7 +598,7 @@ test(
         `${f} imports no manager`,
       );
     t.diagnostic(
-      `pack ${Math.round(timings['pack'] ?? 0)} ms, install ${Math.round(timings['install'] ?? 0)} ms, ` +
+      `pack ${Math.round(timings['pack'] ?? 0)} ms, README block ${Math.round(timings['readme'] ?? 0)} ms, ` +
         `compile ${Math.round(timings['compile'] ?? 0)} ms`,
     );
   },

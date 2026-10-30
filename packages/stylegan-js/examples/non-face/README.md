@@ -6,13 +6,15 @@ page:
 
 1. reads the converted model's `manifest.json` and the CPU runtime from the runtime manifest,
 2. loads the generator with `loadCpuGenerator({ descriptor: AFHQ_CAT_512_DESCRIPTOR, … })`,
-3. maps seeds 0 and 1 with the descriptor's truncation and synthesizes both,
-4. renders a five-frame morph between them with `createLatentPath` and `renderMorph`, with a small writer that
-   keeps the frames in memory (no video encoder),
+3. maps seeds 0, 1 and 2 with the descriptor's truncation and synthesizes each,
+4. renders a nine-frame morph through the three with `createLatentPath` and `renderMorph` (the frame count and
+   latent shape come from the descriptor), with a small writer that keeps the frames in memory (no video encoder),
 5. exports seed 0 with `encodePng` and `encodeLosslessWebp` (schema-3 recovery metadata), reopens both with
    `readRecovery` and decodes them with the browser's own decoder,
-6. reports every check as JSON: the morph's first and last frames are the two faces exactly, and the reopened
-   latent, model identity and pixels are exact.
+6. checks with `checkCombinable` that the three faces combine and that a latent of the same shape from another
+   checkpoint (FFHQ's identity) is refused as `mixed-model`,
+7. reports every check as JSON: each seed's frame in the morph is that face exactly, and the reopened latent, model
+   identity and pixels are exact.
 
 **No face detector and no e4e encoder are loaded.** Non-face generation and morph read only the converted model
 and the CPU runtime. A non-face descriptor cannot carry a photo encoder, and nothing in this example requests the
@@ -34,16 +36,22 @@ Two variants, chosen by `?variant=`:
 `src/nonface.ts` holds the shared steps. `src/main.ts` and `index.html` are the page, and the import map points at
 the installed packages' `dist/`.
 
-Run it from a project that has both packed tarballs installed:
+Run it from a new project with both packages installed, from a checkout of this repository (for the example's
+files):
 
+<!-- docs-test: run -->
 ```sh
-npm run build -w packages/stylegan-js -w packages/browser-model-manager
-npm pack -w packages/stylegan-js -w packages/browser-model-manager --pack-destination /tmp/pack
 mkdir app && cd app && npm init -y && npm pkg set type=module
-npm install /tmp/pack/stylegan-js-0.0.0.tgz /tmp/pack/browser-model-manager-0.0.0.tgz typescript
-cp -r <repo>/packages/stylegan-js/examples/non-face/. .
+npm install stylegan-js browser-model-manager typescript
+cp -r ../packages/stylegan-js/examples/non-face/. .
 npx tsc -p tsconfig.json
 ```
+
+The `cp` assumes `app/` sits at the repository root; adjust the path otherwise. Before the packages are published,
+or to try local changes, pack them from the repository root (`npm run build -w packages/stylegan-js -w
+packages/browser-model-manager`, then `npm pack -w packages/stylegan-js -w packages/browser-model-manager
+--pack-destination /tmp/pack`) and install `/tmp/pack/stylegan-js-0.1.0.tgz` and
+`/tmp/pack/browser-model-manager-0.1.0.tgz` instead of the two names.
 
 Serve `app/` over HTTPS with `Cross-Origin-Opener-Policy: same-origin` and
 `Cross-Origin-Embedder-Policy: require-corp`, which the CPU route needs for its threads. Serve the converted model
@@ -51,6 +59,7 @@ directory and the runtime directory with CORS and `Cross-Origin-Resource-Policy:
 `/?variant=manager&model=<model base URL>&runtime=<runtime base URL>` (or `variant=caller`) and press the button.
 The report is also on `window.nonfaceReport`.
 
-`test/engine/nonface-example.test.ts` does all of this automatically from freshly packed tarballs. It checks the
-faces against the upstream reference at AFHQ cat's declared tolerance, and checks that no request at any step names
-a detector or e4e asset.
+`test/engine/nonface-example.test.ts` does all of this automatically: it runs the block above verbatim, with the
+packed tarballs in place of the two package names, then serves the page and the model and drives both variants in
+Chromium. It checks the faces against the upstream reference at AFHQ cat's declared tolerance, and checks that no
+request at any step names a detector or e4e asset.

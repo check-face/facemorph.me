@@ -43,7 +43,7 @@ import { fileURLToPath } from 'node:url';
 import { attachPlaywright, DEFAULT_HOST_MAP } from '../../../scripts/ci/intercept/playwright.ts';
 import { bindOrigins, requestsIn, step } from '../../../scripts/ci/intercept/record.ts';
 import { packManagerFresh } from '../../stylegan-js/test/support/packed-manager.ts';
-import { installClean, packFresh } from '../../stylegan-js/test/support/packed.ts';
+import { installClean, packFresh, releaseTarball } from '../../stylegan-js/test/support/packed.ts';
 
 const PKG = fileURLToPath(new URL('../', import.meta.url));
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
@@ -138,6 +138,8 @@ const run = (cmd: string, args: string[], cwd: string) =>
 
 /** Builds this package's src/ against the freshly staged manager declarations and packs it; the tarball path. */
 function packHostFresh(work: string, managerStage = join(work, 'manager-stage')): string {
+  const given = releaseTarball('cloudflare-model-host');
+  if (given) return given;
   const stage = join(work, 'host-stage');
   mkdirSync(stage, { recursive: true });
   const config = join(stage, 'tsconfig.build.json');

@@ -1,7 +1,6 @@
 {
   "name": "browser-model-manager",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "type": "module",
   "description": "Consented acquisition, verification, storage and eviction of browser model assets. Contracts so far (fm-hwh): lifecycle, leases, grants, budgets and the model manifest schema.",
   "license": "MIT",
@@ -26,10 +25,11 @@
     "schema",
     "LICENSE",
     "THIRD_PARTY_NOTICES",
-    "PROVENANCE.json"
+    "PROVENANCE.json",
+    "CHANGELOG.md"
   ],
   "dependencies": {
-    "stylegan-js": "^0.0.0"
+    "stylegan-js": "^0.1.0"
   },
   "engines": {
     "node": ">=24"

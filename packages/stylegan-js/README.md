@@ -125,9 +125,9 @@ Non-face support is **unqualified** until the joint non-face proof passes: conve
 `fm-tqub`). This package is extracted from a face app; that is not generic dataset support.
 
 [`examples/non-face`](examples/non-face) loads converted AFHQ cat on the CPU, manager-loaded or caller-loaded, maps
-and synthesizes two seeds, morphs between them with `renderMorph`, and saves and reopens PNG and lossless WebP. Its
-test (`test/engine/nonface-example.test.ts`) runs it from the packed tarballs and checks that no request names a face
-detector or the e4e encoder.
+and synthesizes three seeds, morphs through them with `renderMorph`, saves and reopens PNG and lossless WebP, and
+shows a latent from another checkpoint refused for combination. Its test (`test/engine/nonface-example.test.ts`) runs
+its README's commands from the packed tarballs and checks that no request names a face detector or the e4e encoder.
 
 ## Morphs and blends
 

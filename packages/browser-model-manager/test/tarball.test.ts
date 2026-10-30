@@ -29,9 +29,14 @@ test('the tarball holds dist/, the schema, package.json, the README, licence, no
   const stray = files.filter(
     (f) =>
       !(
-        ['package.json', 'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES', 'PROVENANCE.json'].includes(
-          f,
-        ) ||
+        [
+          'package.json',
+          'README.md',
+          'LICENSE',
+          'THIRD_PARTY_NOTICES',
+          'PROVENANCE.json',
+          'CHANGELOG.md',
+        ].includes(f) ||
         /^dist\/.+\.(js|d\.ts)$/.test(f) ||
         /^schema\/[\w.-]+\.json$/.test(f)
       ),

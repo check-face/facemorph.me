@@ -2,7 +2,7 @@
 // directory (never the checkout's dist/, which may be stale or absent), `npm pack`ed, and installed into a clean
 // project in os.tmpdir(), outside the monorepo: no workspace links, no path aliases, no repository tsconfig.
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,8 +26,30 @@ export const repoVersion = (name: string): string =>
     }
   ).version;
 
-/** Builds src/ into `work`/stage/dist with tsconfig.build.json and packs it; the tarball path. */
+/**
+ * The release tarball of one of this repository's packages when FACEMORPH_PACKED_TARBALLS names a directory of them
+ * (the `packages` workflow's artifact, as the clean-consumer smoke uses: scripts/packages/clean-consumer-smoke.mjs),
+ * else null. The file must be `<name>-<version>.tgz` at the checkout's version of that package.
+ */
+export function releaseTarball(name: string): string | null {
+  const dir = process.env['FACEMORPH_PACKED_TARBALLS'];
+  if (!dir) return null;
+  const { version } = JSON.parse(
+    readFileSync(join(REPO, 'packages', name, 'package.json'), 'utf8'),
+  ) as { version: string };
+  const tarball = join(dir, `${name}-${version}.tgz`);
+  if (!existsSync(tarball))
+    throw new Error(`FACEMORPH_PACKED_TARBALLS has no ${name}-${version}.tgz`);
+  return tarball;
+}
+
+/**
+ * Builds src/ into `work`/stage/dist with tsconfig.build.json and packs it; the tarball path. With
+ * FACEMORPH_PACKED_TARBALLS set, the release tarball instead (releaseTarball).
+ */
 export function packFresh(work: string): string {
+  const given = releaseTarball(PACKAGE_NAME);
+  if (given) return given;
   const stage = join(work, 'stage');
   mkdirSync(stage, { recursive: true });
   copyFileSync(join(PKG, 'package.json'), join(stage, 'package.json'));

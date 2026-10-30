@@ -54,17 +54,24 @@ NVIDIA Source Code License-NC; the AFHQ dataset is CC BY-NC 4.0. Acquire it your
 never bundled. Its tolerance (raw 1e-3, RGB 1) is its own, declared in `model_conv/models.py` from its
 reference before its first conversion; it does not inherit FFHQ's.
 
+Acquire and check the checkpoint:
+
 <!-- ci: verbatim -->
 ```sh
-cd packages/model-conv
-docker build -t facemorph/model-conv .
-IMAGE="facemorph/model-conv@$(docker image inspect --format '{{.Id}}' facemorph/model-conv)"
-
 mkdir -p ~/.cache/facemorph-model-conv/checkpoints
 [ -f ~/.cache/facemorph-model-conv/checkpoints/afhqcat.pkl ] || curl -fL \
   -o ~/.cache/facemorph-model-conv/checkpoints/afhqcat.pkl \
   https://nvlabs-fi-cdn.nvidia.com/stylegan2-ada-pytorch/pretrained/afhqcat.pkl
 echo "f62fd750c51f649147ba355844833c0f2a37081f7c032194f52fd74a016c3a29  $HOME/.cache/facemorph-model-conv/checkpoints/afhqcat.pkl" | sha256sum -c -
+```
+
+Build the image, convert and verify:
+
+<!-- ci: verbatim -->
+```sh
+cd packages/model-conv
+docker build -t facemorph/model-conv .
+IMAGE="facemorph/model-conv@$(docker image inspect --format '{{.Id}}' facemorph/model-conv)"
 
 mkdir -p out
 docker run --rm --user "$(id -u):$(id -g)" -e MODEL_CONV_IMAGE="$IMAGE" \
@@ -98,7 +105,7 @@ a finding; the tolerance is never widened.
 The checkpoint (`e4e_ffhq_encode.pt`, 1,201,649,680 bytes) has no stable public direct URL. Acquire it yourself from
 the Google Drive link in the README of [omertov/encoder4editing](https://github.com/omertov/encoder4editing) and
 place it at `~/.cache/facemorph-model-conv/checkpoints/e4e_ffhq_encode.pt`; the block below stops with a clear
-message if it is absent or its SHA-256 differs (the CI runner on eris keeps it cached). Terms: e4e code is MIT; the
+message if it is absent or its SHA-256 differs. Terms: e4e code is MIT; the
 model was trained on FFHQ (CC BY-NC-SA 4.0). It is never bundled, in Git or in the image.
 
 <!-- ci: verbatim -->
@@ -147,10 +154,11 @@ CHECKPOINTS=~/.cache/facemorph-model-conv/checkpoints OUTPUT="$PWD/out" MODEL_CO
 
 ## Acceptance
 
-CI runs every block marked `<!-- ci: verbatim -->` above verbatim from the repository root (`tests/doc_commands.py`), and
+`tests/doc_commands.py` runs every block marked `<!-- ci: verbatim -->` above verbatim from the repository root, and
 `tests/acceptance.sh` runs all of the above with the real checkpoint and container, plus a perturbed chunk
 (must fail), a wrong checkpoint (refused), a killed conversion, ownership and an image/package scan for
-weights. CI runs it on eris (`.github/workflows/model-conv.yml`). Unit tests: `python3 -m unittest discover -s tests -t .`.
+weights. Both need Docker and the checkpoints, so they run on a machine that has them, not in the hosted CI. Unit
+tests: `python3 -m unittest discover -s tests -t .`.
 
 ## Updating the lock
 

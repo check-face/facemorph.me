@@ -1,0 +1,102 @@
+name: packages
+# The npm packages' publication workflow (fm-oagi), on demand only. One job builds and packs stylegan-js,
+# browser-model-manager and cloudflare-model-host once at the dispatched commit, then checks the exact tarballs:
+# the provenance record inside each names this commit and the digest of its own dist/; the content scan and the
+# notice check pass on each tarball and on the model-conv build context (the notice check also reads the licences
+# the built model-conv image's Python packages declare); `npm publish --dry-run` succeeds for each. The tarballs,
+# `npm pack --json` output, reports and dry-run logs are kept as the `packages-<sha>` artifact.
+# Publishing itself (fm-96v) runs only with `publish` ticked and the NPM_TOKEN secret set, from that same artifact,
+# with npm provenance attestation. Published versions are immutable: a fix is a new version.
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the checked tarballs to npm (needs the NPM_TOKEN secret); unticked is the dry run
+        type: boolean
+        default: false
+defaults:
+  run:
+    shell: bash
+permissions:
+  contents: read
+concurrency:
+  group: packages
+  cancel-in-progress: false
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Build the three packages (each writes PROVENANCE.json)
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host
+      - name: Pack
+        run: |
+          mkdir -p out/reports
+          npm pack -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host \
+            --pack-destination out --json > out/reports/npm-pack.json
+          ls -l out/*.tgz | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Provenance inside each tarball matches this commit and its dist/
+        run: node scripts/packages/verify-provenance.mjs --commit "$GITHUB_SHA" --report out/reports/provenance.json out/*.tgz
+      - name: Content scan, each tarball and the model-conv build context
+        run: |
+          for p in stylegan-js browser-model-manager cloudflare-model-host; do
+            node scripts/packages/check-tarball-contents.mjs --profile "$p" --input out/"$p"-*.tgz \
+              --report out/reports/scan-"$p".json | tail -1
+          done
+          node scripts/packages/check-tarball-contents.mjs --profile model-conv-context --input packages/model-conv \
+            --docker-context --report out/reports/scan-model-conv-context.json | tail -1
+      - name: Build the model-conv image (not pushed) for the notice check
+        run: docker build -t model-conv-notices packages/model-conv
+      - name: Notice check, each tarball and the model-conv build context and image
+        run: |
+          for p in stylegan-js browser-model-manager cloudflare-model-host; do
+            node scripts/packages/check-notices.mjs --profile "$p" --input out/"$p"-*.tgz \
+              --report out/reports/notices-"$p".json | tail -1
+          done
+          node scripts/packages/check-notices.mjs --profile model-conv-context --input packages/model-conv \
+            --image model-conv-notices --report out/reports/notices-model-conv-context.json | tail -1
+      - name: npm publish --dry-run, each tarball
+        run: |
+          for t in out/*.tgz; do
+            npm publish "$t" --dry-run --access public 2>&1 | tee out/reports/publish-dry-run-"$(basename "$t" .tgz)".log
+          done
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ github.sha }}
+          path: out
+          retention-days: 90
+          if-no-files-found: error
+
+  publish:
+    needs: pack
+    if: inputs.publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write # npm provenance attestation
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages-${{ github.sha }}
+          path: out
+      - name: Publish the checked tarballs
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then echo "::error::NPM_TOKEN is not set; nothing was published"; exit 1; fi
+          # Dependency order: the manager depends on the engine, the host on the manager.
+          for p in stylegan-js browser-model-manager cloudflare-model-host; do
+            npm publish out/"$p"-*.tgz --provenance --access public
+          done

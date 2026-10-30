@@ -3,19 +3,22 @@
 // bytes reach the engine, which is the `prepare` step each hands to `createNonFaceExample`.
 //
 // What it does: read the converted model's manifest and the CPU runtime's, load the generator with the AFHQ
-// descriptor, map two seeds, synthesize them, render a short morph between them with renderMorph (frames collected
-// in memory by a small writer, no video encoder), export the first face as PNG and as lossless WebP with recovery
-// metadata, reopen both with readRecovery and decode them in the page, and report every check as JSON.
+// descriptor, map three seeds, synthesize them, render a short morph through all three with renderMorph (frames
+// collected in memory by a small writer, no video encoder), export the first face as PNG and as lossless WebP with
+// recovery metadata, reopen both with readRecovery and decode them in the page, check that a latent of the same shape
+// from another checkpoint is refused for combination, and report every check as JSON.
 //
 // A non-face model never loads a face detector or the e4e encoder: nothing here names one, and the descriptor
-// (subject 'non-face') cannot carry a photo encoder. AFHQ cat support is unqualified until the joint non-face proof
-// (fm-tqub) passes; the descriptor's providers say so and status() reports it.
+// (subject 'non-face') cannot carry a photo encoder. The descriptor's providers state AFHQ cat's qualification and
+// status() reports it.
 import {
   AFHQ_CAT_512_DESCRIPTOR,
   canonicalJson,
+  checkCombinable,
   createLatentPath,
   encodeLosslessWebp,
   encodePng,
+  FFHQ_1024_DESCRIPTOR,
   infillFrames,
   latentDigest,
   modelRecord,
@@ -83,9 +86,9 @@ export interface ExampleOptions {
   readonly modelBase: string;
   /** Base URL of the runtime directory (manifest.json and its assets/ tree); only `runtime` is read from it. */
   readonly runtimeBase: string;
-  /** The two seeds (default 0 and 1). */
-  readonly seeds?: readonly [number, number];
-  /** Morph frames per segment (default 4: five frames, both endpoints included). */
+  /** The seeds, at least two (default 0, 1 and 2); the morph passes through every one in order. */
+  readonly seeds?: readonly number[];
+  /** Morph frames per segment (default 4: nine frames through three seeds, both ends included). */
   readonly framesPerSegment?: number;
   readonly onLog?: (line: Record<string, unknown>) => void;
 }
@@ -220,7 +223,7 @@ export interface MorphReport {
   readonly totalFrames: number;
   readonly written: number;
   readonly frames: readonly FrameReport[];
-  /** Frame 0 against face A and the last frame against face B: latent and pixels. */
+  /** Each seed's frame (the first frame of its segment, and the last frame) against that face: latent and pixels. */
   readonly endpoints: readonly {
     readonly index: number;
     readonly seed: number;
@@ -244,6 +247,16 @@ export interface ExportReport {
   readonly ms: number;
 }
 
+/** Combination checks: the run's own faces combine; an equal-shaped latent from another checkpoint does not. */
+export interface CombineReport {
+  readonly sameModel: { readonly ok: boolean; readonly inputs: number };
+  readonly otherCheckpoint: {
+    readonly ok: boolean;
+    readonly code: string | null;
+    readonly index: number | null;
+  };
+}
+
 export interface RunReport {
   readonly ok: boolean;
   readonly variant: Variant;
@@ -252,6 +265,7 @@ export interface RunReport {
   readonly faces: readonly FaceReport[];
   readonly morph: MorphReport;
   readonly exports: readonly ExportReport[];
+  readonly combine: CombineReport;
   readonly reads: number;
   readonly ms: number;
 }
@@ -323,7 +337,8 @@ export async function decodeImage(
 
 /** The example: construct (no I/O), status (no I/O), load, run, dispose. */
 export function createNonFaceExample(variant: Variant, options: ExampleOptions, prepare: Prepare) {
-  const seeds = options.seeds ?? [0, 1];
+  const seeds = options.seeds ?? [0, 1, 2];
+  if (seeds.length < 2) throw new Error('A morph needs at least two seeds.');
   const log = (line: Record<string, unknown>) => options.onLog?.({ variant, ...line });
   const reads: string[] = [];
   let generator: Generator | null = null;
@@ -408,7 +423,7 @@ export function createNonFaceExample(variant: Variant, options: ExampleOptions, 
     if (!g || !manifests) return failure(new Error('Load first.'));
     const started = performance.now();
     try {
-      // Two faces: map each seed with the descriptor's truncation, synthesize with raw float output.
+      // One face per seed: map with the descriptor's truncation, synthesize with raw float output.
       faces = [];
       const faceReports: FaceReport[] = [];
       for (const seed of seeds) {
@@ -437,21 +452,28 @@ export function createNonFaceExample(variant: Variant, options: ExampleOptions, 
           synthesizeMs: t2 - t1,
         });
       }
-      const [a, b] = faces as [(typeof faces)[0], (typeof faces)[0]];
+      const a = faces[0]!;
 
-      const morph = await renderShortMorph(g, a.w, b.w);
-      const endpoints = [
-        { index: 0, seed: seeds[0], face: a },
-        { index: morph.totalFrames - 1, seed: seeds[1], face: b },
-      ].map(({ index, seed, face }) => {
-        const frame = morph.images.get(index);
-        return {
-          index,
-          seed,
-          latentExact: sameFloats(morph.latents.get(index) ?? new Float32Array(0), face.w.values),
-          maxRgb: frame ? maxRgbDiff(frame, face.rgba) : Number.POSITIVE_INFINITY,
-        };
-      });
+      const morph = await renderShortMorph(
+        g,
+        faces.map((f) => f.w),
+      );
+      // Every frame that is a seed's own (visitId seed-<n>) must be that face exactly.
+      const endpoints = morph.order
+        .filter((f) => f.visitId !== null)
+        .map((f) => {
+          const at = seeds.findIndex((s) => f.visitId === `seed-${s}`);
+          return { index: f.index, seed: seeds[at]!, face: faces[at]! };
+        })
+        .map(({ index, seed, face }) => {
+          const frame = morph.images.get(index);
+          return {
+            index,
+            seed,
+            latentExact: sameFloats(morph.latents.get(index) ?? new Float32Array(0), face.w.values),
+            maxRgb: frame ? maxRgbDiff(frame, face.rgba) : Number.POSITIVE_INFINITY,
+          };
+        });
       const frames: FrameReport[] = [];
       for (const f of morph.order)
         frames.push({
@@ -476,7 +498,7 @@ export function createNonFaceExample(variant: Variant, options: ExampleOptions, 
           truncationCutoff: DESCRIPTOR.truncation.cutoff,
         },
         latent: a.w,
-        seed: seeds[0],
+        seed: seeds[0]!,
       };
       const exports: ExportReport[] = [];
       for (const mime of ['image/png', 'image/webp'] as const) {
@@ -488,8 +510,35 @@ export function createNonFaceExample(variant: Variant, options: ExampleOptions, 
         exports.push(await reopen(mime, bytes, recovery, a.rgba, performance.now() - t0));
       }
 
+      // The run's faces combine with each other; the same latent shape from another checkpoint is refused.
+      const { modelSha256, noiseSha256 } = DESCRIPTOR.identity;
+      const own = faces.map((f) => ({ modelSha256, noiseSha256, latent: f.w }));
+      const same = checkCombinable(DESCRIPTOR, own);
+      const foreign = checkCombinable(DESCRIPTOR, [
+        own[0]!,
+        {
+          modelSha256: FFHQ_1024_DESCRIPTOR.identity.modelSha256,
+          noiseSha256: FFHQ_1024_DESCRIPTOR.identity.noiseSha256,
+          latent: faces[1]!.w,
+        },
+      ]);
+      const combine: CombineReport = {
+        sameModel: { ok: same.ok, inputs: own.length },
+        otherCheckpoint: foreign.ok
+          ? { ok: true, code: null, index: null }
+          : {
+              ok: false,
+              code: foreign.error.code,
+              index: foreign.error.index ?? null,
+            },
+      };
+
       const ok =
+        endpoints.length === seeds.length &&
         endpoints.every((e) => e.latentExact && e.maxRgb === 0) &&
+        combine.sameModel.ok &&
+        !combine.otherCheckpoint.ok &&
+        combine.otherCheckpoint.code === 'mixed-model' &&
         morph.status === 'complete' &&
         morph.written === morph.totalFrames &&
         exports.every(
@@ -517,6 +566,7 @@ export function createNonFaceExample(variant: Variant, options: ExampleOptions, 
           ms: morph.ms,
         },
         exports,
+        combine,
         reads: reads.length,
         ms: performance.now() - started,
       };
@@ -528,8 +578,8 @@ export function createNonFaceExample(variant: Variant, options: ExampleOptions, 
     }
   }
 
-  /** An open two-face pairwise ellipse through renderMorph; frames land in memory in presentation order. */
-  async function renderShortMorph(g: Generator, a: LatentTensor, b: LatentTensor) {
+  /** An open pairwise ellipse through every face, via renderMorph; frames land in memory in presentation order. */
+  async function renderShortMorph(g: Generator, latents: readonly LatentTensor[]) {
     const { layers, width } = DESCRIPTOR.latent;
     const spec: MorphPathSpec = {
       algorithmVersion: 'latent-path-v1',
@@ -539,14 +589,11 @@ export function createNonFaceExample(variant: Variant, options: ExampleOptions, 
       width: 0.7,
       framesPerSegment: options.framesPerSegment ?? 4,
       framesPerSecond: 8,
-      controls: [
-        { visitId: `seed-${seeds[0]}`, latent: a },
-        { visitId: `seed-${seeds[1]}`, latent: b },
-      ],
+      controls: latents.map((latent, i) => ({ visitId: `seed-${seeds[i]}`, latent })),
     };
     const path = createLatentPath(spec, DESCRIPTOR);
     const order = [...path.frames()];
-    const latents = new Map(order.map((f) => [f.index, Float32Array.from(f.values)]));
+    const frameLatents = new Map(order.map((f) => [f.index, Float32Array.from(f.values)]));
     const images = new Map<number, Uint8ClampedArray>();
     const source: MorphFrameSource = {
       async synthesize(latent) {
@@ -593,7 +640,7 @@ export function createNonFaceExample(variant: Variant, options: ExampleOptions, 
       totalFrames: path.totalFrames,
       written,
       order,
-      latents,
+      latents: frameLatents,
       images,
       ms: performance.now() - t0,
     };
@@ -667,9 +714,9 @@ export function createNonFaceExample(variant: Variant, options: ExampleOptions, 
     dispose,
     /** Every asset digest the engine read (through the variant's reader). */
     reads: () => reads.slice(),
-    /** The two faces' W+ and raw float output, for numerical checks against a reference. */
+    /** Each face's W+ and raw float output, for numerical checks against a reference. */
     tensors: () => faces.map((f) => ({ w: f.w.values, raw: f.raw })),
-    /** The two faces' RGBA, for drawing. */
+    /** Each face's RGBA, for drawing. */
     images: () => faces.map((f) => ({ width: 512, height: 512, rgba: f.rgba })),
   };
 }

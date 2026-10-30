@@ -70,11 +70,11 @@ function directory(files) {
   return dir;
 }
 
-function run(profile, input) {
+function run(profile, input, ...flags) {
   const report = `${fresh()}-report.json`;
   const r = spawnSync(
     process.execPath,
-    [SCRIPT, '--profile', profile, '--input', input, '--report', report],
+    [SCRIPT, '--profile', profile, '--input', input, '--report', report, ...flags],
     {
       encoding: 'utf8',
     },
@@ -596,6 +596,35 @@ describe('planted bad fixtures fail with the expected rule', () => {
         JSON.stringify(r.report.findings),
       );
     }
+  });
+
+  test('--docker-context scans only what docker build sends', () => {
+    // Local outputs and test sources that .dockerignore excludes are not in the context; the same blob where the
+    // .dockerignore lets it through is.
+    const local = { ...contextBase(), 'out/m.onnx': 'x', 'tests/t.py': 'x', 'weights.pkl': 'x' };
+    const kept = run('model-conv-context', directory(local), '--docker-context');
+    assert.equal(kept.status, 0, kept.stdout + kept.stderr);
+    assert.deepEqual(
+      kept.report.files.map((f) => f.path),
+      ['.dockerignore', 'Dockerfile', 'NOTICE.md', 'PROVENANCE.json', 'model_conv/run.py'],
+    );
+    const leaked = run(
+      'model-conv-context',
+      directory({ ...contextBase(), 'model_conv/g.pkl': 'x', 'model_conv/m.onnx': 'x' }),
+      '--docker-context',
+    );
+    assert.equal(leaked.status, 1);
+    for (const rule of [
+      'profile-model-conv-context-checkpoint',
+      'profile-model-conv-context-converted-output',
+    ])
+      assert.ok(
+        leaked.report.findings.some((f) => f.rule === rule),
+        rule,
+      );
+    // Without the flag the same local tree is scanned whole and fails.
+    assert.equal(run('model-conv-context', directory(local)).status, 1);
+    assert.equal(run('stylegan-js', tarball(packageBase()), '--docker-context').status, 2);
   });
 
   test('a symlink in a directory input is a finding', () => {

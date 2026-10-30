@@ -35,11 +35,12 @@ These outputs feed the other packages in order:
 Requirements: Docker on Linux x86-64. Conversion is CPU only. No NVIDIA/CUDA profile exists; a GPU is neither used
 nor needed.
 
-1. Clone this repository at a model-conv release tag (none has been published yet; until one is, use the commit
-   named by the compatibility table's evidence run).
+1. Clone this repository at a model-conv release tag: `model-conv-v<version>` for a release,
+   `model-conv-v<version>-rc.<n>` for a release candidate (for example
+   `git clone --branch model-conv-v0.1.0-rc.1 https://github.com/facemorph-me/facemorph.me.git`).
 2. Run the commands in [docs/usage.md](docs/usage.md) from the repository root. They build the image, acquire a
-   checkpoint under its terms and check its SHA-256, convert, verify and, for FFHQ, run the product canaries. CI
-   runs each of those blocks verbatim (`tests/doc_commands.py`), on eris (`.github/workflows/model-conv.yml`).
+   checkpoint under its terms and check its SHA-256, convert, verify and, for FFHQ, run the product canaries.
+   `python3 packages/model-conv/tests/doc_commands.py` runs each of those blocks verbatim.
 
 The opt-in Compose service runs the same container: `docker compose --profile conversion run --rm convert …`,
 with `CHECKPOINTS`, `OUTPUT`, `MODEL_CONV_UID` and `MODEL_CONV_GID` set (see `compose.yaml`).

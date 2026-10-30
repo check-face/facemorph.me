@@ -36,7 +36,7 @@ From a project with both packed tarballs installed:
 npm run build -w packages/stylegan-js -w packages/browser-model-manager
 npm pack -w packages/stylegan-js -w packages/browser-model-manager --pack-destination /tmp/pack
 mkdir app && cd app && npm init -y && npm pkg set type=module
-npm install /tmp/pack/stylegan-js-0.0.0.tgz /tmp/pack/browser-model-manager-0.0.0.tgz typescript
+npm install /tmp/pack/stylegan-js-0.1.0.tgz /tmp/pack/browser-model-manager-0.1.0.tgz typescript
 cp -r <repo>/packages/browser-model-manager/examples/developer-hosted/. .
 npx tsc -p tsconfig.json
 ```

@@ -1,7 +1,6 @@
 {
   "name": "cloudflare-model-host",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "type": "module",
   "description": "Stages, verifies and publishes verified model bytes for Cloudflare static hosting: chunking above the 25 MiB file limit, manifest rewriting against the manager's contract, reconstruction verification, dry-run-first publication with paid-service and model-terms refusals (fm-3osh).",
   "license": "MIT",
@@ -28,6 +27,7 @@
     "README.md",
     "THIRD_PARTY_NOTICES",
     "PROVENANCE.json",
+    "CHANGELOG.md",
     "cloudflare.config.ts",
     "vite.config.ts",
     "src/mirror/worker.ts",
@@ -45,7 +45,7 @@
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^2.0.0-beta.v.4",
-    "browser-model-manager": "^0.0.0",
+    "browser-model-manager": "^0.1.0",
     "cf": "^1.0.0-beta.21",
     "vite": "^8.3.5"
   },

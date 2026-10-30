@@ -15,7 +15,7 @@ Run it from a project that has the packed tarball installed:
 ```sh
 npm pack -w packages/stylegan-js --pack-destination /tmp/pack
 mkdir app && cd app && npm init -y && npm pkg set type=module
-npm install /tmp/pack/stylegan-js-0.0.0.tgz typescript
+npm install /tmp/pack/stylegan-js-0.1.0.tgz typescript
 cp -r <repo>/packages/stylegan-js/examples/caller-loaded/. .
 npx tsc -p tsconfig.json
 ```

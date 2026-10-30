@@ -1,3 +1,12 @@
-cloudflare-model-host bundles no third-party code. Its emitted JavaScript imports only Node.js built-in
-modules and, for manifest validation, browser-model-manager from the same repository. The model bytes it
-stages are not part of this package; their terms are recorded per model (see the README's "Model terms").
+cloudflare-model-host bundles no third-party code. Its emitted JavaScript imports only Node.js built-in modules and,
+for manifest validation, browser-model-manager from the same repository.
+
+npm installs these dependencies separately, each under its own licence; none of their code is copied into this
+package:
+- cf (Cloudflare's command line), which the Cloudflare commands (origin-deploy, mirror-deploy, publish) run;
+- vite and @cloudflare/vite-plugin, which the shipped cloudflare.config.ts and vite.config.ts import when cf builds
+  the optional Cloudflare Workers.
+The generic static-hosting commands (stage, verify, qualify-origin, warm) do not use them.
+
+The model bytes it stages are not part of this package; their terms are recorded per model (see the README's
+"Model terms").
