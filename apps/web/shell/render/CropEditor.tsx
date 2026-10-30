@@ -147,11 +147,11 @@ export function CropConfirmation({
           <p className="next-encode-failed-guidance">{FAILED_GUIDANCE}</p>
         </div>
       ) : detect === 'not-run' ? (
-        <p className="next-encode-not-run" role="status">
+        // The neutral note takes the explanation's one line, so the locked layout does not move.
+        <p className="next-encode-explanation next-encode-not-run" role="status">
           {NOT_RUN_LINE}
         </p>
-      ) : null}
-      {failed ? null : (
+      ) : (
         <p className="next-encode-explanation">Encoding recreates the face; details may change.</p>
       )}
       <footer className="next-encode-footer">
@@ -161,7 +161,7 @@ export function CropConfirmation({
         <Button
           className="next-encode-ok"
           variant="contained"
-          disabled={detect === 'running'}
+          disabled={finding}
           onClick={() => dispatch(msg('CropAccept'))}
         >
           OK

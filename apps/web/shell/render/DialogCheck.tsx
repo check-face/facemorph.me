@@ -7,7 +7,9 @@ import { reduce } from '../../src/controller/reducers/index.ts';
 import type { State } from '../../src/controller/state.ts';
 import { createCrop } from '../facade/helpers.ts';
 import { Shell } from '../Shell.tsx';
-import { CropDialog, DetectedDialog, DownloadDialog, NamesDialog } from './Dialogs.tsx';
+import { CropDialog, DownloadDialog, NamesDialog } from './Dialogs.tsx';
+import { BatchDialog } from './BatchDialog.tsx';
+import type { BatchGroup } from '../../src/controller/reducers/batch.ts';
 import { Support, TestingInvite } from './Support.tsx';
 
 const image = '/preview/hello-1024.webp';
@@ -16,6 +18,39 @@ const n = Math.max(1, Number(query.get('faces') ?? 2));
 // Rendering inputs only: exercise a package larger than the browser's reported quota
 // without replacing Storage APIs or allocating model bytes.
 const downloadBytes = Number(query.get('downloadBytes'));
+/** One photo with `count` detected faces in a grid, as the Choose faces view shows it. */
+function pickFaces(count: number): BatchGroup {
+  const file = new File(['photo'], 'group.jpg', { type: 'image/jpeg' });
+  const faces = Array.from({ length: count }, (_, i) => {
+    const box = { x: (i % 5) * 0.19, y: Math.floor(i / 5) * 0.19, width: 0.17, height: 0.17 };
+    return {
+      ...box,
+      align: { cx: box.x + 0.085, cy: box.y + 0.085, side: 0.17, rotation: 0 },
+    };
+  });
+  return {
+    id: 'f0',
+    entry: { index: 0, file, bytes: file.size, kind: 'missing', reason: null },
+    role: 'photo',
+    asPhoto: false,
+    status: 'ready',
+    url: image,
+    offer: {
+      file,
+      blob: file,
+      url: image,
+      sourceWidth: 1024,
+      sourceHeight: 1024,
+      previewWidth: 1024,
+      previewHeight: 1024,
+      scale: 1,
+      resized: false,
+    },
+    detection: 'done',
+    faces,
+    candidates: faces.map((_, i) => `f0#${i}` as const),
+  };
+}
 const names = ['Charlotte', 'Olivia', 'Amelia', 'Isla', 'Mia', 'Ava', 'Grace', 'Willow'];
 function initial(): State {
   const state = init({
@@ -98,7 +133,7 @@ export function DialogCheck() {
             report={{ persisted: true, sendable: 1 }}
             reference="12345678-1234-1234-1234-123456789abc"
           />
-          <DetectedDialog state={state} dispatch={dispatch} />
+          {!state.Crop && <BatchDialog state={state} dispatch={dispatch} />}
           <CropDialog state={state} dispatch={dispatch} />
           <NamesDialog state={state} dispatch={dispatch} />
           <DownloadDialog state={state} dispatch={dispatch} />
@@ -127,19 +162,13 @@ export function DialogCheck() {
           onClick={() =>
             setState((s) => ({
               ...s,
-              PhotoChoice: {
-                id: 'face-1',
-                url: image,
-                file: new Blob(['photo']),
-                previewWidth: 1024,
-                previewHeight: 1024,
-                scale: 1,
-                boxes: Array.from({ length: n }, (_, i) => ({
-                  x: (i % 5) * 0.19,
-                  y: Math.floor(i / 5) * 0.19,
-                  width: 0.17,
-                  height: 0.17,
-                })),
+              Batch: {
+                key: 'face-1',
+                token: 1,
+                pick: true,
+                target: 'face-1',
+                order: [],
+                groups: [pickFaces(n)],
               },
             }))
           }

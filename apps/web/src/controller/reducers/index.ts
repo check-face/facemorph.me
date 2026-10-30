@@ -5,7 +5,7 @@ import { slider } from './slider.ts';
 import { jobs, type JobFacts } from './jobs.ts';
 import { gate } from './gate.ts';
 import { photo, type PhotoFacts } from './photo.ts';
-import { batch, detectOnReady, type BatchFacts } from './batch.ts';
+import { batch, type BatchFacts } from './batch.ts';
 import { crop, faceFirst } from './crop.ts';
 import { sameInputs } from './schedule.ts';
 import { commitUndo, NEXT_ACTIONS, undo, type UndoFacts } from './undo.ts';
@@ -70,8 +70,6 @@ export const CASES = {
   PhotoRefused: photo,
   PhotoFailed: photo,
   Photos: photo,
-  ChooseDetected: photo,
-  DismissDetected: photo,
   CropViewport: crop,
   CropPan: crop,
   CropResize: crop,
@@ -90,6 +88,7 @@ export const CASES = {
   BatchUseAsPhoto: batch,
   BatchCancel: batch,
   BatchOk: batch,
+  BatchAdjust: batch,
   CancelFace: jobs,
   Run: jobs,
   RunFace: jobs,
@@ -166,8 +165,7 @@ function reduceFaces(message: Msg, state: State, facts: ControllerFacts): Transi
     state = retirePhotoRunInputs(state, replacing);
   const gated = gate(message, state);
   if (gated !== null) {
-    // An open batch view looks for faces as soon as photo processing is ready (fm-q5b9).
-    const ready = message.type === 'DownloadsChanged' ? detectOnReady(state, gated) : gated;
+    const ready = gated;
     return rememberView(
       state,
       faceFirst({

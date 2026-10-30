@@ -126,10 +126,7 @@ export function jobs(message: Msg, state: State, facts: JobFacts = {}): Transiti
         return unchanged(state);
       if (
         action === 'morph' &&
-        (state.Busy ||
-          state.PreparingFaces.size > 0 ||
-          state.PhotoChoice !== null ||
-          state.Crop !== null)
+        (state.Busy || state.PreparingFaces.size > 0 || state.Crop !== null)
       )
         return {
           state: { ...state, PendingMorph: true, PendingJobs: enqueue(state.PendingJobs, message) },
@@ -164,6 +161,16 @@ export function jobs(message: Msg, state: State, facts: JobFacts = {}): Transiti
         };
       const preparing = new Set(state.PreparingFaces);
       preparing.delete(id);
+      // Its confirmed crop is still being made: it lands for Retry (fm-zigt), but does not encode.
+      if (state.CropsPending?.has(id))
+        return schedule(
+          {
+            ...next,
+            PreparingFaces: preparing,
+            CropsHeld: new Set([...(state.CropsHeld ?? []), id]),
+          },
+          [{ type: 'cancelQueuedFace', id }],
+        );
       return schedule({ ...next, PreparingFaces: preparing }, [
         { type: 'cancelQueuedFace', id },
         { type: 'invalidateFace', id },
@@ -191,18 +198,6 @@ export function jobs(message: Msg, state: State, facts: JobFacts = {}): Transiti
     case 'Completed': {
       const [id, result] = message.args;
       if (id !== state.JobId) return unchanged(state);
-      if (result.photoChoices)
-        return schedule(
-          {
-            ...state,
-            Busy: false,
-            ActiveFace: null,
-            PhotoChoice: result.photoChoices,
-            Status: 'Choose the face you mean.',
-            Fraction: 0,
-          },
-          [{ type: 'openNamesFocus' }],
-        );
       if (result.cropFace && !state.Inputs.some((input) => input.id === result.cropFace))
         return cancelled(state, id);
       if (result.cropFace)

@@ -6,7 +6,7 @@ import { photo } from '../../src/controller/reducers/photo.ts';
 import { rejection } from '../../src/controller/effects.ts';
 import { MULTIPLE_FACES_MESSAGE } from '../../shell/facade/bridge.ts';
 import { refusal } from '../../src/Next/photo/refusal.mjs';
-import { state, file, offer, recovered } from './photo-inputs.ts';
+import { state, file, recovered } from './photo-inputs.ts';
 import { confirmAll } from './batch-flow.ts';
 import { classifyClipboard } from '../../src/photo/source.ts';
 
@@ -151,15 +151,15 @@ test('a three-file drop uses an empty tile first, then inserts the rest after it
     ['face-1', 'new-a', 'new-b', 'face-2'],
     'the first pick takes the empty face; the rest follow it in pick order',
   );
-  const next2 = confirmed;
-  assert.deepEqual(next2.state.PhotoQueue, [
-    ['new-a', files[1]],
-    ['new-b', files[2]],
-  ]);
-  assert.ok(
-    next2.effects.some(
-      (e) => e.type === 'selectPhoto' && e.id === 'face-1' && e.files[0] === files[0],
-    ),
+  // Each pick is cropped at OK as accepted, in pick order (fm-zigt): nothing waits for another crop prompt.
+  assert.deepEqual(confirmed.state.PhotoQueue, []);
+  assert.deepEqual(
+    confirmed.effects.flatMap((e) => (e.type === 'cropPhoto' ? [[e.id, e.file]] : [])),
+    [
+      ['face-1', files[0]],
+      ['new-a', files[1]],
+      ['new-b', files[2]],
+    ],
   );
 });
 test('selection failure advances pending photos and drops only that face intent', () => {
@@ -212,8 +212,7 @@ test('the actual shared multiple-face error requests a crop through composed red
   ]);
 });
 test('photo promise rejections map to PhotoFailed with the original slot and error', () => {
-  const image = file('bad.jpg'),
-    preview = offer('preview.jpg');
+  const image = file('bad.jpg');
   const error = new Error('decode failed');
   for (const effect of [
     { type: 'selectPhoto', id: 'face-1', files: [image] },
@@ -225,21 +224,6 @@ test('photo promise rejections map to PhotoFailed with the original slot and err
       revision: 2,
       area: { left: 0, top: 0, width: 1, height: 1 },
       options: { previewScale: 1, rotation: 0 },
-    },
-    {
-      type: 'chooseDetectedFace',
-      id: 'face-1',
-      revision: 2,
-      index: 0,
-      choice: {
-        id: 'face-1',
-        file: image,
-        boxes: [],
-        url: preview.url,
-        previewWidth: 640,
-        previewHeight: 480,
-        scale: 0.5,
-      },
     },
   ] as const) {
     assert.deepEqual(rejection(effect, error), msg('PhotoFailed', 'face-1', error.message));

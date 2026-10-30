@@ -60,7 +60,6 @@ const commands = new Set<Effect['type']>([
   'classifyStills',
   'previewPhoto',
   'cropPhoto',
-  'chooseDetectedFace',
   'runBlend',
 ]);
 export function orderedEffects(effects: readonly Effect[]): readonly Effect[] {
@@ -197,6 +196,7 @@ export function createController(
   const photoSelections = new Map<string, number>();
   let photoSelectionSequence = 0;
   let detections: Promise<void> = Promise.resolve();
+  let crops: Promise<void> = Promise.resolve();
   const handles = new Map<OperationHandle, number>();
   const pending = new Set<Promise<unknown>>();
   const photoTasks = createPhotoTasks();
@@ -253,6 +253,9 @@ export function createController(
             newPhotoIds: state.Batch.order.map(
               () => `face-${crypto.randomUUID().replaceAll('-', '')}`,
             ),
+            photoRevisions: Object.fromEntries(
+              state.Inputs.map((input) => [input.id, facade.photoRevision(input.id)]),
+            ),
           }
         : {}),
       ...(message.type === 'Photos'
@@ -266,9 +269,7 @@ export function createController(
         ? { photoRevision: facade.photoRevision(message.args[0]) }
         : message.type === 'CropAccept' && state.Crop
           ? { photoRevision: facade.photoRevision(state.Crop.faceId) }
-          : message.type === 'ChooseDetected' && state.PhotoChoice
-            ? { photoRevision: facade.photoRevision(state.PhotoChoice.id) }
-            : {}),
+          : {}),
       measurements: {
         faceMs: facade.measuredFaceMs(),
         frameMs: facade.measuredFrameMs(),
@@ -829,7 +830,14 @@ export function createController(
               return run;
             },
             (faces) => store.dispatch(msg('CropDetected', effect.id, effect.url, faces)),
-            () => store.dispatch(msg('CropDetected', effect.id, effect.url, null)),
+            (error: unknown) => {
+              // Shown as "detection did not run"; the reason stays in the console for a report.
+              console.warn(
+                '[faces-first] detection did not run:',
+                String((error as Error)?.message ?? error),
+              );
+              store.dispatch(msg('CropDetected', effect.id, effect.url, null));
+            },
           );
           break;
         case 'previewPhoto': {
@@ -857,15 +865,17 @@ export function createController(
         case 'cropPhoto':
           photoTask(
             [effect.file],
-            () => facade.cropPhoto(effect.file, effect.area, effect.options),
-            (file) => store.dispatch(msg('Cropped', effect.id, effect.revision, file)),
-            (error) => store.dispatch(rejection(effect, error)),
-          );
-          break;
-        case 'chooseDetectedFace':
-          photoTask(
-            [effect.choice.file],
-            () => facade.chooseDetectedFace(effect.choice, effect.index),
+            // One crop at a time, in the order they were confirmed (a Choose faces OK freezes several at once):
+            // their faces then encode in pick order, and only one original is decoded at a time.
+            () => {
+              const { file, area, options } = effect;
+              const run = crops.then(() => facade.cropPhoto(file, area, options));
+              crops = run.then(
+                () => undefined,
+                () => undefined,
+              );
+              return run;
+            },
             (file) => store.dispatch(msg('Cropped', effect.id, effect.revision, file)),
             (error) => store.dispatch(rejection(effect, error)),
           );

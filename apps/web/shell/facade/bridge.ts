@@ -37,7 +37,6 @@ import {
   readProgress,
   readString,
   type CropOffer,
-  type DetectedFaces,
   type DetectedFace,
   type Downloads,
   type Input,
@@ -262,9 +261,6 @@ export async function detectFaces(file: Blob): Promise<readonly DetectedFace[]> 
       },
     };
   });
-}
-export async function chooseDetectedFace(choice: DetectedFaces, index: number): Promise<File> {
-  return readCroppedFile(await bridge.chooseDetectedFace(choice, index), 'chooseDetectedFace');
 }
 export const cancelPhotoRun = (): void => bridge.cancelPhotoRun();
 export const warmPhotoTools = (): void => bridge.warmPhotoTools();

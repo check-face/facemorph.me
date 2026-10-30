@@ -213,8 +213,7 @@
   height: auto;
   object-fit: contain;
 }
-.next-encode-finding,
-.next-encode-not-run {
+.next-encode-finding {
   margin: 6px 9.68% 0;
   color: #e0e0e0;
   font:

@@ -37,7 +37,6 @@ export const recovered: Output = {
   pinch: false,
   frames: 8,
   fps: 16,
-  photoChoices: null,
   cropFace: null,
   refusal: null,
 };

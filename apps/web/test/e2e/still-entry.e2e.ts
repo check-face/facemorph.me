@@ -324,10 +324,15 @@ test(
             `${name}: a still whose pixels do not decode offers no Use as photo`,
           );
 
-          // 5. missing: a camera JPEG opens the confirmed crop and encodes nothing until OK.
+          // 5. missing: a camera JPEG asks the photo-setup decision, then opens the confirmed crop; nothing until OK.
           before = modelRequests.length;
           await choose(tiles.nth(1), [files.photo]);
           const dialog = page.getByRole('dialog', { name: 'Encode an image', exact: true });
+          // Faces first (fm-k09b): the photo-setup decision comes before the crop; declined, nothing downloads.
+          const decision = page.locator('.next-download-dialog');
+          await decision.waitFor();
+          await operate(decision.getByRole('button', { name: 'Cancel', exact: true }));
+          await decision.waitFor({ state: 'detached' });
           await dialog.locator('.next-encode-preview img').waitFor();
           await page.waitForTimeout(1000);
           assert.deepEqual(

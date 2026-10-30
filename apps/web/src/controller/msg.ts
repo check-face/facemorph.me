@@ -38,8 +38,6 @@ export interface Payloads {
   UndoExpired: readonly [number];
   Kind: readonly [MorphKind];
   CancelFace: readonly [string];
-  ChooseDetected: readonly [number];
-  DismissDetected: readonly [];
   Frames: readonly [number];
   Quality: readonly ['standard' | 'full'];
   Provider: readonly [RequestedProvider];
@@ -132,6 +130,8 @@ export interface Payloads {
   BatchDetected: readonly [token: number, group: string, faces: readonly DetectedFace[] | null];
   /** A click on a candidate face: picks it (appended to the order) or unpicks it. */
   BatchPick: readonly [CandidateId];
+  /** The tray's Adjust under a picked photo face: the crop editor for that pick only (fm-zigt). */
+  BatchAdjust: readonly [CandidateId];
   /** The explicit Use as photo action on a damaged still in the batch view. */
   BatchUseAsPhoto: readonly [string];
   /** The view's Cancel: discards the whole proposal; nothing changes. */

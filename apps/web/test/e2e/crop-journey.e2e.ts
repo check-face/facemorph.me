@@ -24,7 +24,7 @@ import { STORE_HOOK } from '../support/face-fixture.ts';
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
 const built = resolve(process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO);
 const results = join(REPO, 'apps/web/test-results/crop-journey');
-const CASES = new Set((process.env['CROP_JOURNEY_CASES'] ?? 'crop').split(','));
+const CASES = new Set((process.env['CROP_JOURNEY_CASES'] ?? 'crop,choose').split(','));
 const WIDTHS = (process.env['CROP_JOURNEY_WIDTHS'] ?? '1280,390').split(',').map(Number);
 const FILES = {
   portrait: join(REPO, 'tests/crop/fixtures/non-square.jpg'),
@@ -101,12 +101,16 @@ async function open(width: number): Promise<Session> {
     hasTouch: touch,
     isMobile: touch,
     ignoreHTTPSErrors: true,
+    acceptDownloads: true,
   });
   const context = profile.context;
   await context.addInitScript(`${INSTALL_HOOK}\n${STORE_HOOK}\n${PROBE}`);
   const page = await context.newPage();
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.text().includes('[faces-first]')) console.log(`${name} console: ${message.text()}`);
+  });
   const cdp = touch ? await context.newCDPSession(page) : null;
   const session: Session = {
     name,
@@ -232,6 +236,190 @@ async function compareCrop(page: Page, id: string, source: string, view: View) {
   );
 }
 
+interface BatchModel {
+  order: string[];
+  groups: { id: string; status: string; detection: string; faces: unknown[]; role: string }[];
+}
+/**
+ * fm-zigt: three files (a group photo with two faces, a portrait, a saved still) on face `target`: picks in a
+ * non-file order, one unpick, Adjust on one pick, OK; the faces land in tap order at the face and after it, the saved
+ * still instantly, photos one encode at a time; one cancelled while queued, the others finish; its Retry encodes it.
+ */
+async function chooseFaces(
+  s: Session,
+  target: string,
+  record: (key: string, value: unknown) => void,
+) {
+  const page = s.page;
+  // Setup: face 1 saved as a FaceMorph still with the app's own Save.
+  const download = page.waitForEvent('download');
+  await page
+    .locator('section.next-face')
+    .nth(0)
+    .getByRole('button', { name: 'Save image', exact: true })
+    .click(); // setup
+  const got = await download;
+  const saved = join(results, `${s.name}-saved${got.suggestedFilename().replace(/^[^.]*/, '')}`);
+  writeFileSync(saved, readFileSync((await got.path())!));
+  await choose(page, target, [FILES.group, FILES.portrait, saved]);
+  const chooser = page.getByRole('dialog', { name: 'Choose faces', exact: true });
+  await chooser.waitFor();
+  await until(
+    page,
+    "m.Batch && m.Batch.groups.every((g) => g.status !== 'loading' && g.detection !== 'running')",
+    300_000,
+  );
+  const batch = () =>
+    page.evaluate(() => {
+      const b = (
+        window as unknown as { __fmStore: { getState(): { Batch?: BatchModel } } }
+      ).__fmStore.getState().Batch;
+      return b
+        ? {
+            order: [...b.order],
+            groups: b.groups.map((g) => ({
+              id: g.id,
+              status: g.status,
+              detection: g.detection,
+              faces: g.faces.length,
+              role: g.role,
+            })),
+          }
+        : null;
+    });
+  const opened = (await batch())!;
+  record(`${s.name}-choose-groups`, opened.groups);
+  assert.deepEqual(
+    opened.groups.map((g) => [g.role, g.faces]),
+    [
+      ['photo', 2],
+      ['photo', 1],
+      ['recovered', 0],
+    ],
+  );
+  const ok = chooser.locator('.next-batch-ok');
+  assert.equal(await ok.isDisabled(), true, 'OK is disabled with nothing picked');
+  await s.shot('choose-open');
+  const tap = (candidate: string) =>
+    s.operate(chooser.locator(`[data-next-candidate="${candidate}"]`));
+  // Tap order across files: group face 2, the saved face, group face 1, the portrait; a tap again removes.
+  await tap('f1#0');
+  await tap('f0#1');
+  await tap('f1#0');
+  await tap('f2#0');
+  await tap('f0#0');
+  await tap('f1#0');
+  assert.deepEqual((await batch())!.order, ['f0#1', 'f2#0', 'f0#0', 'f1#0']);
+  assert.equal((await ok.textContent())?.trim(), 'Add 4 faces');
+  assert.equal(
+    await chooser.locator('.next-batch-adjust').count(),
+    3,
+    'Adjust under each photo pick only',
+  );
+  await s.shot('choose-picked');
+  // Adjust the third pick only.
+  await s.operate(chooser.getByRole('button', { name: 'Adjust face 3', exact: true }));
+  const editor = page.getByRole('dialog', { name: 'Crop your image', exact: true });
+  await editor.getByText('Face 3 of 4').waitFor();
+  const stencil = editor.locator('[data-next-crop-stencil]');
+  let b = (await stencil.boundingBox())!;
+  await s.drag(b.x + b.width, b.y + b.height, -b.width * 0.15, -b.height * 0.15);
+  b = (await stencil.boundingBox())!;
+  await s.drag(b.x + b.width / 2, b.y + b.height / 2, 8, 6);
+  await s.shot('choose-adjust');
+  await s.operate(editor.getByRole('button', { name: 'USE CROP', exact: true }));
+  await chooser.waitFor();
+  const adjusted = await page.evaluate(() => {
+    const b = (
+      window as unknown as {
+        __fmStore: { getState(): { Batch: { crops: Map<string, View> } } };
+      }
+    ).__fmStore.getState().Batch;
+    return b.crops.get('f0#0')!;
+  });
+  // Which face runs, sampled through the queue.
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __active: string[];
+      __fmStore: { getState(): { ActiveFace: string | null } };
+    };
+    w.__active = [];
+    setInterval(() => {
+      const a = w.__fmStore.getState().ActiveFace;
+      if (a && w.__active.at(-1) !== a) w.__active.push(a);
+    }, 50);
+  });
+  const mark = await counts(page);
+  await s.operate(ok);
+  await chooser.waitFor({ state: 'detached' });
+  let m = await model(page);
+  assert.equal(m.Crop, null, 'no crop prompt after OK');
+  const at = m.Inputs.findIndex((i) => i.id === target);
+  const ids = m.Inputs.slice(at, at + 4).map((i) => i.id);
+  record(`${s.name}-choose-ids`, ids);
+  const [groupTwo, savedId, groupOne, portrait] = ids as [string, string, string, string];
+  // Cancel the portrait while it waits behind the others.
+  const portraitTile = page.locator(`section.next-face[data-next-face="${portrait}"]`);
+  const portraitAction = portraitTile.locator('.next-face-generate');
+  await portraitAction.filter({ hasText: 'Cancel' }).waitFor({ timeout: 120_000 });
+  await s.shot('choose-queued');
+  await s.operate(portraitAction);
+  const done = JSON.stringify([groupTwo, savedId, groupOne]);
+  await until(page, `${done}.every((id) => m.Faces.some((f) => f.id === id)) || !!m.Error`);
+  m = await model(page);
+  assert.equal(m.Error, null);
+  assert.equal(
+    m.Faces.some((f) => f.id === portrait),
+    false,
+    'the cancelled face did not encode',
+  );
+  assert.equal(
+    m.Inputs.find((i) => i.id === savedId)?.mode,
+    'project',
+    'the saved still installed as it is',
+  );
+  const after = await counts(page);
+  assert.deepEqual(
+    [after.align - mark.align, after.e4e - mark.e4e],
+    [0, 2],
+    'two photo encodes, no detection',
+  );
+  const active = await page.evaluate(() => (window as unknown as { __active: string[] }).__active);
+  record(`${s.name}-choose-active`, active);
+  assert.deepEqual(
+    active.filter((id) => id !== portrait),
+    [groupTwo, groupOne],
+    'one at a time, in pick order',
+  );
+  const compared = await compareCrop(page, groupOne, FILES.group, adjusted);
+  record(`${s.name}-choose-adjusted-input`, { adjusted, ...compared });
+  assert.ok(
+    compared.meanAbs < 6,
+    `the adjusted pick's encoder input is its crop (${compared.meanAbs})`,
+  );
+  await s.shot('choose-landed');
+  // Retry reuses its frozen crop.
+  // The input keeps its cropped file (the same Blob) for Retry.
+  const keep = () =>
+    page.evaluate((id) => {
+      const w = window as unknown as {
+        __fmStore: { getState(): { Inputs: { id: string; file: Blob | null }[] } };
+        __frozen?: Blob | null;
+      };
+      const file = w.__fmStore.getState().Inputs.find((i) => i.id === id)?.file ?? null;
+      if (w.__frozen === undefined) w.__frozen = file;
+      return !!file && w.__frozen === file;
+    }, portrait);
+  assert.equal(await keep(), true);
+  await portraitAction.filter({ hasText: /Retry|Generate/ }).waitFor();
+  await s.operate(portraitAction);
+  await until(page, `m.Faces.some((f) => f.id === ${JSON.stringify(portrait)}) || !!m.Error`);
+  m = await model(page);
+  assert.equal(m.Error, null);
+  assert.equal(await keep(), true, 'the same frozen crop');
+  await s.shot('choose-retried');
+}
+
 test(
   'confirmed crop journey: faces first, the stencil editor, failed to align (fm-k09b)',
   { timeout: 7_200_000 },
@@ -272,21 +460,15 @@ test(
               await accept.waitFor({ timeout: 60_000 });
               await s.shot('setup-decision');
               await s.operate(accept);
-              // A decision whose exact size was discovered after it asks once more (the existing revised decision).
-              while (
-                await accept.waitFor({ timeout: 8000 }).then(
-                  () => true,
-                  () => false,
-                )
-              ) {
-                await s.operate(accept);
-                await accept.waitFor({ state: 'detached' }).catch(() => {});
+              // The confirmation opens with the photo while faces are found, then shows the aligned proposal. A
+              // decision whose exact size is discovered after it asks once more (the existing revised decision).
+              for (const end = Date.now() + 900_000; ;) {
+                assert.ok(Date.now() < end, 'the proposal was ready in time');
+                const crop = (await model(page)).Crop;
+                if (crop && crop.detect !== 'waiting' && crop.detect !== 'running') break;
+                if (await accept.isVisible()) await s.operate(accept);
+                else await page.waitForTimeout(500);
               }
-              // The confirmation opens with the photo while faces are found, then shows the aligned proposal.
-              await until(
-                page,
-                "m.Crop && m.Crop.detect !== 'waiting' && m.Crop.detect !== 'running'",
-              );
               let m = await model(page);
               assert.equal(m.Crop?.detect, 'one', 'one face: the aligned proposal');
               const proposal = m.Crop!.view;
@@ -372,6 +554,19 @@ test(
               await dialog
                 .locator('.next-crop-degrees', { hasText: `${Math.round(m.Crop!.view.rotation)}°` })
                 .waitFor();
+              // A real drag along the slider (the thumb from where it is to 30% of the track) turns it the other way.
+              {
+                const thumbX = track.x + (track.width * (m.Crop!.view.fine + 45)) / 90;
+                await s.drag(
+                  thumbX,
+                  track.y + track.height / 2,
+                  track.x + track.width * 0.3 - thumbX,
+                  0,
+                );
+                const dragged = (await model(page)).Crop!.view.fine;
+                assert.ok(dragged < -5 && dragged > -25, `fine rotation after the drag ${dragged}`);
+                m = await model(page);
+              }
               await s.shot('editor-adjusted');
               // The page itself did not scroll while dragging.
               assert.equal(await page.evaluate(() => scrollY), scrolled);
@@ -430,6 +625,7 @@ test(
                 [0, 1],
                 'the no-face OK: one e4e, no detection',
               );
+              if (CASES.has('choose')) await chooseFaces(s, second, record);
               record(`${s.name}-errors`, s.errors);
               assert.deepEqual(s.errors, []);
             } catch (error) {

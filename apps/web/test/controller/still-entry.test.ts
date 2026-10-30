@@ -160,11 +160,12 @@ for (const n of [1, 2, 3, 8, 30]) {
       const photos = picked.flatMap((e, i) =>
         isHeld(e.kind) ? [] : [[placed[i]!, e.file] as const],
       );
+      // Photo picks are cropped at OK as accepted, in pick order (fm-zigt).
       assert.deepEqual(
-        confirmed.effects.filter((e) => e.type === 'selectPhoto'),
-        photos.length ? [{ type: 'selectPhoto', id: photos[0]![0], files: [photos[0]![1]] }] : [],
+        confirmed.effects.flatMap((e) => (e.type === 'cropPhoto' ? [[e.id, e.file]] : [])),
+        photos,
       );
-      assert.deepEqual(confirmed.state.PhotoQueue, photos.slice(1));
+      assert.deepEqual(confirmed.state.PhotoQueue, []);
       picked.forEach((entry, i) => {
         const held = confirmed.state.Held?.get(placed[i]!);
         if (!isHeld(entry.kind)) return assert.equal(held, undefined);

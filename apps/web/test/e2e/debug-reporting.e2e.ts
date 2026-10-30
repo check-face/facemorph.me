@@ -952,6 +952,15 @@ test(
         await operate(page, entry, c.touch);
         await (await chooser).setFiles([join(REPO, 'tests/crop/fixtures/non-square.jpg')]);
         const crop = page.getByRole('dialog', { name: 'Encode an image', exact: true });
+        // Faces first (fm-k09b): answer the photo-setup decision until the crop's proposal is ready.
+        for (const end = Date.now() + 900_000; ;) {
+          assert.ok(Date.now() < end, 'the crop proposal was ready in time');
+          const okButton = crop.getByRole('button', { name: 'OK', exact: true });
+          if ((await okButton.isVisible()) && (await okButton.isEnabled())) break;
+          const decision = page.locator('.next-download-accept');
+          if (await decision.isVisible()) await operate(page, decision, c.touch);
+          else await page.waitForTimeout(500);
+        }
         await operate(page, crop.getByRole('button', { name: 'OK', exact: true }), c.touch);
         await crop.waitFor({ state: 'detached' });
         const accept = page.locator('.next-download-accept');

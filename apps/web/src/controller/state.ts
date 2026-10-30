@@ -2,9 +2,8 @@ import type { CropView, Msg } from './msg.ts';
 import type { HeldKind, StillReason } from '../media/still-entry.ts';
 import type { UndoNotice } from './reducers/undo.ts';
 import type { BlendState } from './blend.ts';
-import type { BatchBox, BatchState } from './reducers/batch.ts';
+import type { BatchState } from './reducers/batch.ts';
 import type {
-  DetectedFaces,
   Downloads,
   Face,
   Input,
@@ -96,7 +95,6 @@ export interface State {
   readonly RunInputs: readonly Input[];
   readonly RunSettings: string;
   readonly PreparingFaces: ReadonlySet<string>;
-  readonly PhotoChoice: DetectedFaces | null;
   readonly CachedFaces: ReadonlySet<string>;
   readonly ActiveFace: string | null;
   readonly Remaining: string;
@@ -133,10 +131,12 @@ export interface State {
   readonly UndoSeq?: number;
   /** The blend view's slots, weights and result (fm-2kse); absent until the view first opens. */
   readonly Blend?: BlendState;
+  /** Faces whose confirmed crop is being made (OK pressed, Cropped not yet back). */
+  readonly CropsPending?: ReadonlySet<string>;
+  /** Of those, the ones cancelled meanwhile: the crop still lands (for Retry), but does not encode. */
+  readonly CropsHeld?: ReadonlySet<string>;
   /** The open batch view of a multi-file pick, drop or paste (fm-id4c, fm-q5b9); absent when closed. */
   readonly Batch?: BatchState | undefined;
-  /** A photo face picked as a detected face in the batch view: its box is the proposed crop when it opens. */
-  readonly CropProposals?: ReadonlyMap<string, BatchBox>;
 }
 /** A still the face shows and saves as its original bytes; `url` is '' when it is not shown (damaged). */
 export interface HeldStill {

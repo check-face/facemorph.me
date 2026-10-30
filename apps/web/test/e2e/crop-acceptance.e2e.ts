@@ -62,7 +62,7 @@ const hostClass = (url: string): HostClass => {
 /** Counters kept in the page (installed after INSTALL_HOOK, before the app loads). */
 const PROBE = `(() => {
   const hex = (b) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
-  const c = (window.__crop = { align: 0, e4e: 0, digests: [], hashing: 0, opens: 0, confirmed: 0, encodes: [] });
+  const c = (window.__crop = { align: 0, proposals: 0, e4e: 0, digests: [], hashing: 0, opens: 0, confirmed: 0, encodes: [] });
   const live = new WeakMap();
   const terminate = Worker.prototype.terminate;
   Worker.prototype.terminate = function (...args) {
@@ -73,7 +73,13 @@ const PROBE = `(() => {
   const post = Worker.prototype.postMessage;
   Worker.prototype.postMessage = function (m, ...rest) {
     const t = m && m.type;
-    if (t === 'align') c.align++;
+    // Faces first (fm-k09b): a detector pass while a crop or the Choose faces view is open makes the proposal; one
+    // with neither open would be detection after confirmation, which must never happen.
+    if (t === 'align') {
+      const open = window.__elmish?.model;
+      if (open && (open.Crop || open.Batch)) c.proposals++;
+      else c.align++;
+    }
     if (t === 'encode-aligned') {
       c.e4e++;
       // Posting precedes descriptor acquisition, which can ask for revised download approval. Observe the real
@@ -349,7 +355,29 @@ class Session {
       await this.operate(entry);
     }
     await (await chooser).setFiles(paths);
+    await this.decline(5000);
   }
+  /**
+   * Faces first (fm-k09b): while the detector's files are missing, a photo asks the photo-setup decision before its
+   * crop. These cases decline it once per session (detection did not run; the crop is the centred square); once a
+   * later encode has downloaded the photo files, photos are detected before their confirmation instead.
+   */
+  async decline(timeout: number) {
+    if (this.declined) return;
+    const decision = this.page.locator('.next-download-dialog');
+    if (
+      await decision.waitFor({ timeout }).then(
+        () => true,
+        () => false,
+      )
+    ) {
+      await this.operate(decision.getByRole('button', { name: 'Cancel', exact: true }));
+      await decision.waitFor({ state: 'detached' });
+      this.declined = true;
+    }
+  }
+  /** The photo-setup decision was declined in this session (asked once). */
+  declined = false;
   /** Words again on face `index` (the stale-revision edit, and a reset between cases). */
   async words(index: number, text: string) {
     const tile = this.tiles.nth(index);
@@ -387,8 +415,41 @@ class Session {
       url,
     );
   }
+  /** The confirmation once its proposal is ready (faces first: after detection, when it runs). */
   async confirmation() {
-    await this.dialog.locator('.next-encode-preview img').waitFor({ timeout: 120_000 });
+    await this.decline(1000);
+    await this.page.waitForFunction(
+      () => {
+        const crop = (
+          window as unknown as { __elmish: { model: { Crop: { detect?: string } | null } } }
+        ).__elmish.model.Crop;
+        return !!crop && crop.detect !== 'waiting' && crop.detect !== 'running';
+      },
+      null,
+      { timeout: 300_000, polling: 100 },
+    );
+    await this.dialog
+      .locator('.next-encode-preview img, .next-encode-whole img')
+      .first()
+      .waitFor({ timeout: 120_000 });
+  }
+  /** In the editor: the stencil over the whole of a square photo (moved to a corner, then grown to its most). */
+  async wholeSquare() {
+    // Upright first: four quarter turns come back to the start with the fine angle reset to 0 (the proposal may
+    // carry the face's roll).
+    for (let i = 0; i < 4; i++)
+      await this.operate(this.dialog.getByRole('button', { name: 'Rotate 90 degrees' }));
+    const stencil = this.dialog.locator('[data-next-crop-stencil]');
+    let b = (await stencil.boundingBox())!;
+    await this.drag(b.x + b.width / 2, b.y + b.height / 2, -2000, -2000);
+    b = (await stencil.boundingBox())!;
+    await this.drag(b.x + b.width, b.y + b.height, 2000, 2000);
+  }
+  async drag(x: number, y: number, dx: number, dy: number) {
+    await this.page.mouse.move(x, y);
+    await this.page.mouse.down();
+    for (let i = 1; i <= 8; i++) await this.page.mouse.move(x + (dx * i) / 8, y + (dy * i) / 8);
+    await this.page.mouse.up();
   }
   /** Operates every photo approval until actual encoding, a queued crop choice, or terminal state. */
   async consent(timeout = 300_000) {
@@ -529,7 +590,8 @@ class Session {
    * The batch view several files open (fm-id4c, fm-q5b9): once every file shows its faces, an operated pick of
    * each file's first offered face in file order, then the operated OK. Returns the files that offered a face.
    */
-  async pickAll() {
+  async pickAll({ photos = true } = {}) {
+    await this.decline(3000);
     const batch = this.page.locator('.next-batch');
     await batch.waitFor();
     await this.page.waitForFunction(
@@ -548,11 +610,15 @@ class Session {
     );
     const firsts = await batch
       .locator('[data-next-batch-file]')
-      .evaluateAll((groups) =>
-        groups.map(
-          (g) =>
-            g.querySelector('[data-next-candidate]')?.getAttribute('data-next-candidate') ?? null,
-        ),
+      .evaluateAll(
+        (groups, photos) =>
+          groups.map((g) =>
+            !photos && g.getAttribute('data-next-batch-role') === 'photo'
+              ? null
+              : (g.querySelector('[data-next-candidate]')?.getAttribute('data-next-candidate') ??
+                null),
+          ),
+        photos,
       );
     const picked = firsts.filter((c): c is string => c !== null);
     for (const candidate of picked)
@@ -757,7 +823,7 @@ test(
           assert.equal(c.cropConfirmed, 1, 'one confirmed crop');
           assert.equal(c.detect, 0, 'no detection, alignment or warp after confirmation');
           assert.equal(c.cropOpen, 0, 'the crop does not reopen after confirmation');
-          assert.equal(c.requests.detector, 0, 'no detector asset is requested');
+          // Detector assets may be read for the proposal before OK (faces first); never after: c.detect above.
           if (complete) {
             assert.equal(c.e4e, 1, 'exactly one e4e attempt');
             assert.equal(m.Error, null, `no terminal error: ${m.Error}`);
@@ -887,21 +953,54 @@ test(
           await d.operate(adjustButton());
           const area = d.dialog.getByRole('application', { name: 'Crop area' });
           await area.waitFor();
-          for (let i = 0; i < 4; i++) await d.page.keyboard.press('+');
-          const zoom = await d.page.evaluate(
-            () =>
-              (
-                window as unknown as {
-                  __elmish: { model: { Crop: { view: { zoom: number } } } };
-                }
-              ).__elmish.model.Crop.view.zoom,
-          );
-          assert.equal(zoom, 2);
+          // The middle half: the whole square, then shrunk about its centre to half its side (keyboard - steps).
+          await d.wholeSquare();
+          const view = () =>
+            d.page.evaluate(
+              () =>
+                (
+                  window as unknown as {
+                    __elmish: {
+                      model: {
+                        Crop: { view: { side: number; previewWidth: number; viewport: number } };
+                      };
+                    };
+                  }
+                ).__elmish.model.Crop.view,
+            );
+          const whole = await view();
+          assert.equal(whole.side, whole.previewWidth, 'the whole square photo');
+          const steps = Math.round(whole.viewport / 2 / 4);
+          await area.focus();
+          for (let i = 0; i < steps; i++) await d.page.keyboard.press('-');
+          const half = await view();
+          assert.ok(Math.abs(half.side / half.previewWidth - 0.5) < 0.02, `side ${half.side}`);
           await d.shots('redetection-fails-zoom-2-editor');
           await d.operate(useCrop());
           await okButton().waitFor();
         });
-        await okCase('multi-face-ok', fx.multiFace);
+        // fm-zigt: a photo with several faces opens the Choose faces view; one tapped face and OK confirm one crop,
+        // encoded once, with no detection after OK and no crop prompt.
+        await run('multi-face-ok', async () => {
+          const id = await firstId();
+          const mark = await d.mark();
+          await d.choose(0, [fx.multiFace]);
+          const batch = d.page.locator('.next-batch');
+          await batch.waitFor({ timeout: 300_000 });
+          await d.shots('multi-face-ok-choose');
+          await d.operate(batch.locator('[data-next-candidate="f0#0"]'));
+          await d.operate(batch.locator('.next-batch-ok'));
+          await batch.waitFor({ state: 'detached' });
+          await d.consent();
+          await faceDone(id);
+          await d.settled();
+          const c = await d.since(mark);
+          const m = await readModel(d.page);
+          await d.shots('multi-face-ok-result');
+          d.log({ case: 'multi-face-ok', ...c, error: m.Error, face: m.faces.includes(id) });
+          assert.equal(c.cropOpen, 1, 'the confirmation opened once, for detection');
+          confirmedOnce({ ...c, cropOpen: c.cropOpen - 1 }, m, id);
+        });
 
         // Manual crop, numerically: the whole of a photo whose derivation is exactly the qualification case
         // seed-0-unaligned. Adjust Crop, zoom out fully, Use Crop, OK; the engine receives that tensor, and the face's
@@ -913,7 +1012,7 @@ test(
           await d.confirmation();
           await d.operate(adjustButton());
           await d.dialog.getByRole('application', { name: 'Crop area' }).waitFor();
-          for (let i = 0; i < 32; i++) await d.page.keyboard.press('-');
+          await d.wholeSquare();
           await d.shots('manual-crop-wplus-editor');
           await d.operate(useCrop());
           await d.operate(okButton());
@@ -1152,8 +1251,8 @@ test(
           );
         });
 
-        // A 30 MB photo: no detector runs (no worker pass, no detector asset); a manual crop confirms and reaches one
-        // e4e attempt.
+        // A 30 MB photo: faces first looks at its bounded preview only; a manual crop confirms and reaches one e4e
+        // attempt.
         await run('large-30mb-manual', async () => {
           const id = await firstId();
           const mark = await d.mark();
@@ -1162,7 +1261,7 @@ test(
             await d.choose(0, [p]);
             await d.confirmation();
             const c0 = await d.since(mark);
-            assert.equal(c0.detect, 0, 'the detector was not run');
+            assert.equal(c0.detect, 0, 'no detection outside the confirmation');
             await d.operate(adjustButton());
             await d.dialog.getByRole('application', { name: 'Crop area' }).waitFor();
             await d.page.keyboard.press('+');
@@ -1206,33 +1305,38 @@ test(
                 base64: b64(p),
               })),
             );
-            // Several photos open the batch view: each one's first face in file order, then OK. Any detection
-            // there proposes crops before confirmation; the counters start at OK.
+            // Several photos open the Choose faces view: each one's first face in file order, then OK. The view was
+            // the confirmation (fm-zigt): each pick is cropped as proposed and encoded in turn, with no crop prompt.
             await d.shots(`sequence-${n}-batch`);
-            assert.equal(await d.pickAll(), n, 'every photo offers a face');
             const mark = await d.mark();
-            for (let i = 0; i < n; i++) {
-              await d.confirmation();
-              if (i === 0) await d.shots(`sequence-${n}-first`);
-              const owner = await d.page.evaluate(
-                () =>
-                  (
-                    window as unknown as {
-                      __elmish: { model: { Crop: { faceId: string } } };
-                    }
-                  ).__elmish.model.Crop.faceId,
-              );
-              await d.operate(okButton());
-              await d.consent();
-              await d.page.waitForFunction((face) => {
+            assert.equal(await d.pickAll(), n, 'every photo offers a face');
+            await d.consent();
+            await d.page.waitForFunction(
+              (count) => {
                 const m = (
                   window as unknown as {
-                    __elmish: { model: { Crop: { faceId: string } | null } };
+                    __fmStore: {
+                      getState(): {
+                        Faces: unknown[];
+                        Error: string | null;
+                        Busy: boolean;
+                        PreparingFaces: Set<string>;
+                        PendingJobs: unknown[];
+                      };
+                    };
                   }
-                ).__elmish.model;
-                return m.Crop?.faceId !== face;
-              }, owner);
-            }
+                ).__fmStore.getState();
+                return (
+                  !!m.Error ||
+                  (m.Faces.length >= count &&
+                    !m.Busy &&
+                    m.PreparingFaces.size === 0 &&
+                    m.PendingJobs.length === 0)
+                );
+              },
+              before.faces.length + n,
+              { timeout: 900_000, polling: 500 },
+            );
             await d.settled();
             const c = await d.since(mark);
             const m = await readModel(d.page);
@@ -1252,7 +1356,7 @@ test(
               added: added.length,
               error: m.Error,
             });
-            assert.equal(c.cropOpen, n, 'one confirmation per photo, in sequence');
+            assert.equal(c.cropOpen, 0, 'no crop prompt after the view');
             assert.equal(c.cropConfirmed, n);
             assert.equal(c.detect, 0);
             assert.equal(c.e4e, n, 'one e4e attempt per confirmed crop');
@@ -1509,13 +1613,14 @@ test(
               // Several files open the batch view; a damaged still offers no face there (only Use as photo).
               if (n > 1) {
                 await r.shots(`${tag}-drop-${n}-batch`);
+                // Photos are left out here: picked, they would be cropped and encoded at OK (fm-zigt).
                 assert.equal(
-                  await r.pickAll(),
-                  n - damaged,
-                  'every file but a damaged still offers a face',
+                  await r.pickAll({ photos: false }),
+                  n - damaged - photos,
+                  'every file but a damaged still or a photo offers a face',
                 );
               }
-              for (let i = 0; i < photos; i++) {
+              for (let i = 0; i < (n > 1 ? 0 : photos); i++) {
                 await r.confirmation();
                 if (i === 0) await r.shots(`${tag}-drop-${n}-confirmation`);
                 const url = await r.cropUrl();
@@ -1541,7 +1646,7 @@ test(
                 files.map((f) => f.kind),
                 'classified in drop order',
               );
-              assert.equal(c.cropOpen, photos, 'one confirmation per photo, in turn');
+              assert.equal(c.cropOpen, n > 1 ? 0 : photos, 'a single photo opens its confirmation');
               assert.deepEqual([c.cropConfirmed, c.detect, c.e4e], [0, 0, 0]);
               assert.equal(
                 c.requests.model + c.requests.detector,
@@ -1551,7 +1656,10 @@ test(
               const reused = before.inputs.some(
                 (i) => i.mode !== 'photo' && i.mode !== 'project' && !i.value.trim(),
               );
-              assert.equal(m.inputs.length, before.inputs.length + n - damaged - (reused ? 1 : 0));
+              assert.equal(
+                m.inputs.length,
+                before.inputs.length + n - damaged - (n > 1 ? photos : 0) - (reused ? 1 : 0),
+              );
               const matching = files.filter((f) => f.kind === 'matching').length;
               assert.equal(
                 m.inputs.filter((i) => i.mode === 'project').length -

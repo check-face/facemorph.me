@@ -14,9 +14,14 @@ import {
   resizeViewport,
 } from '../../src/Next/photo/crop-view.mjs';
 import { state, offer } from './photo-inputs.ts';
+import type { State } from '../../src/controller/state.ts';
+
+/** An offered crop whose faces-first detection has settled (did not run): a proposal to accept or adjust. */
+const settled = (s: State): State =>
+  s.Crop ? { ...s, Crop: { ...s.Crop, detect: 'not-run' } } : s;
 
 test('adjust/use/cancel keep one proposal; editor Use Crop never queues encoding', () => {
-  const proposal = offerCrop(state, 'face-1', offer('new.jpg')).state;
+  const proposal = settled(offerCrop(state, 'face-1', offer('new.jpg')).state);
   const editing = reduce(msg('CropAdjust'), proposal)!.state;
   assert.equal(editing.Crop?.previousView, proposal.Crop?.view);
   const moved = reduce(msg('CropResize', 'nw', 40, 40), editing)!.state;
@@ -32,7 +37,7 @@ test('adjust/use/cancel keep one proposal; editor Use Crop never queues encoding
 });
 
 test('OK snapshots crop geometry and revision once; repeated OK and Cancel cannot produce more work', () => {
-  const proposal = offerCrop(state, 'face-1', offer('frozen.jpg')).state;
+  const proposal = settled(offerCrop(state, 'face-1', offer('frozen.jpg')).state);
   const accepted = reduce(msg('CropAccept'), proposal, { photoRevision: 41 })!;
   const effect = accepted.effects.find((effect) => effect.type === 'cropPhoto');
   assert.ok(effect?.type === 'cropPhoto');
@@ -85,7 +90,7 @@ test('different crop offers retain their queue order and only same-slot replacem
 });
 test('cancel and accept expose the next crop immediately; a crop failure cannot strand it', () => {
   const queued = offerCrop(
-    offerCrop(state, 'face-1', offer('one.jpg')).state,
+    settled(offerCrop(state, 'face-1', offer('one.jpg')).state),
     'face-2',
     offer('two.jpg'),
   ).state;
@@ -104,7 +109,7 @@ test('cancel and accept expose the next crop immediately; a crop failure cannot 
 });
 test('crop editing forwards the recorded geometry policy to retained pure math', () => {
   const preview = offer('geometry.jpg');
-  let current = offerCrop(state, 'face-1', preview).state;
+  let current = settled(offerCrop(state, 'face-1', preview).state);
   let expected = createCrop({
     previewWidth: preview.previewWidth,
     previewHeight: preview.previewHeight,
@@ -144,7 +149,7 @@ test('RequestCrop preserves the active run and uses the actual stored photo for 
 });
 
 test('a changed or removed target invalidates an uncommitted proposal', () => {
-  const proposal = offerCrop(state, 'face-1', offer('source.jpg')).state;
+  const proposal = settled(offerCrop(state, 'face-1', offer('source.jpg')).state);
   for (const inputs of [
     state.Inputs.slice(1),
     state.Inputs.map((item) => (item.id === 'face-1' ? { ...item, value: 'changed' } : item)),
@@ -222,12 +227,6 @@ test('a fresh photo runs the detector first when photo processing is ready; its 
     height: 128,
   });
   assert.deepEqual(effect.options, { previewScale: 0.5, rotation: -10 });
-  // Several faces (before the chooser takes over): the largest one is the proposal.
-  const several = reduce(
-    msg('CropDetected', 'face-1', 'blob:one.jpg', [face(0.2, 0.5, 0.1), face(0.7, 0.5, 0.3)]),
-    opened.state,
-  )!;
-  assert.equal(several.state.Crop!.view.cx, 0.7 * 640);
 });
 
 test('no face is the failed-to-align screen; a detector that cannot run is a neutral note; OK still encodes once', () => {
@@ -296,4 +295,23 @@ test('missing detector files ask the photo-setup decision once; declining means 
   )!.state;
   assert.equal(unavailable.Crop?.detect, 'not-run');
   assert.equal(unavailable.Gate, null);
+});
+
+test('photo files approved earlier in the session: the detector downloads within that approval, no new question', () => {
+  const approved = {
+    ...withDownloads({ photoReady: false }),
+    DownloadConsent: new Set(['route', 'photo']),
+  };
+  const opened = reduce(
+    msg('Photo', 'face-1', { kind: 'crop', offer: offer('later.jpg') }),
+    approved,
+  )!;
+  assert.equal(opened.state.Gate, null);
+  assert.equal(opened.state.Crop?.detect, 'waiting');
+  assert.ok(opened.effects.some((e) => e.type === 'downloadModels' && e.includePhoto));
+  const ready = reduce(
+    msg('DownloadsChanged', { ...opened.state.Downloads, phase: 'done', photoReady: true }),
+    opened.state,
+  )!;
+  assert.equal(ready.state.Crop?.detect, 'running');
 });

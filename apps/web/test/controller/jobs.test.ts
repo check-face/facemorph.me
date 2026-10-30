@@ -32,7 +32,6 @@ const output: Output = {
   pinch: state.Pinch,
   frames: state.Frames,
   fps: state.Fps,
-  photoChoices: null,
   cropFace: null,
   refusal: null,
 };

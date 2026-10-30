@@ -58,21 +58,6 @@ export async function controllerRoutingStep(type: Effect['type']) {
       area: { left: 0, top: 0, width: 1, height: 1 },
       options: { previewScale: 1, rotation: 0 },
     },
-    chooseDetectedFace: {
-      type: 'chooseDetectedFace',
-      id: probeInput.id,
-      revision: 1,
-      index: 0,
-      choice: {
-        id: probeInput.id,
-        file: invalidPhoto,
-        boxes: [],
-        url: '',
-        previewWidth: 1,
-        previewHeight: 1,
-        scale: 1,
-      },
-    },
     revokeUrl: {
       type: 'revokeUrl',
       url: type === 'revokeUrl' ? URL.createObjectURL(invalidPhoto) : '',
@@ -115,7 +100,7 @@ export async function controllerRoutingStep(type: Effect['type']) {
     },
     effects: [effect],
   }));
-  if (['selectPhoto', 'previewPhoto', 'cropPhoto', 'chooseDetectedFace'].includes(type))
+  if (['selectPhoto', 'previewPhoto', 'cropPhoto'].includes(type))
     await until(store, () => Boolean(store.getState().Error));
   if (type === 'execute')
     await until(store, () => store.getState().Stage === 'face' || !store.getState().Busy);

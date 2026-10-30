@@ -18,7 +18,9 @@ test('a crop for another face queues rather than replacing the one on screen', (
 });
 test('every exit from the crop advances the queue', () => {
  const first=offerCrop(state,'face-1',offer('one.jpg'));
- const queued=offerCrop(first.state,'face-2',offer('two.jpg')).state;
+ // The first crop's faces-first detection has settled (fm-k09b): it has a proposal to accept.
+ const settled={...first.state,Crop:{...first.state.Crop,detect:'not-run'}};
+ const queued=offerCrop(settled,'face-2',offer('two.jpg')).state;
  for(const message of [msg('CropCancel'),msg('CropAccept')]) {
   const next=crop(message,queued,{photoRevision:1});
   assert.equal(next.state.Crop.faceId,'face-2');

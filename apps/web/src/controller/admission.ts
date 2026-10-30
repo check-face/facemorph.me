@@ -82,7 +82,6 @@ function retainedPhotos(state: State, except: string | null): Set<Blob> {
       // The crop also captures the previous input to reject a replaced proposal.
       if (choice.input?.file) blobs.add(choice.input.file);
     }
-  if (state.PhotoChoice) blobs.add(state.PhotoChoice.file);
   // These snapshots remain live independently of the currently installed face.
   for (const { input } of state.Undo?.hidden ?? []) if (input.file) blobs.add(input.file);
   for (const input of state.RunInputs) if (input.file) blobs.add(input.file);

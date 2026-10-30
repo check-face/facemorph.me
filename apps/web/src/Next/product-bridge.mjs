@@ -550,7 +550,7 @@ export async function execute(request,compute){
   }
   rememberView(request);retainSession();
   diagnostics.finish('completed');return snapshot();
- }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');if(error.alignmentStats)analytics.operationResult?.('selection',error.alignmentStats.faceCount>1?'shown':'failed',undefined,{face_count:error.alignmentStats.faceCount===0?'zero':error.alignmentStats.faceCount===1?'one':error.alignmentStats.faceCount>1?'multiple':undefined});const choice=error.alignmentStats?.faceBoxes?.length>1&&revisionOf(request.target)===revisions.get(request.target)?await prepareFaceChoices(request.target,error.alignmentStats.faceBoxes,request.inputs.find(item=>item.id===request.target)?.file):null;return {...snapshot(''),errorMessage:choice?'':String(error?.message||'Generation failed. Your completed results are still available.'),refusal:error?.name==='AdmissionRefused'?{reasonKey:error.reasonKey,text:error.message,helpAnchor:error.helpAnchor}:undefined,photoChoices:choice,cropFace:!choice&&request.target&&request.inputs?.find(item=>item.id===request.target)?.file instanceof Blob&&error?.faceDetection===true?request.target:null};}
+ }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');if(error.alignmentStats)analytics.operationResult?.('selection',error.alignmentStats.faceCount>1?'shown':'failed',undefined,{face_count:error.alignmentStats.faceCount===0?'zero':error.alignmentStats.faceCount===1?'one':error.alignmentStats.faceCount>1?'multiple':undefined});return {...snapshot(''),errorMessage:String(error?.message||'Generation failed. Your completed results are still available.'),refusal:error?.name==='AdmissionRefused'?{reasonKey:error.reasonKey,text:error.message,helpAnchor:error.helpAnchor}:undefined,cropFace:request.target&&request.inputs?.find(item=>item.id===request.target)?.file instanceof Blob&&error?.faceDetection===true?request.target:null};}
  finally{morphInputs=null;computeService?.setComputeAdmission?.(undefined);writer?.dispose();writer=null;active=null;if(wanted.size)void pumpDownloads();else if(!downloads.routeReady||!downloads.photoReady)void refreshInventory();}
 }
 export function cancel(){active?.abort();writer?.dispose();runtime?.cancel();}
@@ -837,11 +837,4 @@ export async function detectFaces(blob){
  const faces=Array.isArray(prepared.stats?.faces)?prepared.stats.faces:[];
  return faces.map(({x,y,width,height,align:a})=>({x,y,width,height,align:{cx:a.cx/a.width,cy:a.cy/a.height,side:a.side/a.width,rotation:a.rotation}}));
 }
-async function prepareFaceChoices(id,boxes,processed){const file=processed?.facemorphOriginal||processed||sourceFiles.get(id);if(!file)return null;try{const preview=await previewPhoto(file,{edge:2048});return {id,file,boxes,...preview};}catch{return null;}}
-export async function chooseDetectedFace(choice,index){
- analytics.operationResult?.('selection','completed');const box=choice.boxes[index];if(!box)throw refusal('Choose a detected face.');
- const size=Math.min(box.width*choice.previewWidth,box.height*choice.previewHeight);
- return cropPhoto(choice.file,{left:box.x*choice.previewWidth,top:box.y*choice.previewHeight,width:size,height:size},{previewScale:choice.scale,rotation:0});
-}
-
 export function displayMilestone(kind){if(kind==='preview')analytics.milestone?.(kind);else analytics.visibleResult?.(kind);}

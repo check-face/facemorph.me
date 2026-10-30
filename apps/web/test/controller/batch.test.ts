@@ -13,7 +13,7 @@ import { selection } from '../../src/controller/reducers/batch.ts';
 import type { Effect } from '../../src/controller/effects.ts';
 import type { State } from '../../src/controller/state.ts';
 import { state as base } from './photo-inputs.ts';
-import { offerFor } from './batch-flow.ts';
+import { offerFor, stageAll } from './batch-flow.ts';
 import { cropRect } from '../../src/controller/geometry.ts';
 
 const sized = (size: number, name: string, type = 'image/jpeg'): File =>
@@ -163,32 +163,120 @@ test('R -> A2 -> B1 with a corrupt fourth file: Cancel changes nothing; OK lands
     ['face-1', 'face-2', 'n1', 'n2'],
   );
   assert.equal(ok.state.Batch, undefined);
-  // R recovers through the bridge's own entry (no inference) first; then A2 and B1 enter the existing crop
-  // confirmation one at a time in pick order.
+  // R recovers through the bridge's own entry (no inference); A2 and B1 are cropped now, exactly as accepted in the
+  // tray (A2 on its face's aligned square, B1 the centred square), in pick order, with no further crop prompt.
   assert.deepEqual(
     ok.effects.filter((e) => e.type === 'selectPhoto'),
     [{ type: 'selectPhoto', id: 'face-2', files: [R] }],
   );
-  assert.deepEqual(ok.state.PhotoQueue, [
-    ['n1', A],
-    ['n2', B],
-  ]);
-  // A2's detected box is its proposed crop when its confirmation opens; B1 (one face) keeps the default proposal.
-  assert.deepEqual([...(ok.state.CropProposals ?? new Map()).keys()], ['n1']);
-  assert.ok(!types(ok.effects).some((t) => NO_INFERENCE.includes(t)), 'no inference at OK');
-  // When A2's confirmation opens, its view is the box: zoomed in, centred on the second face.
-  const offered = reduce(
-    msg('Photo', 'n1', { kind: 'crop', offer: offerFor(A, 'a2') }),
-    ok.state,
-  )!.state;
-  const view = offered.Crop!.view;
-  const rect = cropRect(view);
-  assert.ok(view.side < 600, 'the proposal is the detected face, not the whole photo');
-  assert.ok(
-    Math.abs(rect.left - 0.55 * 800) < 1 && Math.abs(rect.top - 0.15 * 600) < 1,
-    JSON.stringify(rect),
+  assert.deepEqual(ok.state.PhotoQueue, []);
+  assert.equal(ok.state.Crop, null);
+  const crops = ok.effects.filter((e) => e.type === 'cropPhoto');
+  assert.deepEqual(
+    crops.map((e) => [e.id, e.file, e.area, e.options]),
+    [
+      ['n1', A, { left: 440, top: 90, width: 240, height: 240 }, { previewScale: 1, rotation: 0 }],
+      ['n2', B, { left: 100, top: 0, width: 600, height: 600 }, { previewScale: 1, rotation: 0 }],
+    ],
   );
-  assert.equal(offered.CropProposals?.has('n1'), false, 'a proposal is used once');
+  assert.deepEqual([...ok.state.PreparingFaces].sort(), ['face-2', 'n1', 'n2']);
+  assert.ok(!types(ok.effects).some((t) => NO_INFERENCE.includes(t)), 'no inference at OK');
+});
+
+test('Adjust opens the editor on one pick only; Use crop keeps it for OK, Cancel restores it', () => {
+  const { A, B, opened } = openOn(ready(base));
+  let s = stageAll(opened.state);
+  const token = s.Batch!.token;
+  s = reduce(
+    msg('BatchDetected', token, 'f0', [face({ x: 0.1, y: 0.1, width: 0.3, height: 0.4 })]),
+    s,
+  )!.state;
+  s = reduce(msg('BatchDetected', token, 'f1', []), s)!.state;
+  s = reduce(msg('BatchPick', 'f1#0'), s)!.state;
+  s = reduce(msg('BatchPick', 'f0#0'), s)!.state;
+  // A saved still has nothing to adjust; a photo pick does.
+  const adjusting = reduce(msg('BatchAdjust', 'f1#0'), s)!;
+  assert.deepEqual(adjusting.state.Batch?.editing?.candidate, 'f1#0');
+  assert.deepEqual(adjusting.effects, [{ type: 'focusCropArea' }]);
+  const whole = adjusting.state.Batch!.editing!.view;
+  // Picks cannot change while the editor is open.
+  assert.equal(reduce(msg('BatchPick', 'f0#0'), adjusting.state)!.state.Batch!.order.length, 2);
+  const smaller = reduce(msg('CropResize', 'se', -80, -80), adjusting.state)!.state;
+  assert.ok(smaller.Batch!.editing!.view.side < whole.side);
+  const cancelled = reduce(msg('CropCancel'), smaller)!.state;
+  assert.equal(cancelled.Batch!.editing, undefined);
+  assert.equal(cancelled.Batch!.crops?.size ?? 0, 0, 'Cancel keeps the proposal');
+  const used = reduce(msg('CropUse'), reduce(msg('CropTurn', 12), smaller)!.state)!.state;
+  assert.equal(used.Batch!.editing, undefined);
+  const adjusted = used.Batch!.crops!.get('f1#0')!;
+  assert.equal(adjusted.rotation, 12);
+  const ok = reduce(msg('BatchOk'), used, { newPhotoIds: ['n0', 'n1'] })!;
+  const crops = ok.effects.filter((e) => e.type === 'cropPhoto');
+  assert.deepEqual(
+    crops.map((e) => [e.id, e.file, e.options.rotation]),
+    [
+      ['face-2', B, 12],
+      ['n1', A, 0],
+    ],
+  );
+  assert.deepEqual(crops[0]!.area, cropRect(adjusted));
+  // Unpicking forgets the adjusted crop.
+  const unpicked = reduce(msg('BatchPick', 'f1#0'), used)!.state;
+  assert.equal(unpicked.Batch!.crops!.has('f1#0'), false);
+});
+
+test('one photo with two faces opens the Choose faces view on its face; one face stays the confirmation', () => {
+  const s = {
+    ...ready(base),
+    StillSeq: 4,
+  };
+  const opened = reduce(
+    msg('Photo', 'face-1', { kind: 'crop', offer: offerFor(sized(9000, 'g.jpg'), 'g') }),
+    s,
+  )!;
+  assert.equal(opened.state.Crop?.detect, 'running');
+  const two = [
+    face({ x: 0.1, y: 0.2, width: 0.3, height: 0.4 }),
+    face({ x: 0.6, y: 0.2, width: 0.3, height: 0.4 }),
+  ];
+  const chosen = reduce(msg('CropDetected', 'face-1', 'blob:g', two), opened.state)!.state;
+  assert.equal(chosen.Crop, null);
+  assert.equal(chosen.Batch?.target, 'face-1');
+  assert.deepEqual(chosen.Batch?.groups[0]?.candidates, ['f0#0', 'f0#1']);
+  assert.equal(chosen.Batch?.groups[0]?.url, 'blob:g', 'the view takes over the preview');
+  // Tap order: the second face first.
+  let t = reduce(msg('BatchPick', 'f0#1'), chosen)!.state;
+  t = reduce(msg('BatchPick', 'f0#0'), t)!.state;
+  const ok = reduce(msg('BatchOk'), t, {
+    newPhotoIds: ['a', 'b'],
+    photoRevisions: { 'face-1': 3 },
+  })!;
+  assert.deepEqual(
+    ok.state.Inputs.map((i) => i.id),
+    ['face-1', 'b', 'face-2'],
+  );
+  const crops = ok.effects.filter((e) => e.type === 'cropPhoto');
+  assert.deepEqual(
+    crops.map((e) => [e.id, e.revision, Math.round(e.area.left)]),
+    [
+      ['face-1', 3, 480],
+      ['b', 0, 80],
+    ],
+  );
+});
+
+test('missing detector files ask the photo-setup decision once for the view; declined, photos stay whole', () => {
+  const { A, opened } = openOn(ready(base, false, true));
+  assert.deepEqual(opened.state.Gate, ['photo', msg('DownloadNow', true)]);
+  assert.equal(opened.state.Batch?.asked, true);
+  const declined = reduce(msg('GateCancel'), opened.state)!.state;
+  const staged = reduce(
+    msg('BatchStaged', declined.Batch!.token, 'f0', { ok: true, offer: offerFor(A, 'a') }),
+    declined,
+  )!;
+  assert.equal(staged.state.Gate, null, 'not asked again');
+  assert.deepEqual(staged.state.Batch!.groups[0]!.candidates, ['f0#0']);
+  assert.ok(!types(staged.effects).includes('detectBatchFaces'));
 });
 
 test('deselect removes and reselect appends: A1, B2, deselect A1, reselect A1 gives B2, A1', () => {
@@ -331,7 +419,7 @@ test('photo encoding unavailable: photos say why and offer nothing, no detector;
     ok.effects.filter((e) => e.type === 'selectPhoto'),
     [{ type: 'selectPhoto', id: 'face-2', files: [R] }],
   );
-  assert.ok(!types(ok.effects).some((t) => NO_INFERENCE.includes(t) || t === 'chooseDetectedFace'));
+  assert.ok(!types(ok.effects).some((t) => NO_INFERENCE.includes(t) || t === 'cropPhoto'));
 });
 
 test('a single saved still dropped alone keeps the direct recovery path: no batch view', () => {
@@ -392,7 +480,7 @@ test('one admission check at OK: over the photo budget nothing is added, the vie
   assert.equal(fewer.Batch?.refused, undefined);
   const added = reduce(msg('BatchOk'), fewer, { newPhotoIds: ['n0'] })!;
   assert.equal(added.state.Batch, undefined);
-  assert.ok(added.effects.some((e) => e.type === 'selectPhoto' && e.files[0] === A));
+  assert.ok(added.effects.some((e) => e.type === 'cropPhoto' && e.file === A));
 });
 
 test('no face count at OK: a batch takes 64 faces to 65 and 150 to 152', () => {
@@ -458,4 +546,33 @@ test('a late display or detection for a closed or superseded view changes nothin
   assert.equal(late.state, closed);
   assert.deepEqual(late.effects, [{ type: 'revokeUrl', url: 'blob:late' }]);
   assert.equal(reduce(msg('BatchDetected', token, 'f0', []), closed)!.state, closed);
+});
+
+test('a pick cancelled while its crop is being made keeps that frozen crop for Retry and encodes nothing', () => {
+  const { opened } = openOn(ready(base));
+  let s = stageAll(opened.state);
+  s = reduce(msg('BatchDetected', s.Batch!.token, 'f0', []), s)!.state;
+  s = reduce(msg('BatchDetected', s.Batch!.token, 'f1', []), s)!.state;
+  s = reduce(msg('BatchPick', 'f0#0'), s)!.state;
+  s = reduce(msg('BatchPick', 'f1#0'), s)!.state;
+  const ok = reduce(msg('BatchOk'), s, { newPhotoIds: ['n0', 'n1'] })!;
+  assert.deepEqual([...(ok.state.CropsPending ?? [])].sort(), ['face-2', 'n1']);
+  const cancelled = reduce(msg('CancelFace', 'n1'), ok.state)!;
+  assert.ok(!cancelled.effects.some((e) => e.type === 'invalidateFace'), 'its crop is not void');
+  const cropped = new File(['crop'], 'cropped.png', { type: 'image/png' });
+  const landed = reduce(msg('Cropped', 'n1', 0, cropped), cancelled.state, { photoRevision: 0 })!;
+  const input = landed.state.Inputs.find((i) => i.id === 'n1')!;
+  assert.deepEqual([input.mode, input.file], ['photo', cropped]);
+  assert.ok(
+    !landed.effects.some((e) => e.type === 'dispatch' && e.message.type === 'RunFace'),
+    'nothing encodes',
+  );
+  assert.ok(!landed.state.PendingJobs.some((j) => j.type === 'RunFace' && j.args[0] === 'n1'));
+  assert.equal(landed.state.CropsHeld?.has('n1'), false);
+  // The other pick still encodes when its crop lands.
+  const other = reduce(msg('Cropped', 'face-2', 0, cropped), landed.state, { photoRevision: 0 })!;
+  assert.ok(
+    other.effects.some((e) => e.type === 'dispatch' && e.message.type === 'RunFace') ||
+      other.state.PendingJobs.some((j) => j.type === 'RunFace' && j.args[0] === 'face-2'),
+  );
 });

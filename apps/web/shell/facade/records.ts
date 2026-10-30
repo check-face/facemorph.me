@@ -177,22 +177,6 @@ export interface DetectedFace {
   };
 }
 
-/** Faces the detector found in a photo, offered for the person to choose (Product.fs reads it as `obj`). */
-export interface DetectedFaces {
-  readonly id: string;
-  readonly file: Blob;
-  readonly boxes: readonly {
-    readonly x: number;
-    readonly y: number;
-    readonly width: number;
-    readonly height: number;
-  }[];
-  readonly url: string;
-  readonly previewWidth: number;
-  readonly previewHeight: number;
-  readonly scale: number;
-}
-
 export interface Output {
   readonly faces: readonly Face[];
   readonly videoUrl: string;
@@ -207,7 +191,6 @@ export interface Output {
   readonly pinch: boolean;
   readonly frames: number;
   readonly fps: number;
-  readonly photoChoices: DetectedFaces | null;
   /** The face whose photo must be cropped again (no face, or several), or null. */
   readonly cropFace: string | null;
   readonly refusal: Refusal | null;
@@ -318,30 +301,6 @@ function readRefusal(value: unknown, path: string): Refusal {
   };
 }
 
-function readDetected(value: unknown, path: string): DetectedFaces {
-  const r = Reader.of('DetectedFaces', value, path);
-  const file = r.raw('file');
-  if (!(file instanceof Blob))
-    throw new FacadeError('DetectedFaces', `${path}.file`, 'expected a Blob');
-  return {
-    id: r.string('id'),
-    file,
-    boxes: r.array('boxes', (box, p) => {
-      const b = Reader.of('DetectedFaces', box, p);
-      return {
-        x: b.number('x'),
-        y: b.number('y'),
-        width: b.number('width'),
-        height: b.number('height'),
-      };
-    }),
-    url: r.string('url'),
-    previewWidth: r.number('previewWidth'),
-    previewHeight: r.number('previewHeight'),
-    scale: r.number('scale'),
-  };
-}
-
 export function readOutput(value: unknown, path = ''): Output {
   const r = Reader.of('Output', value, path);
   return {
@@ -357,9 +316,6 @@ export function readOutput(value: unknown, path = ''): Output {
     pinch: r.boolean('pinch'),
     frames: r.integer('frames'),
     fps: r.integer('fps'),
-    photoChoices: r.has('photoChoices')
-      ? readDetected(r.raw('photoChoices'), 'photoChoices')
-      : null,
     cropFace: r.has('cropFace') ? r.string('cropFace') : null,
     refusal: r.has('refusal') ? readRefusal(r.raw('refusal'), 'refusal') : null,
   };

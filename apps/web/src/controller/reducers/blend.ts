@@ -303,10 +303,6 @@ export function blendSlotTarget(message: Msg, state: State): string | null {
     case 'CropCancel':
       id = state.Crop?.faceId;
       break;
-    case 'ChooseDetected':
-    case 'DismissDetected':
-      id = state.PhotoChoice?.id;
-      break;
     case 'GateAccept':
     case 'GateCancel': {
       const pending = state.Gate?.[1];

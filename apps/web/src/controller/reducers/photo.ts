@@ -7,7 +7,7 @@ import { createCrop } from '../geometry.ts';
 import type { ClassifiedStill } from '../msg.ts';
 import type { CropChoice, HeldStill } from '../state.ts';
 import { admitTo, refusal, type AdmissionFacts } from '../admission.ts';
-import { openBatch, proposedView } from './batch.ts';
+import { openBatch } from './batch.ts';
 type Offer = Extract<Extract<Msg, { type: 'Photo' }>['args'][1], { kind: 'crop' }>['offer'];
 
 export interface PhotoFacts extends AdmissionFacts {
@@ -202,27 +202,22 @@ export function offerCrop(state: State, id: string, offer: Offer): Transition {
     scale: offer.scale,
     viewport: 320,
   });
-  // A face picked by its detected box in the batch view opens with that box as the proposed crop; any other photo
-  // waits for the detector first (fm-k09b, faceFirst), whose answer is the proposal.
-  const box = state.CropProposals?.get(id);
+  // Faces first (fm-k09b): the photo waits for the detector (faceFirst), whose answer is the proposal.
   const choice: CropChoice = {
     faceId: id,
     input,
     url: offer.url,
     file: offer.file,
     scale: offer.scale,
-    view: box ? proposedView(initial, box) : initial,
+    view: initial,
     preview: offer.blob,
-    detect: box ? 'adjusted' : 'waiting',
+    detect: 'waiting',
   };
-  const proposals = new Map(state.CropProposals ?? []);
-  proposals.delete(id);
   const next = {
     ...state,
     PreparingFaces: preparing,
     Error: null,
     ModelToastHidden: true,
-    ...(box ? { CropProposals: proposals } : {}),
   };
   return state.Crop && state.Crop.faceId !== id
     ? {
@@ -239,7 +234,28 @@ export function offerCrop(state: State, id: string, offer: Offer): Transition {
 }
 const fileName = (file: Blob): string =>
   'name' in file && typeof file.name === 'string' ? file.name : '';
-function acceptPhoto(input: State, id: string, file: Blob, fromCrop: boolean): Transition {
+/** A face's confirmed crop came back (or failed): it is no longer pending or held. */
+function settleCrop(state: State, id: string): State {
+  if (!state.CropsPending?.has(id) && !state.CropsHeld?.has(id)) return state;
+  const pending = new Set(state.CropsPending ?? []);
+  const held = new Set(state.CropsHeld ?? []);
+  pending.delete(id);
+  held.delete(id);
+  return { ...state, CropsPending: pending, CropsHeld: held };
+}
+/** Faces whose confirmed crop is now being made (a crop OK, or a Choose faces OK). */
+export function cropsPending(state: State, ids: readonly string[]): State {
+  return ids.length
+    ? { ...state, CropsPending: new Set([...(state.CropsPending ?? []), ...ids]) }
+    : state;
+}
+function acceptPhoto(
+  input: State,
+  id: string,
+  file: Blob,
+  fromCrop: boolean,
+  run = true,
+): Transition {
   const released = forgetStill(input, id, false);
   const state = released.state;
   const preparing = new Set(state.PreparingFaces);
@@ -260,6 +276,7 @@ function acceptPhoto(input: State, id: string, file: Blob, fromCrop: boolean): T
     },
     [...released.effects, { type: 'invalidateFace', id }],
   );
+  if (!run) return queued;
   return queued.state.Busy
     ? {
         state: {
@@ -299,13 +316,17 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
     }
     case 'Cropped': {
       const [id, at, file] = message.args;
-      return at !== revision(facts) || !state.Inputs.some((input) => input.id === id)
-        ? unchanged(state)
-        : acceptPhoto(state, id, file, true);
+      const held = state.CropsHeld?.has(id) === true;
+      const settled = settleCrop(state, id);
+      if (at !== revision(facts) || !state.Inputs.some((input) => input.id === id))
+        return unchanged(settled);
+      // Cancelled while its crop was being made: the frozen crop lands for Retry, nothing encodes.
+      return acceptPhoto(settled, id, file, true, !held);
     }
     case 'PhotoRefused':
     case 'PhotoFailed': {
       const [id, error] = message.args;
+      state = settleCrop(state, id);
       const preparing = new Set(state.PreparingFaces);
       preparing.delete(id);
       const next = dequeue({
@@ -404,45 +425,6 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
         effects: [
           { type: 'invalidatePhotoSelections', id },
           { type: 'previewPhoto', id, file: held.file },
-        ],
-      };
-    }
-    case 'DismissDetected': {
-      const choice = state.PhotoChoice;
-      return schedule(
-        {
-          ...state,
-          PhotoChoice: null,
-          PendingJobs: state.PendingJobs.filter(
-            (job) => job.type !== 'RunFace' || job.args[0] !== choice?.id,
-          ),
-          PendingFaces: state.PendingFaces.filter((id) => id !== choice?.id),
-        },
-        [
-          { type: 'closeNamesFocus' },
-          ...(choice ? [{ type: 'revokeUrl' as const, url: choice.url }] : []),
-        ],
-      );
-    }
-    case 'ChooseDetected': {
-      const choice = state.PhotoChoice;
-      if (!choice) return { state, effects: [{ type: 'closeNamesFocus' }] };
-      return {
-        state: {
-          ...state,
-          PhotoChoice: null,
-          PreparingFaces: new Set([...state.PreparingFaces, choice.id]),
-        },
-        effects: [
-          { type: 'closeNamesFocus' },
-          { type: 'revokeUrl', url: choice.url },
-          {
-            type: 'chooseDetectedFace',
-            id: choice.id,
-            revision: revision(facts),
-            choice,
-            index: message.args[0],
-          },
         ],
       };
     }

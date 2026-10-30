@@ -190,7 +190,6 @@ test('slots are copies: editing a slot never changes a morph face, or the revers
       pinch: false,
       frames: 16,
       fps: 16,
-      photoChoices: null,
       cropFace: null,
       refusal: null,
     }),

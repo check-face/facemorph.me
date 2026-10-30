@@ -1,30 +1,34 @@
-// The batch view (fm-id4c item 12 with the folded fm-3peb scope, fm-q5b9): a pick, drop or paste of several files
-// opens one "Choose faces" view instead of allocating one face per file. Every file was classified first (fm-4f5m):
-// a saved FaceMorph still is a ready face (installed without inference), a still from another model or an
-// unreadable version is selectable as held media with compute disabled, a damaged still offers Use as photo only as
-// an explicit action, a photo offers its detected faces (when photo processing is ready on this device) or the
-// whole photo for the existing crop confirmation, and an unreadable file offers nothing. The order of faces is the
-// person's global click order across files (contracts/batch.ts). Cancel discards the proposal and changes nothing;
-// OK runs one admission check for every selected file, then replaces the originating face with the first pick and
-// inserts the rest right after it, in click order.
+// The Choose faces view (fm-zigt, with fm-id4c item 12 and fm-q5b9): a pick, drop or paste of several files, or one
+// photo with two or more detected faces, opens one view instead of allocating one face per file. Every file was
+// classified first (fm-4f5m): a saved FaceMorph still is a ready face (installed without inference), a still from
+// another model or an unreadable version is selectable as held media with compute disabled, a damaged still offers
+// Use as photo only as an explicit action, a photo offers a box on each face the on-device detector found (asked
+// for through the photo-setup download decision first when its files are missing) or, when detection did not run
+// or found nothing, the whole photo, and an unreadable file offers nothing. The order of faces is the person's global
+// tap order across files (contracts/batch.ts). Each picked photo face uses its aligned proposal as it is; the tray's
+// optional Adjust opens the crop editor for that pick only. Cancel discards the proposal and changes nothing; OK runs
+// one admission check for every selected file, then replaces the originating face with the first pick and inserts
+// the rest right after it in tap order. The tray was the confirmation: photo faces are cropped at OK exactly as
+// accepted and encode one at a time in pick order, with no further crop prompt (operator, 28 October 2026).
 import {
   allocateKeypoints,
   applyClick,
   type BatchSelection,
   type CandidateId,
   type CropOffer,
+  type DetectedFace,
   type InputRevision,
 } from '../batch-selection.ts';
-import type { ClassifiedStill, Msg } from '../msg.ts';
-import type { Input, State } from '../state.ts';
+import { msg, type ClassifiedStill, type Msg } from '../msg.ts';
+import type { CropChoice, Input, State } from '../state.ts';
 import { unchanged, type Effect, type Transition } from '../effects.ts';
 import { admitTo, refusal, type AdmissionFacts } from '../admission.ts';
 import { schedule } from './schedule.ts';
-import { hold } from './photo.ts';
-import { alignCrop } from '../geometry.ts';
+import { cropsPending, hold } from './photo.ts';
+import { alignCrop, createCrop, cropRect } from '../geometry.ts';
 import type { CropView } from '../msg.ts';
 
-/** A detected face, as fractions of the photo. */
+/** A detected face's box, as fractions of the photo. */
 export interface BatchBox {
   readonly x: number;
   readonly y: number;
@@ -50,16 +54,23 @@ export interface BatchGroup {
   readonly status: 'loading' | 'ready' | 'unreadable' | 'unavailable';
   /** The URL shown for it ('' while loading or when nothing can be shown). */
   readonly url: string;
-  /** A photo's decoded preview, the coordinates its detected boxes are cropped in. */
+  /** A photo's decoded preview, the coordinates its faces and crops are in. */
   readonly offer: CropOffer | null;
   /**
-   * Photos only. not-run: photo processing is not set up on this device, so the whole photo is offered for the
-   * crop confirmation after OK; running: the on-device detector is looking; done: it finished (boxes when it found
-   * two or more faces, else the whole photo).
+   * Photos only. not-run: photo processing is not set up on this device (or was declined), so the whole photo is
+   * offered; running: the on-device detector is looking; done: it finished (a box on each face, or the whole photo
+   * when it found none).
    */
   readonly detection: 'not-run' | 'running' | 'done';
-  readonly boxes: readonly BatchBox[];
+  readonly faces: readonly DetectedFace[];
   readonly candidates: readonly CandidateId[];
+}
+
+/** The crop editor open on one pick (Adjust in the tray): its view, and the view Cancel restores. */
+export interface BatchEditing {
+  readonly candidate: CandidateId;
+  readonly view: CropView;
+  readonly previous: CropView;
 }
 
 export interface BatchState {
@@ -70,24 +81,19 @@ export interface BatchState {
   readonly target: string | null;
   readonly groups: readonly BatchGroup[];
   readonly order: readonly CandidateId[];
+  /** Picks the person adjusted: their crop instead of the proposal. */
+  readonly crops?: ReadonlyMap<CandidateId, CropView>;
+  readonly editing?: BatchEditing;
+  /** The photo-setup download decision was asked for this view (asked once). */
+  readonly asked?: boolean;
   /** The admission refusal of the last OK, shown in the view (the selection is kept to reduce). */
   readonly refused?: string;
 }
 
-/** A detected box as the crop view's proposal (zoom and centre in preview pixels), inside the photo. */
-export function proposedView(view: CropView, box: BatchBox): CropView {
-  const side = Math.min(box.width * view.previewWidth, box.height * view.previewHeight);
-  if (!(side > 0)) return view;
-  return alignCrop(view, {
-    cx: (box.x + box.width / 2) * view.previewWidth,
-    cy: (box.y + box.height / 2) * view.previewHeight,
-    side,
-    rotation: 0,
-  });
-}
-
 export interface BatchFacts extends AdmissionFacts {
   readonly newPhotoIds?: readonly string[];
+  /** The bridge's revision of every face at OK: a photo pick's crop lands only on the face it was made for. */
+  readonly photoRevisions?: Readonly<Record<string, number>>;
 }
 
 const isPhotoKind = (kind: ClassifiedStill['kind']) => kind === 'missing';
@@ -100,10 +106,11 @@ const roleOf = (entry: ClassifiedStill): BatchRole =>
         ? 'damaged'
         : 'held';
 export const candidateOf = (group: string, index: number): CandidateId => `${group}#${index}`;
-const groupOf = (candidate: CandidateId): string => candidate.slice(0, candidate.indexOf('#'));
-const indexOf = (candidate: CandidateId): number =>
+export const groupOf = (candidate: CandidateId): string =>
+  candidate.slice(0, candidate.indexOf('#'));
+export const indexOf = (candidate: CandidateId): number =>
   Number(candidate.slice(candidate.indexOf('#') + 1));
-const isPhoto = (group: Pick<BatchGroup, 'role' | 'asPhoto'>) =>
+export const isPhoto = (group: Pick<BatchGroup, 'role' | 'asPhoto'>) =>
   group.role === 'photo' || group.asPhoto;
 
 /** Photo encoding is known to be unavailable on this device (no encoder bundle, or no route for it). */
@@ -116,14 +123,41 @@ function candidates(group: Omit<BatchGroup, 'candidates'>): readonly CandidateId
   if (group.status !== 'ready') return [];
   if (group.role === 'recovered' || group.role === 'held') return [candidateOf(group.id, 0)];
   if (!isPhoto(group) || group.detection === 'running') return [];
-  return group.boxes.length > 1
-    ? group.boxes.map((_, i) => candidateOf(group.id, i))
+  return group.faces.length
+    ? group.faces.map((_, i) => candidateOf(group.id, i))
     : [candidateOf(group.id, 0)];
 }
 const withCandidates = (group: Omit<BatchGroup, 'candidates'>): BatchGroup => ({
   ...group,
   candidates: candidates(group),
 });
+
+/** A detected face's aligned square as a crop view of `offer`'s preview (the proposal, fm-k09b). */
+export function faceView(view: CropView, face: DetectedFace): CropView {
+  const { cx, cy, side, rotation } = face.align;
+  return alignCrop(view, {
+    cx: cx * view.previewWidth,
+    cy: cy * view.previewHeight,
+    side: side * view.previewWidth,
+    rotation,
+  });
+}
+
+/** The crop a photo pick gets: the person's adjusted crop, else its face's aligned proposal, else the centred square. */
+export function pickView(batch: BatchState, candidate: CandidateId): CropView | null {
+  const adjusted = batch.crops?.get(candidate);
+  if (adjusted) return adjusted;
+  const group = batch.groups.find((g) => g.id === groupOf(candidate));
+  if (!group?.offer || !isPhoto(group)) return null;
+  const base = createCrop({
+    previewWidth: group.offer.previewWidth,
+    previewHeight: group.offer.previewHeight,
+    scale: group.offer.scale,
+    viewport: 320,
+  });
+  const face = group.faces[indexOf(candidate)];
+  return face ? faceView(base, face) : base;
+}
 
 /** The selection in contract terms: held media counts as a ready still; files offering nothing as corrupt. */
 export function selection(batch: BatchState): BatchSelection {
@@ -175,7 +209,7 @@ export function openBatch(
       url: held && role !== 'damaged' ? (entry.url ?? '') : '',
       offer: null,
       detection: 'not-run',
-      boxes: [],
+      faces: [],
     });
   });
   const batch: BatchState = { key, token, pick, target, groups, order: [] };
@@ -195,6 +229,60 @@ export function openBatch(
       ...previous,
       ...(stage.length ? [{ type: 'stageBatch' as const, token, files: stage }] : []),
     ],
+  };
+}
+
+/**
+ * One photo with two or more detected faces (fm-zigt): its open crop becomes the Choose faces view, on the face it
+ * was opened for. The view takes over the crop's preview URL.
+ */
+export function chooseFromCrop(
+  state: State,
+  choice: CropChoice,
+  faces: readonly DetectedFace[],
+): Transition {
+  const token = (state.StillSeq ?? 0) + 1;
+  const view = choice.previousView ?? choice.view;
+  const file =
+    choice.file instanceof File
+      ? choice.file
+      : new File([choice.file], 'photo', { type: 'image/png' });
+  const offer: CropOffer = {
+    file,
+    blob: choice.preview ?? file,
+    url: choice.url,
+    sourceWidth: view.previewWidth / (choice.scale || 1),
+    sourceHeight: view.previewHeight / (choice.scale || 1),
+    previewWidth: view.previewWidth,
+    previewHeight: view.previewHeight,
+    scale: choice.scale,
+    resized: choice.scale !== 1,
+  };
+  const group = withCandidates({
+    id: 'f0',
+    entry: { index: 0, file, bytes: file.size, kind: 'missing', reason: null },
+    role: 'photo',
+    asPhoto: false,
+    status: 'ready',
+    url: choice.url,
+    offer,
+    detection: 'done',
+    faces,
+  });
+  const batch: BatchState = {
+    key: choice.faceId,
+    token,
+    pick: true,
+    target: choice.faceId,
+    groups: [group],
+    order: [],
+    asked: true,
+  };
+  const preparing = new Set(state.PreparingFaces);
+  preparing.delete(choice.faceId);
+  return {
+    state: { ...state, Crop: null, Batch: batch, StillSeq: token, PreparingFaces: preparing },
+    effects: [],
   };
 }
 
@@ -229,17 +317,61 @@ function detect(state: State, batch: BatchState): { batch: BatchState; effects: 
   return { batch: next, effects };
 }
 
-/** Photo processing became ready while the view is open (Set up photo processing): look for faces now. */
-export function detectOnReady(previous: State, transition: Transition): Transition {
-  const batch = transition.state.Batch;
-  if (!batch || detectorReady(previous) || !detectorReady(transition.state)) return transition;
-  const found = detect(transition.state, batch);
-  return found.effects.length
-    ? {
-        state: { ...transition.state, Batch: found.batch },
-        effects: [...transition.effects, ...found.effects],
-      }
-    : transition;
+/**
+ * Faces first in the view (fm-zigt): photos waiting to be looked at are detected as soon as photo processing is
+ * ready; when its files are missing the photo-setup download decision is asked once for the view (declined: the
+ * photos stay whole). Runs after every transition.
+ */
+export function batchFacesFirst(transition: Transition): Transition {
+  const state = transition.state;
+  const batch = state.Batch;
+  if (!batch) return transition;
+  const waiting = batch.groups.some(
+    (group) =>
+      isPhoto(group) &&
+      (group.status === 'ready' || group.status === 'loading') &&
+      group.detection === 'not-run',
+  );
+  if (!waiting) return transition;
+  const downloads = state.Downloads;
+  if (!downloads.known) return transition;
+  if (downloads.photoReady) {
+    const found = detect(state, batch);
+    return found.effects.length
+      ? {
+          state: { ...state, Batch: found.batch },
+          effects: [...transition.effects, ...found.effects],
+        }
+      : transition;
+  }
+  if (
+    downloads.photoAvailable &&
+    !batch.asked &&
+    state.EncoderSetup !== 'active' &&
+    state.DownloadConsent.has('photo')
+  )
+    // Approved in this session already (an earlier photo's OK): the detector's files download within it.
+    return {
+      state: { ...state, Batch: { ...batch, asked: true }, EncoderSetup: 'active' },
+      effects: [...transition.effects, { type: 'downloadModels', includePhoto: true }],
+    };
+  if (
+    !downloads.photoAvailable ||
+    batch.asked ||
+    state.Gate ||
+    state.EncoderSetup === 'active' ||
+    state.EncoderSetup === 'cancelled'
+  )
+    return transition;
+  return {
+    state: {
+      ...state,
+      Batch: { ...batch, asked: true },
+      EncoderSetup: 'requested',
+      Gate: ['photo', msg('DownloadNow', true)],
+    },
+    effects: transition.effects,
+  };
 }
 
 function staged(state: State, batch: BatchState, id: string, result: Staged): Transition {
@@ -255,8 +387,7 @@ function staged(state: State, batch: BatchState, id: string, result: Staged): Tr
     url: result.offer?.url ?? result.url ?? '',
     offer: result.offer ?? null,
   }));
-  const found = detect(state, next);
-  return { state: { ...state, Batch: found.batch }, effects: found.effects };
+  return unchanged({ ...state, Batch: next });
 }
 
 /** Where each pick goes: the originating face (or the first empty one), then new faces right after it. */
@@ -296,7 +427,7 @@ function placements(
 }
 
 function confirm(state: State, batch: BatchState, facts: BatchFacts): Transition {
-  if (!batch.order.length) return unchanged(state);
+  if (!batch.order.length || batch.editing) return unchanged(state);
   const picks = batch.order.map((candidate) => ({
     candidate,
     group: batch.groups.find((g) => g.id === groupOf(candidate))!,
@@ -333,9 +464,9 @@ function confirm(state: State, batch: BatchState, facts: BatchFacts): Transition
   let next: State = { ...closed, Inputs: place.inputs, Error: null };
   const effects: Effect[] = [{ type: 'invalidateArrivalRestore' }];
   const queue: (readonly [string, File])[] = [];
-  const proposals = new Map(next.CropProposals ?? []);
+  const preparing = new Set(next.PreparingFaces);
   for (const { position } of allocation) {
-    const { group, index } = picks[position]!;
+    const { candidate, group } = picks[position]!;
     const id = place.ids[position]!;
     effects.push({ type: 'invalidatePhotoSelections', id });
     if (group.role === 'held' && !group.asPhoto) {
@@ -345,15 +476,29 @@ function confirm(state: State, batch: BatchState, facts: BatchFacts): Transition
       if (group.entry.url) heldUrls.add(group.entry.url);
       continue;
     }
-    // A saved face recovers through the bridge without inference. A photo face enters the existing crop
-    // confirmation in pick order, one at a time; a detected face's box is its proposed crop there.
-    queue.push([id, group.entry.file]);
-    const box = isPhoto(group) && group.boxes.length > 1 ? group.boxes[index] : undefined;
-    if (box) proposals.set(id, box);
-    else proposals.delete(id);
+    const view = isPhoto(group) ? pickView(batch, candidate) : null;
+    if (!view || !group.offer) {
+      // A saved face recovers through the bridge's own entry, without inference.
+      queue.push([id, group.entry.file]);
+      continue;
+    }
+    // A photo face: its crop is frozen now, exactly as accepted in the tray, and goes to e4e as it stands. The
+    // crops arrive in pick order and encode one at a time (the runner keeps their order).
+    preparing.add(id);
+    effects.push({
+      type: 'cropPhoto',
+      id,
+      revision: facts.photoRevisions?.[id] ?? 0,
+      file: group.offer.file,
+      area: Object.freeze(cropRect(view)),
+      options: Object.freeze({ previewScale: group.offer.scale, rotation: view.rotation }),
+    });
   }
   effects.push(...batchUrls(batch, heldUrls));
-  next = { ...next, CropProposals: proposals };
+  next = cropsPending(
+    { ...next, PreparingFaces: preparing },
+    effects.flatMap((effect) => (effect.type === 'cropPhoto' ? [effect.id] : [])),
+  );
   const pendingQueue = [...next.PhotoQueue, ...queue];
   const idle = !next.Crop && next.PhotoQueue.length === 0;
   const [head, ...rest] = pendingQueue;
@@ -369,6 +514,27 @@ function confirm(state: State, batch: BatchState, facts: BatchFacts): Transition
     );
   }
   return schedule({ ...next, PhotoQueue: pendingQueue }, effects);
+}
+
+/** The crop editor's messages while it is open on one pick of the view (Adjust). */
+export function editPick(state: State, change: (view: CropView) => CropView): Transition {
+  const editing = state.Batch?.editing;
+  return editing
+    ? unchanged({
+        ...state,
+        Batch: { ...state.Batch!, editing: { ...editing, view: change(editing.view) } },
+      })
+    : unchanged(state);
+}
+export function finishPick(state: State, use: boolean): Transition {
+  const batch = state.Batch;
+  const editing = batch?.editing;
+  if (!batch || !editing) return unchanged(state);
+  const { editing: _closed, ...rest } = batch;
+  if (!use) return unchanged({ ...state, Batch: rest });
+  const crops = new Map(batch.crops ?? []);
+  crops.set(editing.candidate, editing.view);
+  return unchanged({ ...state, Batch: { ...rest, crops } });
 }
 
 export function batch(message: Msg, state: State, facts: BatchFacts = {}): Transition | null {
@@ -388,25 +554,31 @@ export function batch(message: Msg, state: State, facts: BatchFacts = {}): Trans
     case 'BatchDetected': {
       const [token, id, faces] = message.args;
       if (!open || open.token !== token) return unchanged(state);
-      const boxes =
-        faces && faces.length > 1
-          ? faces.map(({ x, y, width, height }) => ({ x, y, width, height }))
-          : [];
       const group = open.groups.find((g) => g.id === id);
       if (!group || group.detection !== 'running') return unchanged(state);
-      const next = replaceGroup(open, id, (g) => ({
-        ...g,
-        detection: 'done',
-        boxes,
-      }));
+      const next = replaceGroup(open, id, (g) => ({ ...g, detection: 'done', faces: faces ?? [] }));
       return unchanged({ ...state, Batch: next });
     }
     case 'BatchPick': {
-      if (!open) return unchanged(state);
+      if (!open || open.editing) return unchanged(state);
       const picked = applyClick(selection(open), { candidate: message.args[0] });
       if (picked.order === open.order) return unchanged(state);
       const { refused: _, ...rest } = open;
-      return unchanged({ ...state, Batch: { ...rest, order: picked.order } });
+      // An unpicked face forgets its adjusted crop; picking it again starts from its proposal.
+      const crops = new Map(open.crops ?? []);
+      for (const candidate of crops.keys())
+        if (!picked.order.includes(candidate)) crops.delete(candidate);
+      return unchanged({ ...state, Batch: { ...rest, order: picked.order, crops } });
+    }
+    case 'BatchAdjust': {
+      const [candidate] = message.args;
+      if (!open || open.editing || !open.order.includes(candidate)) return unchanged(state);
+      const view = pickView(open, candidate);
+      if (!view) return unchanged(state);
+      return {
+        state: { ...state, Batch: { ...open, editing: { candidate, view, previous: view } } },
+        effects: [{ type: 'focusCropArea' }],
+      };
     }
     case 'BatchUseAsPhoto': {
       const [id] = message.args;

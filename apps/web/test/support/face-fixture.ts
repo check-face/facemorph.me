@@ -147,7 +147,6 @@ export async function restoreFaces(page: Page, count: number): Promise<FixtureFa
           pinch: false,
           frames: 16,
           fps: 16,
-          photoChoices: null,
         },
       ],
     });

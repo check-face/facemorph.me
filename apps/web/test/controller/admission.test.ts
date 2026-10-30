@@ -144,10 +144,9 @@ test('admission unions duplicate incoming, pending and installed Blob identities
   assert.equal(no.requested, PHOTO + 1, 'replacing cannot discount a still-running old file');
 });
 
-test('detected choices, hidden Undo inputs, run snapshots and crop input snapshots stay counted', () => {
+test('hidden Undo inputs, run snapshots and crop input snapshots stay counted', () => {
   const a = sized(11),
     b = sized(13),
-    c = sized(17),
     d = sized(19),
     e = sized(23);
   const input = { ...state.Inputs[0]!, file: a };
@@ -155,15 +154,6 @@ test('detected choices, hidden Undo inputs, run snapshots and crop input snapsho
     ...state,
     Inputs: [input],
     RunInputs: [{ ...input, file: b }],
-    PhotoChoice: {
-      id: input.id,
-      file: c,
-      boxes: [],
-      url: '',
-      previewWidth: 1,
-      previewHeight: 1,
-      scale: 1,
-    },
     Undo: {
       seq: 1,
       kind: 'remove',
@@ -181,13 +171,12 @@ test('detected choices, hidden Undo inputs, run snapshots and crop input snapsho
       view: { ...state.Crop?.view } as NonNullable<State['Crop']>['view'],
     },
   };
-  assert.equal(retainedPhotoBytes(rich), 83);
-  assert.equal(retainedPhotoBytes(rich, input.id), 72, 'only installed target bytes are excluded');
+  assert.equal(retainedPhotoBytes(rich), 66);
+  assert.equal(retainedPhotoBytes(rich, input.id), 55, 'only installed target bytes are excluded');
   assert.equal(
     retainedPhotoBytes({
       ...rich,
       RunInputs: [input],
-      PhotoChoice: { ...rich.PhotoChoice!, file: a },
       Undo: { ...rich.Undo!, hidden: [{ index: 0, input }] },
       Crop: null,
     }),

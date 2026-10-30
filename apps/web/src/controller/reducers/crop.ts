@@ -14,8 +14,9 @@ import {
 } from '../geometry.ts';
 import type { CropView } from '../msg.ts';
 import type { DetectedFace } from '../batch-selection.ts';
-import { dequeue, revision, type PhotoFacts } from './photo.ts';
+import { cropsPending, dequeue, revision, type PhotoFacts } from './photo.ts';
 import { schedule } from './schedule.ts';
+import { batchFacesFirst, chooseFromCrop, editPick, finishPick } from './batch.ts';
 
 export function nextCrop(state: State, effects: readonly Effect[] = []): Transition {
   const next = state.CropQueue[0];
@@ -38,10 +39,6 @@ export function alignedView(view: CropView, face: DetectedFace): CropView {
   });
 }
 
-/** The face a single-face proposal uses when several were found: the largest. */
-export const largestFace = (faces: readonly DetectedFace[]): DetectedFace =>
-  faces.reduce((best, face) => (face.align.side > best.align.side ? face : best));
-
 /**
  * Faces first (fm-k09b, operator ruling 28 October 2026): an open crop waiting for the detector runs it as soon as
  * photo processing is ready on this device. When its files are missing, the existing photo-setup download decision
@@ -50,6 +47,9 @@ export const largestFace = (faces: readonly DetectedFace[]): DetectedFace =>
  * detector ready (the inventory, the decision, the download) starts it.
  */
 export function faceFirst(transition: Transition): Transition {
+  return batchFacesFirst(cropFacesFirst(transition));
+}
+function cropFacesFirst(transition: Transition): Transition {
   const state = transition.state;
   const choice = state.Crop;
   if (!choice || choice.detect !== 'waiting') return transition;
@@ -77,6 +77,12 @@ export function faceFirst(transition: Transition): Transition {
   if (!downloads.photoAvailable) return set({ detect: 'not-run' });
   if (!choice.asked) {
     if (state.EncoderSetup === 'active') return set({ asked: true });
+    // The photo files were already approved in this session (an earlier photo's OK): the rest of them, the
+    // detector's, download within that approval rather than asking again.
+    if (state.DownloadConsent.has('photo'))
+      return set({ asked: true }, { EncoderSetup: 'active' }, [
+        { type: 'downloadModels', includePhoto: true },
+      ]);
     // Declined in this session already (here or by the page's own setup): not asked again.
     if (state.EncoderSetup === 'cancelled') return set({ detect: 'not-run' });
     if (state.Gate) return transition;
@@ -97,12 +103,14 @@ function detected(state: State, faces: readonly DetectedFace[] | null): Transiti
     choice.previousView ? { view: choice.view, previousView: view } : { view };
   if (!faces) return unchanged({ ...state, Crop: { ...choice, detect: 'not-run' } });
   if (!faces.length) return unchanged({ ...state, Crop: { ...choice, detect: 'none' } });
+  // Two or more faces in one photo: the Choose faces view, in tap order (fm-zigt).
+  if (faces.length > 1) return chooseFromCrop(state, choice, faces);
   const base = choice.previousView ?? choice.view;
   return unchanged({
     ...state,
     Crop: {
       ...choice,
-      ...proposal(alignedView(base, largestFace(faces))),
+      ...proposal(alignedView(base, faces[0]!)),
       detect: 'one',
     },
   });
@@ -110,6 +118,8 @@ function detected(state: State, faces: readonly DetectedFace[] | null): Transiti
 
 const editing = (state: State, change: (view: CropView) => CropView): Transition => {
   const choice = state.Crop;
+  // The editor open on one pick of the Choose faces view (its Adjust) changes only that pick.
+  if (!choice && state.Batch?.editing) return editPick(state, change);
   return choice
     ? {
         state: { ...state, Crop: { ...choice, view: change(choice.view) } },
@@ -129,6 +139,7 @@ export function crop(message: Msg, state: State, facts: PhotoFacts = {}): Transi
           }
         : unchanged(state);
     case 'CropUse': {
+      if (!choice && state.Batch?.editing) return finishPick(state, true);
       if (!choice?.previousView) return unchanged(state);
       const { previousView: _saved, ...proposal } = choice;
       // The person's own crop: the confirmation shows it with no detector note.
@@ -158,6 +169,8 @@ export function crop(message: Msg, state: State, facts: PhotoFacts = {}): Transi
         : unchanged(state);
     }
     case 'CropViewport':
+      if (!choice && state.Batch?.editing)
+        return editPick(state, (view) => resizeCrop(view, message.args[0]));
       return !choice || Math.abs(choice.view.viewport - message.args[0]) <= 0.5
         ? unchanged(state)
         : editing(state, (view) => resizeCrop(view, message.args[0]));
@@ -170,6 +183,7 @@ export function crop(message: Msg, state: State, facts: PhotoFacts = {}): Transi
     case 'CropTurn':
       return editing(state, (view) => turnCrop(view, message.args[0]));
     case 'CropCancel': {
+      if (!choice && state.Batch?.editing) return finishPick(state, false);
       if (choice?.previousView) {
         const { previousView, ...proposal } = choice;
         return {
@@ -203,17 +217,26 @@ export function crop(message: Msg, state: State, facts: PhotoFacts = {}): Transi
       return schedule(ready.state, ready.effects);
     }
     case 'CropAccept': {
-      // While the detector is still looking there is no proposal to accept yet.
-      if (!choice || choice.previousView || choice.detect === 'running') return unchanged(state);
+      // While faces are still being looked for (or photo processing is being decided) there is no proposal yet.
+      if (
+        !choice ||
+        choice.previousView ||
+        choice.detect === 'running' ||
+        choice.detect === 'waiting'
+      )
+        return unchanged(state);
       // A replaced or removed target cannot commit an old proposal, even through a delayed event.
       if (choice.input && state.Inputs.find((input) => input.id === choice.faceId) !== choice.input)
         return crop({ type: 'CropCancel', args: [] }, state, facts);
       const next = nextCrop(
-        {
-          ...state,
-          Crop: null,
-          PreparingFaces: new Set([...state.PreparingFaces, choice.faceId]),
-        },
+        cropsPending(
+          {
+            ...state,
+            Crop: null,
+            PreparingFaces: new Set([...state.PreparingFaces, choice.faceId]),
+          },
+          [choice.faceId],
+        ),
         [{ type: 'revokeUrl', url: choice.url }],
       );
       return {

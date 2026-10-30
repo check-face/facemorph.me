@@ -666,7 +666,7 @@ export function createOperationService(
       if (output.errorMessage) throw new Error(output.errorMessage);
       if (
         request.kind === 'face' &&
-        (output.photoChoices || output.cropFace) &&
+        output.cropFace &&
         [...work.owners.values()].includes('dependency')
       ) {
         // The parent never treats an unconfirmed crop/picker offer as a latent.
@@ -690,7 +690,6 @@ export function createOperationService(
       queueMicrotask(pump);
       const prepared =
         request.kind === 'face' &&
-        !output.photoChoices &&
         !output.cropFace &&
         [...work.owners.values()].some((role) => role === 'face')
           ? await b.prepareFaceFile(request.source.slot)

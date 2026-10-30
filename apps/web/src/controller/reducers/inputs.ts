@@ -3,6 +3,7 @@ import { msg, type Msg } from '../msg.ts';
 import { unchanged, type Transition } from '../effects.ts';
 import { forgetStill } from './photo.ts';
 import { admitTo, refusal, type AdmissionFacts } from '../admission.ts';
+import { enqueue } from './schedule.ts';
 export function change(state: State, id: string, replace: (input: Input) => Input): State {
   const cached = new Set(state.CachedFaces);
   cached.delete(id);
@@ -116,6 +117,17 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
         )
       )
         return unchanged(state);
+      // Another face's question is already open (several confirmed photos arriving one after another, fm-zigt):
+      // this face waits its turn in the queue rather than replacing that question.
+      if (!hit && state.Gate)
+        return {
+          state: {
+            ...state,
+            PendingJobs: enqueue(state.PendingJobs, msg('RunFace', item.id)),
+            PendingFaces: [...new Set([...state.PendingFaces, item.id])],
+          },
+          effects: [],
+        };
       if (!hit)
         return {
           state: {

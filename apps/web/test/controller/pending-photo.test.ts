@@ -77,7 +77,7 @@ test('photo tasks reserve before invocation and release after fulfillment/reject
   assert.deepEqual(tasks.files(), [], 'even a callback failure releases only its task');
 });
 
-test('classify→select→preview→crop handovers retain one shared Blob without admission gaps or double charging', async () => {
+test('classify→Choose faces→crop handovers retain one shared Blob without admission gaps or double charging', async () => {
   const tasks = createPhotoTasks(),
     file = sized(80 * MB);
   const files = [file, file];
@@ -104,7 +104,6 @@ test('classify→select→preview→crop handovers retain one shared Blob withou
     kind: 'missing',
     reason: null,
   }));
-  const preview = { ...offer('preview.jpg'), file };
   await tasks.run(
     files,
     async () => {
@@ -131,31 +130,22 @@ test('classify→select→preview→crop handovers retain one shared Blob withou
       check();
       const selected = reduce(msg('BatchOk'), current, { ...facts(), newPhotoIds: ['unused'] })!;
       current = selected.state;
-      assert.ok(selected.effects.some((effect) => effect.type === 'selectPhoto'));
+      // The tray was the confirmation (fm-zigt): the pick's crop is frozen at OK and the crop task owns the file.
+      const effect = selected.effects.find((effect) => effect.type === 'cropPhoto');
+      assert.ok(effect?.type === 'cropPhoto' && effect.file === file);
       nextTask = tasks.run(
-        files,
+        [effect.file],
         async () => {
-          stages.push('select');
+          stages.push('crop');
           check();
-          return { kind: 'photo' as const, file };
+          return file;
         },
-        (selection) => {
-          const previewed = photo(msg('Photo', 'face-1', selection), current)!;
-          current = previewed.state;
-          assert.equal(previewed.effects[0]?.type, 'previewPhoto');
-          nextTask = tasks.run(
-            [file],
-            async () => {
-              stages.push('preview');
-              check();
-              return preview;
-            },
-            (offer) => {
-              current = photo(msg('Photo', 'face-1', { kind: 'crop', offer }), current)!.state;
-              check();
-            },
-            () => assert.fail(),
-          );
+        (result) => {
+          current = reduce(msg('Cropped', effect.id, effect.revision, result), current, {
+            ...facts(),
+            photoRevision: effect.revision,
+          })!.state;
+          check();
         },
         () => assert.fail(),
       );
@@ -164,30 +154,8 @@ test('classify→select→preview→crop handovers retain one shared Blob withou
   );
   await nextTask;
   await turn();
-  assert.deepEqual(stages, ['classify', 'select', 'preview']);
-  assert.equal(retainedPhotoBytes(current), file.size, 'crop state adopts the file');
-  assert.deepEqual(tasks.files(), []);
-  const crop = deferred<Blob>();
-  const running = tasks.run(
-    [file],
-    () => {
-      stages.push('crop');
-      current = { ...current, Crop: null };
-      check();
-      return crop.promise;
-    },
-    (result) => {
-      current = {
-        ...current,
-        Inputs: [{ ...current.Inputs[0]!, file: result }, current.Inputs[1]!],
-      };
-      check();
-    },
-    () => assert.fail(),
-  );
-  crop.resolve(file);
-  await running;
-  assert.equal(retainedPhotoBytes(current), file.size);
+  assert.deepEqual(stages, ['classify', 'crop']);
+  assert.equal(retainedPhotoBytes(current), file.size, 'the face adopts the cropped file');
   assert.deepEqual(tasks.files(), []);
 });
 
@@ -232,33 +200,14 @@ test('removed and superseded task files remain charged independently until each 
   assert.deepEqual(tasks.files(), []);
 });
 
-test('dequeued selection and detected-face choice keep their source charged after state hands it off', async () => {
+test('a dequeued selection keeps its source charged after state hands it off', async () => {
   const file = sized(80 * MB);
   const queued = dequeue({ ...state, PhotoQueue: [['face-1', file]] });
-  const chosen = photo(
-    msg('ChooseDetected', 0),
-    {
-      ...state,
-      PhotoChoice: {
-        id: 'face-1',
-        file,
-        boxes: [],
-        url: '',
-        previewWidth: 1,
-        previewHeight: 1,
-        scale: 1,
-      },
-    },
-    { photoRevision: 1 },
-  )!;
   assert.equal(queued.state.PhotoQueue.length, 0);
-  assert.equal(chosen.state.PhotoChoice, null);
-  for (const transition of [queued, chosen]) {
-    const effect = transition.effects.find(
-      (effect) => effect.type === 'selectPhoto' || effect.type === 'chooseDetectedFace',
-    );
-    assert.ok(effect && (effect.type === 'selectPhoto' || effect.type === 'chooseDetectedFace'));
-    const files = effect.type === 'selectPhoto' ? effect.files : [effect.choice.file];
+  for (const transition of [queued]) {
+    const effect = transition.effects.find((effect) => effect.type === 'selectPhoto');
+    assert.ok(effect && effect.type === 'selectPhoto');
+    const files = effect.files;
     const tasks = createPhotoTasks(),
       wait = deferred<void>();
     const running = tasks.run(
@@ -434,13 +383,7 @@ test('actual runner refuses overlapping 80 MB picks before reading the second fi
 
 test('every runner photo stage starts through the reserving thunk boundary', () => {
   const source = readFileSync(new URL('../../src/controller/runner.ts', import.meta.url), 'utf8');
-  for (const name of [
-    'classifyStills',
-    'selectPhoto',
-    'previewPhoto',
-    'cropPhoto',
-    'chooseDetectedFace',
-  ])
+  for (const name of ['classifyStills', 'selectPhoto', 'previewPhoto', 'cropPhoto'])
     assert.match(
       source,
       new RegExp(

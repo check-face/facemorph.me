@@ -22,8 +22,9 @@ const geometry = JSON.parse(
 
 test(
   'Card photo entry and confirmed crop: trusted chooser/paste, geometry, cancellation and focus',
-  // Several real CPU encodes in one journey: 252 s on a quiet eris, past 300 s under load (main run 40290030872).
-  { timeout: 600_000 },
+  // Several real CPU encodes in one journey: 252 s on a quiet eris, past 300 s under load (main run 40290030872);
+  // just past 600 s on a loaded eris with the faces-first decision added (fm-k09b, 30 Oct).
+  { timeout: 900_000 },
   async (t) => {
     if (!existsSync(join(runtime, 'manifest.json'))) {
       const reason = `untested: no acquired runtime at ${runtime}; owner fm-fy2.17.1; run on the runtime lane`;
@@ -222,6 +223,14 @@ test(
             const firstId = await tiles.first().getAttribute('data-next-face');
             for (const exit of ['cancel', 'escape', 'back', 'backdrop']) {
               const burger = await choose([fixture('non-square.jpg')]);
+              if (exit === 'cancel') {
+                // Faces first (fm-k09b): a fresh profile is asked the photo-setup decision before the crop;
+                // declined, detection did not run and the confirmation shows the centred square.
+                const decision = page.locator('.next-download-dialog');
+                await decision.waitFor();
+                await hit(decision.getByRole('button', { name: 'Cancel', exact: true }));
+                await decision.waitFor({ state: 'detached' });
+              }
               assert.equal(await cropOwner(), firstId);
               assert.equal(await page.getByRole('dialog').count(), 1);
               await shot(`confirmation-${exit}`);

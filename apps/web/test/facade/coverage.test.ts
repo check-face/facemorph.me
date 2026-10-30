@@ -20,7 +20,14 @@ const recorded = JSON.parse(
 ) as { imports: { module: string; name: string }[] };
 
 // fm-25um: hold-to-compare removed. fm-k09b: the pan/zoom square became the stencil editor (no zoom, no frame).
-const RETIRED = new Set(['rememberSourcePhoto', 'sourcePhotoUrl', 'zoomTo', 'frame']);
+// fm-zigt: the after-the-fact face picker is gone; several faces are chosen in the Choose faces view.
+const RETIRED = new Set([
+  'rememberSourcePhoto',
+  'sourcePhotoUrl',
+  'zoomTo',
+  'frame',
+  'chooseDetectedFace',
+]);
 test('every retained Product.fs import has its typed facade export; retired comparison helpers are absent', (t) => {
   const exports = facade as unknown as Record<string, unknown>;
   const missing: string[] = [];

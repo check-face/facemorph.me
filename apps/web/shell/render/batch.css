@@ -6,7 +6,7 @@
   max-height: 92vh;
   overflow: auto;
   overscroll-behavior: contain;
-  background: #17181c;
+  background: #383838;
   color: #fff;
   padding: 16px;
   border-radius: 4px;
@@ -82,16 +82,17 @@
   margin: 0;
   padding: 0;
   background: transparent;
-  border: 3px solid #3cf0c5;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  border-radius: 4px;
   cursor: pointer;
 }
 .next-batch-box[aria-pressed='true'] {
-  border-color: #ffa63d;
-  background: rgba(255, 166, 61, 0.15);
+  border-color: #8c9eff;
+  box-shadow: 0 0 0 2px #3f51b5;
 }
 .next-batch-box:focus-visible,
 .next-batch-whole:focus-visible {
-  outline: 4px solid #ffa63d;
+  outline: 3px solid #8c9eff;
   outline-offset: 2px;
 }
 .next-batch-whole {
@@ -101,13 +102,15 @@
   min-height: 44px;
   margin: 0;
   padding: 0;
-  border: 3px solid #3cf0c5;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  border-radius: 4px;
   background: #222;
   cursor: pointer;
   color: #fff;
 }
 .next-batch-whole[aria-pressed='true'] {
-  border-color: #ffa63d;
+  border-color: #8c9eff;
+  box-shadow: 0 0 0 2px #3f51b5;
 }
 .next-batch-noimage {
   display: grid;
@@ -128,8 +131,8 @@
   padding: 0 6px;
   box-sizing: border-box;
   border-radius: 14px;
-  background: #ffa63d;
-  color: #17181c;
+  background: #3f51b5;
+  color: #fff;
   font:
     700 15px/28px Roboto,
     sans-serif;
@@ -150,7 +153,7 @@
 .next-batch .next-batch-setup {
   align-self: flex-start;
   min-height: 44px;
-  color: #3cf0c5;
+  color: #8c9eff;
 }
 .next-batch-tray ol {
   display: flex;
@@ -166,14 +169,17 @@
 .next-batch-thumb {
   position: relative;
   display: block;
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
+  border-radius: 4px;
   overflow: hidden;
   background: #222;
   object-fit: cover;
 }
 .next-batch-thumb img {
   position: absolute;
+  left: 0;
+  top: 0;
   max-width: none;
 }
 .next-batch-tray-n {
@@ -183,8 +189,8 @@
   min-width: 20px;
   height: 20px;
   border-radius: 10px;
-  background: #ffa63d;
-  color: #17181c;
+  background: #3f51b5;
+  color: #fff;
   font:
     700 12px/20px Roboto,
     sans-serif;
@@ -207,7 +213,7 @@
   bottom: -16px;
   margin: 0 -16px -16px;
   padding: 12px 16px;
-  background: #17181c;
+  background: #383838;
 }
 .next-batch .next-batch-cancel {
   background: #e0e0e0;
@@ -224,4 +230,45 @@
 .next-batch .next-batch-ok.Mui-disabled {
   background: #3a3b44;
   color: #9a9ba3;
+}
+.next-batch-header {
+  position: relative;
+}
+.next-batch-header svg {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 21px;
+  height: 30px;
+  color: #fff;
+}
+.next-batch-header h2,
+.next-batch-header p {
+  padding-right: 32px;
+}
+.next-batch-tray ol {
+  gap: 10px;
+  padding-top: 8px;
+}
+.next-batch-tray li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 64px;
+}
+/* Adjust: small and quiet under each photo pick, still a 32 px target. */
+.next-batch-adjust {
+  min-height: 32px;
+  padding: 4px 6px;
+  border: 0;
+  background: none;
+  color: #fff;
+  font:
+    12px/1 Roboto,
+    sans-serif;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.next-batch-adjust:focus-visible {
+  outline: 2px solid #8c9eff;
 }

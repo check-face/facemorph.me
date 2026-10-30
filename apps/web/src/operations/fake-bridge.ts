@@ -42,7 +42,6 @@ export function output(ids: readonly string[] = [], message = ''): Output {
     pinch: false,
     frames: 0,
     fps: 0,
-    photoChoices: null,
     cropFace: null,
     refusal: null,
   };

@@ -1,7 +1,6 @@
 // Descriptions, not callbacks. Input-bearing operations resolve their slot at the synchronous dispatch boundary.
 import { msg, type ConsentBasis, type Msg } from './msg.ts';
 import type { State, Input, Request } from './state.ts';
-import type { DetectedFaces } from '../../shell/facade/records.ts';
 import type { CropRect } from '../../shell/facade/helpers.ts';
 import { isRefusal } from '../Next/photo/refusal.mjs';
 export interface ViewSnapshot {
@@ -123,13 +122,6 @@ export type PhotoEffect =
       readonly file: Blob;
       readonly area: CropRect;
       readonly options: { readonly previewScale: number; readonly rotation: number };
-    }
-  | {
-      readonly type: 'chooseDetectedFace';
-      readonly id: string;
-      readonly revision: number;
-      readonly choice: DetectedFaces;
-      readonly index: number;
     };
 export interface Transition {
   readonly state: State;
@@ -170,7 +162,6 @@ export function rejection(effect: Effect, error: unknown, input?: Input): Msg {
     case 'selectPhoto':
     case 'previewPhoto':
     case 'cropPhoto':
-    case 'chooseDetectedFace':
       // An expected refusal (unreadable, unsupported or oversized photo, cancelled crop) has
       // the error area as its one owner; an unexpected failure keeps the Off-state report ask.
       return isRefusal(error)

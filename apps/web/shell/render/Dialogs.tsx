@@ -345,41 +345,6 @@ function NamesGrid({
   );
 }
 
-export function DetectedDialog({ state, dispatch }: { state: State; dispatch: Dispatch }) {
-  const choice = state.PhotoChoice;
-  if (!choice) return null;
-  return (
-    <Modal
-      label="Which face?"
-      className="next-crop-dialog next-name-dialog"
-      close={() => dispatch(msg('DismissDetected'))}
-    >
-      <div className="next-face-picker">
-        <h2>Which face?</h2>
-        <p>More than one face here. Tap the one you mean.</p>
-        <div className="next-face-picker-image">
-          <img src={choice.url} alt="Select a face from your photo" />
-          {choice.boxes.map((box, i) => (
-            <button
-              key={i}
-              type="button"
-              aria-label={`Choose face ${i + 1}`}
-              onClick={() => dispatch(msg('ChooseDetected', i))}
-              style={{
-                left: `${box.x * 100}%`,
-                top: `${box.y * 100}%`,
-                width: `${box.width * 100}%`,
-                height: `${box.height * 100}%`,
-              }}
-            />
-          ))}
-        </div>
-        <Button onClick={() => dispatch(msg('DismissDetected'))}>Cancel</Button>
-      </div>
-    </Modal>
-  );
-}
-
 export function CropDialog({ state, dispatch }: { state: State; dispatch: Dispatch }) {
   const crop = state.Crop;
   // Fresh photos arrive from the face card; this modal only confirms or adjusts their crop.

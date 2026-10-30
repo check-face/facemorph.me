@@ -1348,7 +1348,6 @@ test(
         'selectPhoto',
         'previewPhoto',
         'cropPhoto',
-        'chooseDetectedFace',
         'openNamesFocus',
         'closeNamesFocus',
         'loadNames',

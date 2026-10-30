@@ -1360,6 +1360,30 @@ test(
           };
           /** Two files through the target face's own chooser open the batch view (setup: the file input). */
           let sessionOver = false;
+          /** Faces first (fm-zigt): photos ask the photo-setup decision on a fresh profile; declined, each is whole. */
+          const declineSetup = async (s: Session) => {
+            const decision = s.page.locator('.next-download-dialog');
+            if (
+              await decision.waitFor({ timeout: 10_000 }).then(
+                () => true,
+                () => false,
+              )
+            ) {
+              assert.ok(
+                (
+                  await press(
+                    s.page,
+                    decision.getByRole('button', { name: 'Cancel', exact: true }),
+                    {
+                      touch: s.touch,
+                    },
+                  )
+                ).inside,
+                'decline photo setup',
+              );
+              await decision.waitFor({ state: 'detached' });
+            }
+          };
           const openBatch = async (s: Session, target: string, view = true) => {
             const files = await s.page.evaluate(async () => {
               const photo = (window as unknown as AdmissionWindow).__admissionPhoto;
@@ -1370,11 +1394,13 @@ test(
               { name: 'batch-0.png', mimeType: 'image/png', buffer },
               { name: 'batch-1.png', mimeType: 'image/png', buffer },
             ]);
+            await declineSetup(s);
             if (view) await s.page.locator('.next-batch [data-next-candidate="f1#0"]').waitFor();
           };
           /** Operated picks of both files in the batch view, then its operated OK. */
           const confirmBatch = async (s: Session) => {
             const { page } = s;
+            await declineSetup(s);
             for (const candidate of ['f0#0', 'f1#0']) {
               const control = page.locator(`.next-batch [data-next-candidate="${candidate}"]`);
               await control.waitFor();
@@ -1449,6 +1475,23 @@ test(
                     count + 1,
                   );
                   if (path === 'paste into new face') {
+                    // Faces first (fm-k09b): decline the photo-setup decision; the crop follows.
+                    const decision = s.page.locator('.next-download-dialog');
+                    if (
+                      await decision.waitFor({ timeout: 15_000 }).then(
+                        () => true,
+                        () => false,
+                      )
+                    )
+                      assert.ok(
+                        (
+                          await press(
+                            s.page,
+                            decision.getByRole('button', { name: 'Cancel', exact: true }),
+                            { touch },
+                          )
+                        ).inside,
+                      );
                     await s.page.locator('.next-encode-ok').waitFor();
                     assert.ok(
                       (await press(s.page, s.page.locator('.next-encode-ok'), { touch })).inside,
@@ -1460,8 +1503,10 @@ test(
                           .Inputs.some((i) => i.id === id && i.mode === 'photo' && !!i.file),
                       setup.target,
                     );
-                  } else if (path.includes('drop') || path === 'batch OK')
+                  } else if (path.includes('drop') && path !== 'multi-file drop') {
+                    await declineSetup(s);
                     await s.page.locator('.next-encode-dialog').waitFor();
+                  }
                   const after = await faceList(s.page);
                   const batched = path === 'multi-file drop' || path === 'batch OK';
                   assert.deepEqual(
@@ -2178,6 +2223,15 @@ test(
                   'the chooser belongs to the remaining face',
                 );
                 await chooser.setFiles(fixture); // Real chooser input, not a controller/bridge replacement.
+                // Faces first (fm-k09b): the photo-setup decision comes before the crop; declined here, so
+                // nothing is acquired before the crop is confirmed.
+                const decision = page.locator('.next-download-dialog');
+                await decision.waitFor();
+                await hit(
+                  'Decline photo setup',
+                  decision.getByRole('button', { name: 'Cancel', exact: true }),
+                );
+                await decision.waitFor({ state: 'detached' });
                 const dialog = page.getByRole('dialog', { name: 'Encode an image', exact: true });
                 await dialog.waitFor();
                 await page.waitForFunction(() => {

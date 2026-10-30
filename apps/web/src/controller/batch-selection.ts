@@ -4,4 +4,4 @@
 export { allocateKeypoints, applyClick } from '../contracts/batch.ts';
 export type { BatchSelection, CandidateId } from '../contracts/batch.ts';
 export type { InputRevision } from '../contracts/inputs.ts';
-export type { CropOffer, DetectedFace, DetectedFaces } from '../../shell/facade/records.ts';
+export type { CropOffer, DetectedFace } from '../../shell/facade/records.ts';

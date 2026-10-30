@@ -2,10 +2,10 @@
 // bridge, runtime and CPU route, at 1,280 px (mouse) and 390 px (touch). Every graded control is pressed at its
 // visible position after elementFromPoint shows it there (support/operate.ts); file choosing is setup.
 //   1. Recovered R, group photo A (two faces), portrait B and a corrupt fourth file: the corrupt file is left out;
-//      photo processing is set up from the view so faces are found on this device; R -> A2 -> B1 picked; Cancel
-//      leaves the project unchanged; then the same picks and OK: the faces land R, A2, B1 at the originating face
-//      and after it, R installed with zero model requests and no operation; A2 opens its confirmation on the
-//      detected box, B1 on the whole photo.
+//      the view asks the photo-setup decision itself so faces are found on this device; R -> A2 -> B1 picked;
+//      Cancel leaves the project unchanged; then the same picks and OK: the faces land R, A2, B1 at the originating
+//      face and after it, R installed with zero model requests and no operation; A2 and B1 are cropped as accepted
+//      with no crop prompt (fm-zigt).
 //   2. A damaged still offers Use as photo only as its own explicit action; a still from another model is
 //      selectable and lands held, with compute off for it.
 //   3. Photo encoding genuinely refused (WebGPU off at launch, encoder assets absent from the server): photos say
@@ -58,7 +58,7 @@ interface Batch {
     role: string;
     status: string;
     detection: string;
-    boxes: unknown[];
+    faces: unknown[];
     candidates: string[];
   }[];
   order: string[];
@@ -68,7 +68,7 @@ interface Model {
   Faces: { id: string }[];
   Held?: Map<string, { kind: string }>;
   Batch?: Batch;
-  Crop: { faceId: string; view: { zoom: number } } | null;
+  Crop: { faceId: string; view: { side: number } } | null;
   PhotoQueue: unknown[];
   PreparingFaces: Set<string>;
   Busy: boolean;
@@ -93,13 +93,13 @@ const read = (page: Page) =>
               role: g.role,
               status: g.status,
               detection: g.detection,
-              boxes: g.boxes.length,
+              boxes: g.faces.length,
               candidates: g.candidates,
             })),
             order: m.Batch.order,
           }
         : null,
-      crop: m.Crop ? { faceId: m.Crop.faceId, zoom: m.Crop.view.zoom } : null,
+      crop: m.Crop ? { faceId: m.Crop.faceId, side: m.Crop.view.side } : null,
       queue: m.PhotoQueue.length,
       preparing: m.PreparingFaces.size,
       busy: m.Busy,
@@ -156,6 +156,13 @@ async function open(width: number, touch: boolean, name: string) {
   return { context: profile, page, errors, requests, operate, shot };
 }
 
+/** Faces first (fm-zigt): a fresh profile is asked the photo-setup download decision; Cancel declines it. */
+async function declineSetup(page: Page, operate: (control: Locator) => Promise<void>) {
+  const dialog = page.locator('.next-download-dialog');
+  await dialog.waitFor({ timeout: 30_000 });
+  await operate(dialog.getByRole('button', { name: 'Cancel', exact: true }));
+  await dialog.waitFor({ state: 'detached' });
+}
 /** Setup: several files through a face's own file input (the chooser's result), in this order. */
 const choose = (page: Page, face: string, paths: readonly string[]) =>
   page.locator(`#photo-${face}`).setInputFiles([...paths]);
@@ -267,14 +274,8 @@ test(
                 const batch = page.locator('.next-batch');
                 const target = (await read(page)).inputs[1]!.id;
                 const files = [FILES.group, FILES.portrait, saved, FILES.corrupt];
-                // Photo processing set up from the view, through the existing download decision.
+                // Faces first (fm-zigt): the view asks the existing photo-setup download decision on its own.
                 await choose(page, target, files);
-                await batch.waitFor();
-                await viewSettled(page);
-                const setup = batch.getByRole('button', {
-                  name: 'Set up photo processing to find faces',
-                });
-                await operate(setup);
                 // The existing download decision, and its revised decision once the exact encoder scope is known.
                 const accept = page.locator('.next-download-accept');
                 await accept.waitFor();
@@ -377,22 +378,25 @@ test(
                 const opsAtOk = (await operations(page)).length;
                 await operate(batch.getByRole('button', { name: 'Add 3 faces' }));
                 await batch.waitFor({ state: 'detached' });
-                // R recovers first, before any photo confirmation: no model request and no operation for it.
+                // R recovers with no model request and no operation of its own; A2 and B1 are cropped as accepted
+                // in the view (the tray was the confirmation) and encode in pick order: no crop prompt follows.
                 await page.waitForFunction(
                   (id) => {
                     const m = (window as unknown as { __elmish: { model: Model } }).__elmish.model;
-                    return m.Faces.some((f) => f.id === id) && m.Crop !== null;
+                    return m.Faces.some((f) => f.id === id);
                   },
                   target,
                   { timeout: 120_000 },
                 );
                 const atR = await read(page);
                 const rRequests = s.requests.slice(requestsAtOk);
-                const rOps = (await operations(page)).slice(opsAtOk);
-                assert.deepEqual(rRequests, [], `${name}: zero model requests for R`);
-                assert.deepEqual(rOps, [], `${name}: zero operations (no inference) for R`);
                 const at = atR.inputs.findIndex((i) => i.id === target);
                 const [r, a2, b1] = atR.inputs.slice(at, at + 3);
+                const rOps = (await operations(page))
+                  .slice(opsAtOk)
+                  .filter((op) => JSON.stringify(op).includes(r!.id));
+                assert.deepEqual(rRequests, [], `${name}: zero model requests for R`);
+                assert.deepEqual(rOps, [], `${name}: zero operations (no inference) for R`);
                 assert.equal(
                   r!.mode,
                   'project',
@@ -407,21 +411,6 @@ test(
                   before.inputs.filter((i) => i.id !== target).map((i) => i.id),
                   `${name}: other faces keep their places`,
                 );
-                // A2's confirmation opens on its detected box; B1's on the whole photo.
-                assert.equal(atR.crop!.faceId, a2!.id, `${name}: A2 is confirmed next`);
-                assert.ok(atR.crop!.zoom > 1, `${name}: A2's proposal is its detected face`);
-                await shot('mixed-a2-confirmation');
-                await operate(page.locator('.next-encode-ok'));
-                await page.waitForFunction(
-                  (id) =>
-                    (window as unknown as { __elmish: { model: Model } }).__elmish.model.Crop
-                      ?.faceId === id,
-                  b1!.id,
-                  { timeout: 120_000 },
-                );
-                const atB = await read(page);
-                assert.equal(atB.crop!.zoom, 1, `${name}: B1 (one face) proposes the whole photo`);
-                await operate(page.locator('.next-encode-ok'));
                 await page.waitForFunction(
                   (ids) => {
                     const m = (window as unknown as { __elmish: { model: Model } }).__elmish.model;
@@ -433,6 +422,7 @@ test(
                   { timeout: 120_000 },
                 );
                 const after = await read(page);
+                assert.equal(after.crop, null, `${name}: no crop prompt after OK`);
                 assert.deepEqual(
                   after.inputs.slice(at, at + 3).map((i) => [i.id, i.mode]),
                   [
@@ -450,8 +440,6 @@ test(
                   order: after.inputs.slice(at, at + 3),
                   rRequests,
                   rOperations: rOps,
-                  a2Zoom: atR.crop!.zoom,
-                  b1Zoom: atB.crop!.zoom,
                 });
                 record('mixed', rows);
               } finally {
@@ -493,6 +481,8 @@ test(
                 await shot('held-view');
                 // The explicit action makes it a photo candidate; it is still not picked by itself.
                 await operate(damaged.getByRole('button', { name: 'Use as photo' }));
+                // Now a photo is in the view: faces first asks the photo-setup decision; declined, it stays whole.
+                await declineSetup(page, operate);
                 await damaged.locator('[data-next-candidate="f0#0"]').waitFor();
                 assert.deepEqual((await read(page)).batch!.order, []);
                 await operate(batch.locator('[data-next-candidate="f1#0"]'));
@@ -575,6 +565,8 @@ test(
                     (p, i) => [`paste-${i}.jpg`, [...readFileSync(p)]] as const,
                   ),
                 );
+                // Photos in the view: faces first asks the photo-setup decision; declined, they stay whole.
+                await declineSetup(page, s.operate);
                 await page.locator('.next-batch').waitFor();
                 await shot('paste-view');
                 assert.deepEqual(s.errors, []);

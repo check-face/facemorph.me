@@ -35,13 +35,11 @@ export function scheduling(state: State): {
           (input) =>
             state.PreparingFaces.has(input.id) ||
             state.Crop?.faceId === input.id ||
-            state.CropQueue.some((crop) => crop.faceId === input.id) ||
-            state.PhotoChoice?.id === input.id,
+            state.CropQueue.some((crop) => crop.faceId === input.id),
         )
         .map((input) => input.id),
       blockMorph:
         state.PreparingFaces.size > 0 ||
-        state.PhotoChoice !== null ||
         state.Crop !== null ||
         state.CropQueue.length > 0 ||
         state.PhotoQueue.length > 0,

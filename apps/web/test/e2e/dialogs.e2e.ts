@@ -360,7 +360,7 @@ for (const [engine, type] of Object.entries(engines).filter(
         // Each modal traps Tab and closes by Escape and by actual browser Back, even when opened rapidly.
         for (const [trigger, label, closed] of [
           ['Crop photo', 'Encode an image', 'CropCancel'],
-          ['Pick face', 'Which face?', 'DismissDetected'],
+          ['Pick face', 'Choose faces', 'BatchCancel'],
           ['Offer face model', 'Download the face model?', 'GateCancel'],
         ]) {
           await hit(page.getByRole('button', { name: trigger!, exact: true }));
@@ -427,6 +427,8 @@ for (const [engine, type] of Object.entries(engines).filter(
         assert.notEqual(background, 'rgba(0, 0, 0, 0)');
         await page.keyboard.press('ArrowLeft');
         await last(page, 'CropPan');
+        // setup: the slider starts at its centre (0 degrees); from -45 a press at its centre is a real change.
+        await crop.getByRole('slider', { name: 'Fine rotation' }).press('Home');
         await operatedClick(page, crop.getByRole('slider', { name: 'Fine rotation' }), {
           step: 'dialogs/crop/fine-rotation',
           activation: 'range-input',
@@ -454,21 +456,23 @@ for (const [engine, type] of Object.entries(engines).filter(
         for (const n of [1, 2, 3, 20]) {
           await open(`faces=${n}`);
           await hit(page.getByRole('button', { name: 'Pick face', exact: true }));
-          const picker = page.getByRole('dialog', { name: 'Which face?' });
+          const picker = page.getByRole('dialog', { name: 'Choose faces' });
           await picker.waitFor();
-          assert.equal(await picker.getByRole('button', { name: /Choose face/ }).count(), n);
+          assert.equal(await picker.locator('[data-next-candidate]').count(), n);
+          await hit(picker.locator(`[data-next-candidate="f0#${n - 1}"]`));
+          await last(page, 'BatchPick');
           await shot(`picker-${n}`);
-          await hit(picker.getByRole('button', { name: `Choose face ${n}`, exact: true }));
-          await last(page, 'ChooseDetected');
+          await hit(picker.getByRole('button', { name: 'CANCEL', exact: true }));
+          await last(page, 'BatchCancel');
           await picker.waitFor({ state: 'detached' });
         }
         await hit(page.getByRole('button', { name: 'Pick face', exact: true }));
         await hit(
           page
-            .getByRole('dialog', { name: 'Which face?' })
-            .getByRole('button', { name: 'Cancel', exact: true }),
+            .getByRole('dialog', { name: 'Choose faces' })
+            .getByRole('button', { name: 'CANCEL', exact: true }),
         );
-        await last(page, 'DismissDetected');
+        await last(page, 'BatchCancel');
         for (const photo of [false, true]) {
           await hit(
             page.getByRole('button', {
