@@ -42,6 +42,11 @@
       "files": "^package\\.json$",
       "pattern": "github\\.com/facemorph-me/facemorph\\.me",
       "reason": "repository, homepage and bugs name the public source repository (with its packages/ directory) so npmjs.com resolves the README's relative links; a source reference, not a deployment hostname (fm-19eb)."
+    },
+    {
+      "files": "^PROVENANCE\\.json$",
+      "pattern": "\"repository\":\\s*\"facemorph-me/facemorph\\.me\"",
+      "reason": "build.repository names the public source repository whose CI run built the tarball (GITHUB_REPOSITORY, write-provenance.mjs); a source reference, not a deployment hostname (fm-oagi)."
     }
   ],
   "contentRules": [

@@ -165,6 +165,25 @@ describe('clean fixtures pass', () => {
     }
   });
 
+  test('PROVENANCE.json may name the CI repository; the hostname elsewhere in it is still a finding (fm-oagi)', () => {
+    const record = (build) => JSON.stringify({ schema: 'facemorph.package-provenance/2', build });
+    for (const profile of ['stylegan-js', 'browser-model-manager', 'cloudflare-model-host']) {
+      const ok = scan(profile, {
+        ...packageBase(),
+        'PROVENANCE.json': record({ repository: 'facemorph-me/facemorph.me', runId: '1' }),
+      });
+      assert.equal(ok.status, 0, `${profile}: ${ok.stdout}`);
+      const elsewhere = scan(profile, {
+        ...packageBase(),
+        'PROVENANCE.json': record({
+          repository: 'facemorph-me/facemorph.me',
+          origin: 'next.facemorph.me',
+        }),
+      });
+      assert.equal(elsewhere.status, 1, `${profile}: ${elsewhere.stdout}`);
+    }
+  });
+
   test('manager classifies its exact public defaults, schema ID and compatible storage identities', () => {
     const r = scan('browser-model-manager', { ...packageBase(), ...managerPublic });
     assert.equal(r.status, 0, r.stdout + r.stderr);
