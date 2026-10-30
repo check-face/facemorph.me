@@ -288,7 +288,12 @@ test('workflow: concurrency, one fixed group per target that never cancels a pub
     'a second push waits in the same group',
   );
   assert.doesNotMatch(WORKFLOW, /cancel-in-progress: true/);
-  assert.match(RELEASE, /^concurrency:\n {2}group: release\n {2}cancel-in-progress: false$/m);
+  // Releases share one group that never cancels; a dispatched rollback has its own, so it never waits behind a release
+  // (fm-3yqf drill 41009428913). Its deploy-<target> job group still serialises the publications themselves.
+  assert.match(
+    RELEASE,
+    /^concurrency:\n {2}group: \$\{\{ inputs\.site == 'rollback' && 'rollback' \|\| 'release' \}\}\n {2}cancel-in-progress: false$/m,
+  );
 });
 
 test('workflow: the guard runs before any network step; every deploy runs through deploy.mjs behind it', () => {
