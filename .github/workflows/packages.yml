@@ -61,10 +61,11 @@ jobs:
           done
           node scripts/packages/check-notices.mjs --profile model-conv-context --input packages/model-conv \
             --image model-conv-notices --report out/reports/notices-model-conv-context.json | tail -1
+      # A ./ path, because npm reads out/x.tgz as a GitHub repository.
       - name: npm publish --dry-run, each tarball
         run: |
           for t in out/*.tgz; do
-            npm publish "$t" --dry-run --access public 2>&1 | tee out/reports/publish-dry-run-"$(basename "$t" .tgz)".log
+            npm publish "./$t" --dry-run --access public 2>&1 | tee out/reports/publish-dry-run-"$(basename "$t" .tgz)".log
           done
       - if: always()
         uses: actions/upload-artifact@v4
@@ -98,5 +99,5 @@ jobs:
           if [ -z "$NODE_AUTH_TOKEN" ]; then echo "::error::NPM_TOKEN is not set; nothing was published"; exit 1; fi
           # Dependency order: the manager depends on the engine, the host on the manager.
           for p in stylegan-js browser-model-manager cloudflare-model-host; do
-            npm publish out/"$p"-*.tgz --provenance --access public
+            npm publish ./out/"$p"-*.tgz --provenance --access public
           done
