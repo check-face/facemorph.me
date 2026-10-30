@@ -115,7 +115,10 @@ export function VideoSlot(p: VideoSlotProps) {
   ) : null;
   return (
     <div className="next-video-slot">
-      {!showSlider && (
+      {/* The slider takes the video's place, above Use Slider, so ticking it never moves the picture (fm-2if3). */}
+      {showSlider ? (
+        slider
+      ) : (
         <video
           src={p.videoUrl}
           controls
@@ -123,6 +126,12 @@ export function VideoSlot(p: VideoSlotProps) {
           playsInline
           aria-label="Your morph"
           className="next-video"
+          // Its box is the morph's shape from the first paint (frames are square), so it never grows when the
+          // metadata arrives and pushes Use Slider away from where it was drawn.
+          style={{
+            aspectRatio:
+              size && size.url === p.videoUrl && size.w > 0 ? `${size.w} / ${size.h}` : '1 / 1',
+          }}
           onLoadedMetadata={(e) =>
             setSize({
               url: p.videoUrl,
@@ -148,7 +157,6 @@ export function VideoSlot(p: VideoSlotProps) {
           The scrub frames are not saved here. Your video is ready to play.
         </p>
       )}
-      {showSlider && slider}
       {p.disclosure && <p className="next-video-disclosure">{p.disclosure}</p>}
       <div className="next-actions">
         {/* The actual encoded resolution, read from the video itself (fm-fy2.9: 512 is never hidden). */}

@@ -1,6 +1,8 @@
 import {Sha256}from'../Assets/sha256.mjs';
 import {inspectImage}from'./image-header.mjs';
 import {FAST_NATIVE}from'./native/identity.mjs';
+import {createBrowserModelCache}from'../Assets/model-cache.mjs';
+import {bridgeGrant,BRIDGE_OWNER}from'../browser/bridge-grant.mjs';
 // The app's fast build of the same detector/predictor/warp (photo-native/build.py, fm-3xjm): identical landmarks and
 // prepared bytes (native/native.test.mjs), used when this browser validates it (SIMD and wasm exceptions); otherwise
 // the pinned manifest build runs as before.
@@ -14,6 +16,15 @@ async function digestHex(bytes){if(globalThis.crypto?.subtle)try{const d=new Uin
 function descriptor(value,base,max){if(!value||!Number.isSafeInteger(value.size)||value.size<1||value.size>max||!/^[0-9a-f]{64}$/.test(value.sha256))throw Error('Invalid photo asset descriptor.');const url=new URL(value.url,base);if(url.origin!==self.location.origin)throw Error('Photo model/runtime assets must use this site origin.');return{...value,url:url.href};}
 async function checkedSmall(a){const r=await fetch(a.url,{credentials:'omit'});if(!r.ok)throw Error(`Photo runtime download failed (${r.status}).`);const length=Number(r.headers.get('content-length'));if(length&&length>a.size)throw Error('Photo runtime exceeds pinned size.');const bytes=new Uint8Array(await r.arrayBuffer());if(bytes.length!==a.size||await digestHex(bytes)!==a.sha256)throw Error('Photo runtime integrity check failed.');return bytes;}
 function readError(m,result){if(result<0)throw Error(m.UTF8ToString(m._cf_error())||'Native alignment failed.');return result;}
+// One copy of the landmark model (fm-3xjm): photo setup saves it in the app's model cache under the person's approval,
+// so the detector reads that copy. The grant transfers nothing: a model still downloading for photo setup is waited for
+// (the manager holds a per-asset lock), and only a model the cache does not hold falls back to the detector's own file.
+async function managedModel(a,stats){
+ try{const cache=await createBrowserModelCache({timeoutMs:180000,maxConcurrent:1});
+  const handle=await cache.acquire(a,{grant:{...bridgeGrant(a,{purpose:'generate-and-encode'}),remainingBytes:0},owner:BRIDGE_OWNER});
+  const response=await handle.open();stats.modelCache='model-cache';return response;
+ }catch(error){stats.modelCacheMiss=String(error?.name||error?.message||error);return null;}
+}
 async function modelToHeap(m,a,progress,stats){
  let root,handle,writer,reader,downloaded=false,pointer=0,success=false;
  const filename=`landmarks-${a.sha256}.dat`;
@@ -21,8 +32,10 @@ async function modelToHeap(m,a,progress,stats){
  if(chunks!==undefined&&(!Array.isArray(chunks)||!chunks.length||chunks.length>16||chunks.reduce((n,p)=>n+p.size,0)!==a.size))throw Error('Invalid landmark chunk schedule.');
  const parts=chunks?.map(p=>descriptor(p,a.url,16*1024*1024));
  try{
-  let cachedResponse;
-  try{root=await navigator.storage.getDirectory();handle=await root.getFileHandle(filename);const file=await handle.getFile();if(file.size===a.size){cachedResponse=new Response(file.stream());stats.modelCache='opfs-hit';}}
+  let cachedResponse=await managedModel(a,stats);
+  // The detector's own copy from before is a second 100 MB of storage once the shared copy exists.
+  if(cachedResponse)try{await (await navigator.storage.getDirectory()).removeEntry(filename);}catch{}
+  else try{root=await navigator.storage.getDirectory();handle=await root.getFileHandle(filename);const file=await handle.getFile();if(file.size===a.size){cachedResponse=new Response(file.stream());stats.modelCache='opfs-hit';}}
   catch{}
   if(!cachedResponse){downloaded=true;stats.modelCache='http-or-network';
    try{root||=await navigator.storage.getDirectory();handle=await root.getFileHandle(filename,{create:true});writer=await handle.createSyncAccessHandle();writer.truncate(0);stats.modelCache='opfs-write';}catch{writer?.close();writer=null;}

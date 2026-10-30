@@ -63,6 +63,11 @@ const ALLOW: readonly { file: string; name: string; why: string }[] = [
   },
   {
     file: 'Next/photo/selection-worker.mjs',
+    name: 'model cache',
+    why: 'the face detector reads the landmark model photo setup saved through the browser model manager, under a grant that transfers nothing (fm-3xjm)',
+  },
+  {
+    file: 'Next/photo/selection-worker.mjs',
     name: 'OPFS model file',
     why: 'the face detector (dlib landmarks) caches its own pinned landmark model; detection is the photo proposal step, not the StyleGAN engine',
   },

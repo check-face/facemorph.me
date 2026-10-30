@@ -121,3 +121,11 @@
   border-bottom-style: solid;
   border-bottom-color: currentColor;
 }
+
+/* The row that holds these actions is a flex item, whose automatic minimum is its content: a long filename
+   (field-sizing: content) then widened it past the slot, scrolled the page sideways and, on phones, widened the
+   layout viewport. Let it shrink to its container so the filename ellipsises instead. */
+.next-actions:has(> .next-result-actions) {
+  min-width: 0;
+  max-width: 100%;
+}

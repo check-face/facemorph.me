@@ -1021,6 +1021,16 @@ test(
             })),
         ),
       );
+      // One download of the landmark model (fm-3xjm): photo setup saves it and the detector reads that copy, so no
+      // landmark file is completed twice across both sessions.
+      const landmarkFetches = server.log.filter(
+        (row) => landmarks.has(row.path) && !row.closedEarly && row.bytes > 0,
+      );
+      assert.equal(
+        new Set(landmarkFetches.map((row) => row.path)).size,
+        landmarkFetches.length,
+        'the landmark model is downloaded once',
+      );
       assert.deepEqual(
         warmRequests.filter((row) => row.hostClass !== 'app' && !detectorFirstUse.includes(row)),
         [],
