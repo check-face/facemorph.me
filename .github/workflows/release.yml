@@ -2,10 +2,11 @@ name: release
 # Push to verified live in about ten minutes (operator, 29 October 2026). The go/no-go is only what keeps next working
 # for visitors: check.yml on this commit and the journeys in Chromium and Firefox on this run's artifact (about four
 # minutes). Then the deploy, then the live check: the post-delivery check and a real first face on the live site; if
-# either fails, next goes straight back to the version this deploy replaced. Everything else (the engine numerics, the
-# paired CPU timing against the pinned control, the functional shards, the six cells and the phone pairs) runs in
-# qualify.yml once this run completes, so the next push never waits behind it: a failure there is fixed and rolled
-# forward (P0 on fm-jzuq, npm run release:local), never rolled back. No job stops another: every check runs to the end,
+# either fails, next goes straight back to the version this deploy replaced. Beside the go/no-go, the operated
+# functional suites this push can affect run on the artifact (fm-3yqf: scripts/ci/select-checks.mjs picks them from the
+# changed paths). The engine numerics, the paired CPU timing and the live cells, when the same selection asks for them,
+# and every suite on a full=true dispatch, run in qualify.yml once this run completes: a failure in either is fixed and
+# rolled forward (P0 on fm-jzuq, npm run release:local), never rolled back. No job stops another: every check runs to the end,
 # records its numbers, failure bundle and local repro command, and the report job lists every failure in one place.
 # qualify.yml and device.yml never block this workflow.
 on:
@@ -189,6 +190,106 @@ jobs:
         with:
           name: bundle-journeys-${{ matrix.browser }}-${{ matrix.set }}
           path: lane/
+          retention-days: 14
+
+  # ---- the checks this push needs, beside the go/no-go (fm-3yqf) -------------------------------------------------
+  # The changed paths since the previous main head pick the operated functional suites (scripts/ci/select-checks.mjs:
+  # an explicit, unit-tested path->suite map; an unknown path, a dispatch or no base selects every suite). They run on
+  # this run's artifact, one suite per hosted job in the Playwright image, while the journeys, the deploy and the live
+  # check go ahead: a failure here never stops the switch; it is fixed forward (P0 on fm-jzuq). qualify.yml uses the
+  # same selection for timing, the engine numerics and the live cells, and its full=true dispatch runs every suite.
+  select:
+    if: (inputs.site || 'candidate') == 'candidate'
+    name: checks this push needs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      functional: ${{ steps.select.outputs.functional }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the diff against the previous main head
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - id: select
+        env:
+          BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
+        run: |
+          node scripts/ci/select-checks.mjs --head "$GITHUB_SHA" --base "$BASE" | tee selection.json
+          node -e '
+            const r = JSON.parse(require("fs").readFileSync("selection.json", "utf8"));
+            const list = (a) => (a.length ? a.join(", ") : "none");
+            console.log(`### Checks this push needs (${r.full ? `everything: ${r.reason}` : r.reason})\n\nfunctional: ${list(r.functional)}\n\ntiming: ${list(r.timing)}; engine numerics: ${r.engine}; live cells: ${r.cells}\n\n<details><summary>paths</summary>\n\n${r.reasons.map((x) => `- ${x.path}: ${x.rule}`).join("\n")}\n</details>`);' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: selection
+          path: selection.json
+          retention-days: 30
+
+  functional:
+    needs: [build, select]
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.select.outputs.functional != '[]' && needs.select.outputs.functional != '' }}
+    name: functional ${{ matrix.suite }}
+    runs-on: ubuntu-latest
+    # Node 24 and the pinned Playwright's Chromium, Firefox and WebKit with their libraries.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(needs.select.outputs.functional || '[]') }}
+    env:
+      CHECK: functional:${{ matrix.suite }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: apt-get update -qq && apt-get install -y -qq unzip >/dev/null # fetch-control unzips the pinned control
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci && npm run build # the packages' entry points, and apps/web/dist for the check pages
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: artifact
+      - name: The artifact is the one built in this run
+        env:
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: |
+          got=$(node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; console.log(treeDigest('artifact/deploy-next'))")
+          echo "artifact digest $got (built: $DIGEST)"
+          test "$got" = "$DIGEST"
+      - uses: ./.github/actions/setup-runtime
+      - name: ${{ matrix.suite }} on this artifact
+        working-directory: apps/web
+        env:
+          FACEMORPH_DEPLOY_OUT: ${{ github.workspace }}/artifact # the suites serve its deploy-next/
+          FACEMORPH_REQUIRE_RUNTIME: '1'
+          GITHUB_TOKEN: ${{ github.token }}
+          HOME: /root # Firefox refuses a $HOME the container user does not own (runs 40860018900, 40863182995)
+          # face.many at the phone and desktop widths, at one, two, three and a strip of 30 faces (its full matrix is the
+          # layout owner's local run).
+          FACE_MANY_WIDTHS: 390,1280
+          FACE_MANY_COUNTS: 1,2,3,30
+        run: node --test --test-timeout=1500000 test/e2e/${{ matrix.suite }}.e2e.ts
+      - name: Record the failure
+        if: failure() || cancelled()
+        run: |
+          node scripts/ci/failures.mjs add --dir failures --check "$CHECK" --bundle "bundle-functional-${{ matrix.suite }}" \
+            --repro "$FETCH && cd apps/web && FACEMORPH_DEPLOY_OUT=/tmp/next-site-${{ github.run_id }} FACEMORPH_REQUIRE_RUNTIME=1 node --test test/e2e/${{ matrix.suite }}.e2e.ts"
+      - uses: actions/upload-artifact@v4
+        if: failure() || cancelled()
+        with:
+          name: failure-functional-${{ matrix.suite }}
+          path: failures/
+      - uses: actions/upload-artifact@v4
+        if: failure() || cancelled()
+        with:
+          name: bundle-functional-${{ matrix.suite }}
+          path: apps/web/test-results/
           retention-days: 14
 
   checked:
@@ -487,7 +588,9 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci
+      # The post-delivery check imports playwright: the first drill (run 41008326035) switched next in 31 s, then the
+      # check failed for want of Chromium.
+      - run: npm ci && npx playwright install chromium
       - name: Serve the previous version
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -500,7 +603,7 @@ jobs:
 
   # ---- one place for every failure ------------------------------------------------------------------------------
   report:
-    needs: [build, checked, journeys, gate, deploy, live, control, rollback]
+    needs: [build, checked, journeys, gate, deploy, live, control, rollback, select, functional]
     if: always()
     name: every failing check
     runs-on: ubuntu-latest
