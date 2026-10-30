@@ -25,3 +25,16 @@
 - Resources / failures: not_measured.
 - Evidence: tools/device-lab/out/20261030-150210-fm-ve6a-e2-mali, 150326-…-e2-control, 150449-…-e2-control, 150609-…-e2-mali (eris local).
 - Conclusion / next action: keep; desktop, iPhone and Adreno unchanged by construction. Samsung report stays pending with the operator.
+
+### 2026-10-30T15:38:00+10:00 — E2-DEPLOYED
+
+- Phase / status: deployed / route choice observed on live next
+- Round / experiment / correction: E2 / not_applicable
+- Hypothesis / decision: the deployed build (release on 5286d6c, includes 880557f) chooses the CPU route on the P30 with WebGPU enabled.
+- Identity: live https://next.facemorph.me; release run on 5286d6c passed go/no-go, deploy and the post-delivery check.
+- Context: P30 Pro phone-webgpu cell, LAB_ANY_ROUTE=1, live mode (real internet download), one run.
+- Boundary / samples: cold face 73 s (live download, not comparable with local runs), warm face 17 s; route "Ready · this device's CPU".
+- Correctness / workflow: lab marks live runs untested (no deployed-artifact attestation); cold-face journey 83.6 s over the local 70 s budget because of the live download.
+- Resources / failures: not_measured.
+- Evidence: tools/device-lab/out/20261030-153642-fm-ve6a-e2-live (eris local).
+- Conclusion / next action: deployed behaviour matches E2. Samsung report pending with the operator.
