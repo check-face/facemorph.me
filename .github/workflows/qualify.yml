@@ -78,8 +78,6 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble
       options: --ipc=host
-      env:
-        HOME: /root # Firefox refuses a $HOME the container user does not own
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -117,6 +115,10 @@ jobs:
           FACEMORPH_DEPLOY_OUT: ${{ github.workspace }}/artifact # the suites serve its deploy-next/
           FACEMORPH_REQUIRE_RUNTIME: '1'
           GITHUB_TOKEN: ${{ github.token }}
+          # Firefox refuses a $HOME the container user (root) does not own. The runner forces HOME=/github/home (owned
+          # by pwuser) on the container, overriding container env, so only a step's env reaches the browsers: every
+          # Firefox case failed to launch in runs 40860018900 and 40863182995 with HOME under container env.
+          HOME: /root
           # face.many's full matrix (45 widths x 8 counts, about 6 h) is the layout owner's local run; the release runs
           # every case at the phone and desktop widths the other cases use, at one, two, three and a strip of 30 faces
           # (the virtualised case keeps its 150; morph-intent covers 8, 64 and 150). Over an hour before (run 40657762294).

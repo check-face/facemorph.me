@@ -184,8 +184,37 @@ function scrollAsPerson(el: Element) {
   }
 }
 
-async function locate(page: Page, control: Locator, region: Region | undefined) {
+/** Waits, up to `ms`, until the control's box has held still for two frames with no finite animation or transition
+ * running on it or an ancestor: a person aims at a menu item once its menu has opened, not while it grows. A box
+ * measured mid-transition (a MUI menu scaling in, slowed by a loaded CPU) moves before the press lands, so the
+ * tap hits the item above (qualify run 40863182995, "Numeric seed"). A control that never settles is still pressed. */
+function settle(el: Element, ms: number) {
+  const moving = () =>
+    document.getAnimations().some((a) => {
+      const effect = a.effect;
+      if (a.playState !== 'running' || !(effect instanceof KeyframeEffect)) return false;
+      if (effect.getComputedTiming().iterations === Infinity) return false;
+      return effect.target instanceof Element && effect.target.contains(el);
+    });
+  return new Promise<void>((resolve) => {
+    const end = performance.now() + ms;
+    let last = '';
+    let still = 0;
+    const frame = () => {
+      const r = el.getBoundingClientRect();
+      const key = `${r.x},${r.y},${r.width},${r.height}`;
+      still = key === last && !moving() ? still + 1 : 0;
+      last = key;
+      if (still >= 2 || performance.now() > end) resolve();
+      else requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  });
+}
+
+async function locate(page: Page, control: Locator, region: Region | undefined, settleMs = 3000) {
   await control.evaluate(scrollAsPerson); // a fixed off-screen control stays off screen and fails on the viewport
+  await control.evaluate(settle, settleMs);
   const box = await control.boundingBox();
   if (!box || box.width <= 0 || box.height <= 0) return { problem: 'has no visible box' as const };
   const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
@@ -310,10 +339,10 @@ export async function operatedClick(
 ): Promise<StepRecord> {
   const { value: record, requests } = await watchRequests(page, log, step, async () => {
     const ok = (f: Awaited<ReturnType<typeof locate>>) => 'hit' in f && !!f.hit?.ok;
-    let found = await locate(page, control, region);
+    let found = await locate(page, control, region, settleMs);
     for (const end = Date.now() + settleMs; !ok(found) && Date.now() < end;) {
       await page.waitForTimeout(150);
-      found = await locate(page, control, region); // measured again: a control that moves is pressed where it is
+      found = await locate(page, control, region, settleMs); // measured again: a control that moves is pressed where it is
     }
     const box = 'box' in found ? found.box : undefined;
     const target = box ? { width: Math.round(box.width), height: Math.round(box.height) } : null;

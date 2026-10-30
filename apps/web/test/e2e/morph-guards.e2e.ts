@@ -47,7 +47,7 @@ const AT_MOST_768 = () => {
 
 test(
   'Morph status refusals and disclosures at visible positions, before any model request',
-  { timeout: 1_200_000 },
+  { timeout: 1_800_000 }, // 16 min beside the other shards on triton (150 and 129 faces typed one by one, twice)
   async (t) => {
     if (!existsSync(join(runtime, 'manifest.json'))) {
       const reason = `untested: no acquired runtime at ${runtime}; owner fm-fy2.9; run on the runtime lane`;
@@ -117,8 +117,22 @@ test(
           return { context, page, errors, models, operate };
         };
         type Session = Awaited<ReturnType<typeof open>>;
-        const tiles = (s: Session) => s.page.locator('section.next-face');
-        const field = (s: Session, i: number) => tiles(s).nth(i).locator('.next-field input');
+        // Over 96 faces the strip is virtualised (faces-mode.ts): only the tiles near the view are in the DOM, so a
+        // face is found by its own label (its Remove names it) and the count is the strip's, never the DOM's.
+        // Counting DOM tiles pressed Add face until the 20-minute timeout at 150 faces (qualify 40860018900).
+        const count = (s: Session) =>
+          s.page.evaluate(() => {
+            const strip = document.querySelector('[data-next-strip]');
+            return strip
+              ? Number(strip.getAttribute('data-next-face-count'))
+              : document.querySelectorAll('section.next-face').length;
+          });
+        const label = (i: number) =>
+          i === 0 ? 'Morph from' : i === 1 ? 'Morph to' : `Face ${i + 1}`;
+        const field = (s: Session, i: number) =>
+          s.page
+            .locator(`section.next-face:has(.next-face-close[aria-label="Remove ${label(i)}"])`)
+            .locator('.next-field input');
         const type = async (s: Session, i: number, value: string) => {
           await s.operate(field(s, i));
           await s.page.keyboard.press('Control+A');
@@ -134,10 +148,15 @@ test(
           await s.page.keyboard.press('Control+V');
           assert.equal(await field(s, i).inputValue(), value);
         };
+        // Each face is typed as it is added, as a person fills a long loop: the face just typed keeps its
+        // neighbour (the one Add face appends) rendered in a virtualised strip.
         const faces = async (s: Session, values: readonly string[]) => {
-          while ((await tiles(s).count()) < values.length)
-            await s.operate(s.page.getByRole('button', { name: 'Add face' }));
-          for (const [i, value] of values.entries()) await type(s, i, value);
+          for (const [i, value] of values.entries()) {
+            if ((await count(s)) <= i)
+              await s.operate(s.page.getByRole('button', { name: 'Add face' }));
+            await type(s, i, value);
+          }
+          assert.equal(await count(s), values.length, `${name}: ${values.length} faces`);
         };
         const status = (s: Session) => s.page.locator('.next-morph-slot .next-status');
         const morph = (s: Session) => s.operate(s.page.locator('.next-primary-action'));
@@ -291,7 +310,7 @@ test(
             'over-budget',
             /^This morph would need 4,128 frames, over the 4,096-frame limit for one morph\. Choose a shorter Length under More options to reduce it\. Your selected faces are kept\.$/,
           );
-          assert.equal(await tiles(s).count(), 129, `${name}: the selected faces are kept`);
+          assert.equal(await count(s), 129, `${name}: the selected faces are kept`);
           await s.context.close();
         }
         // No MP4 route: no WebCodecs and no FFmpeg codec in the manifest.
