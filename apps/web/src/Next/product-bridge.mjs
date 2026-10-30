@@ -65,10 +65,14 @@ function sameMorphExport(request,saved){
 }
 // Blend view slots and its result (fm-2kse) live beside the morph faces: their changes never touch the morph or the session.
 const blendOwned=id=>String(id).startsWith('blend-');
+// The faces of the morph now running (null when none runs). Releasing a face that is in neither it nor the finished
+// morph (a removal whose Undo window ends after a newer morph started) leaves both alone (fm-8w99).
+let morphInputs=null;
+const inMorph=id=>morphInputs?morphInputs.has(id):!project||(project.morph?.controls||[]).some(control=>control.visitId===id);
 export function invalidateFace(id){
  if(!blendOwned(id))arrivalRevision++;faceRevisions.set(id,(faceRevisions.get(id)||0)+1);
  faces.delete(id);exportFiles?.drop(id);const url=urls.get(id);if(url)URL.revokeObjectURL(url);urls.delete(id);
- if(!blendOwned(id))invalidateMorph();
+ if(!blendOwned(id)&&inMorph(id))invalidateMorph();
 }
 /** A blend slot seeded from a finished morph face starts as its copy: same latent, pixels and source, its own id.
  * Add to morph (fm-2kse) copies the blend result into a new morph face the same way: an ordinary latent face. */
@@ -449,6 +453,7 @@ export function subscribe(callback){listeners.add(callback);const report=({detai
 export async function execute(request,compute){
  if(active)throw Error('Another job is still stopping.');active=new AbortController();currentJob=request.jobId;closePhotoRun('completed');diagnostics.start(request.action,request.provider);reportStorage();
  const revisions=new Map(request.inputs.map(item=>[item.id,revisionOf(item.id)]));
+ if(request.action==='morph')morphInputs=new Set(request.inputs.map(item=>item.id));
  const exportOnly=request.action==='morph'&&sameMorphExport(request,retryMorphExport)?retryMorphExport:null;
  analytics.setJobContext(()=>({requested_route:request.provider||'auto',faces:jobCounts.facesTotal,frames:jobCounts.framesTotal,input_kind:analytics.inputKind(request.inputs),morph_kind:request.action==='morph'?project?.morph?.kind:undefined}));
  jobCounts.facesDone=0;jobCounts.facesTotal=request.action==='face'?1:request.inputs.length;jobCounts.framesDone=0;jobCounts.framesTotal=0;jobCounts.videoFramesDone=0;jobCounts.videoFramesTotal=0;
@@ -546,7 +551,7 @@ export async function execute(request,compute){
   rememberView(request);retainSession();
   diagnostics.finish('completed');return snapshot();
  }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');if(error.alignmentStats)analytics.operationResult?.('selection',error.alignmentStats.faceCount>1?'shown':'failed',undefined,{face_count:error.alignmentStats.faceCount===0?'zero':error.alignmentStats.faceCount===1?'one':error.alignmentStats.faceCount>1?'multiple':undefined});const choice=error.alignmentStats?.faceBoxes?.length>1&&revisionOf(request.target)===revisions.get(request.target)?await prepareFaceChoices(request.target,error.alignmentStats.faceBoxes,request.inputs.find(item=>item.id===request.target)?.file):null;return {...snapshot(''),errorMessage:choice?'':String(error?.message||'Generation failed. Your completed results are still available.'),refusal:error?.name==='AdmissionRefused'?{reasonKey:error.reasonKey,text:error.message,helpAnchor:error.helpAnchor}:undefined,photoChoices:choice,cropFace:!choice&&request.target&&request.inputs?.find(item=>item.id===request.target)?.file instanceof Blob&&error?.faceDetection===true?request.target:null};}
- finally{computeService?.setComputeAdmission?.(undefined);writer?.dispose();writer=null;active=null;if(wanted.size)void pumpDownloads();else if(!downloads.routeReady||!downloads.photoReady)void refreshInventory();}
+ finally{morphInputs=null;computeService?.setComputeAdmission?.(undefined);writer?.dispose();writer=null;active=null;if(wanted.size)void pumpDownloads();else if(!downloads.routeReady||!downloads.photoReady)void refreshInventory();}
 }
 export function cancel(){active?.abort();writer?.dispose();runtime?.cancel();}
 const kindOf=id=>id==='video'?'video':'image';
