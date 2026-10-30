@@ -50,7 +50,13 @@ export async function press(
     const hit = await control.evaluate(
       (el, [px, py]) => {
         (window as unknown as { __target: Element }).__target = el;
-        const at = document.elementFromPoint(px as number, py as number);
+        // boundingBox and the pointer/touch input are relative to the visual viewport; elementFromPoint takes layout
+        // coordinates. They differ once a phone page is zoomed (a double tap on a disabled control zooms it).
+        const vv = window.visualViewport;
+        const at = document.elementFromPoint(
+          (px as number) + (vv?.offsetLeft ?? 0),
+          (py as number) + (vv?.offsetTop ?? 0),
+        );
         return {
           ok: !!at && (el === at || el.contains(at)),
           at: at ? at.outerHTML.slice(0, 160) : null,

@@ -246,6 +246,9 @@ export function MorphSlot(p: MorphSlotProps) {
               ? 'Your morph is running. You can cancel beside its progress bar.'
               : '');
   const canMorph = reason === '';
+  // While the morph runs, "Creating morph…" and the progress under it say so; the running reason stays only for
+  // assistive technology, so the progress does not move down by a line at the press.
+  const reasonVisible = reason !== '' && !(morphActive && !p.pendingMorph);
   const cpu = p.route === 'cpu' || p.route === 'native-cpu';
   return (
     <div className="next-morph-slot">
@@ -259,68 +262,19 @@ export function MorphSlot(p: MorphSlotProps) {
         aria-describedby={reason ? 'next-morph-reason' : undefined}
         onClick={() => p.onRun('morph')}
       >
-        {p.pendingMorph ? 'Morph queued' : 'Create morph'}
+        {p.pendingMorph ? 'Morph queued' : morphActive ? 'Creating morph…' : 'Create morph'}
       </FancyButton>
-      <div className="next-actions next-generate">
-        {p.testingInvited && (
-          <Button
-            color="inherit"
-            variant="outlined"
-            disabled={p.busy}
-            onClick={() => p.onRun('faces')}
-          >
-            Generate faces
-          </Button>
-        )}
-        <Button
-          color="inherit"
-          variant="text"
-          aria-expanded={p.overflow}
-          aria-controls="next-overflow"
-          onClick={() => p.onOverflow(!p.overflow)}
-        >
-          More options
-        </Button>
-        <Button color="inherit" variant="text" onClick={p.onAddFace}>
-          Add face
-        </Button>
-        {p.busy && !morphActive && (
-          <Button
-            color="inherit"
-            variant="text"
-            disabled={p.stage === 'cancelling'}
-            onClick={p.onCancel}
-          >
-            Cancel
-          </Button>
-        )}
-      </div>
       {reason && (
-        <p id="next-morph-reason" className="next-morph-reason" role="status">
+        <p
+          id="next-morph-reason"
+          className={reasonVisible ? 'next-morph-reason' : 'next-morph-reason next-sr'}
+          role="status"
+        >
           {reason}
         </p>
       )}
-      {p.route !== '' && (
-        <p className="next-route-caption" data-next-route={p.route}>
-          {`Ready · ${cpu ? 'this device’s CPU' : `this device’s GPU (${p.route})`}.${p.rejected ? ` The ${p.rejected} route failed its device check on this device.` : ''}`}
-        </p>
-      )}
-      {p.overflow && (
-        <div id="next-overflow">
-          <Overflow {...p} custom={custom} />
-          {p.onBlend && (
-            <Button
-              color="inherit"
-              variant="outlined"
-              className="next-blend-open"
-              onClick={p.onBlend}
-            >
-              Blend faces
-            </Button>
-          )}
-        </div>
-      )}
-      {/* Status, progress and the measured time remaining live next to the action they describe. */}
+      {/* Status, progress, Cancel and the measured time remaining sit directly under Create morph, so a press visibly
+          starts something in the same view (fm-zgmn). .next-status keeps its min-height when idle: no jump. */}
       <div className="next-status" role="status" aria-live="polite">
         {p.busy && (
           <progress
@@ -357,6 +311,60 @@ export function MorphSlot(p: MorphSlotProps) {
         {p.busy && p.perFrame !== '' && <span className="next-remaining">{p.perFrame}</span>}
         {p.busy && p.remaining !== '' && <span className="next-remaining">{p.remaining}</span>}
       </div>
+      <div className="next-actions next-generate">
+        {p.testingInvited && (
+          <Button
+            color="inherit"
+            variant="outlined"
+            disabled={p.busy}
+            onClick={() => p.onRun('faces')}
+          >
+            Generate faces
+          </Button>
+        )}
+        <Button
+          color="inherit"
+          variant="text"
+          aria-expanded={p.overflow}
+          aria-controls="next-overflow"
+          onClick={() => p.onOverflow(!p.overflow)}
+        >
+          More options
+        </Button>
+        <Button color="inherit" variant="text" onClick={p.onAddFace}>
+          Add face
+        </Button>
+        {p.busy && !morphActive && (
+          <Button
+            color="inherit"
+            variant="text"
+            disabled={p.stage === 'cancelling'}
+            onClick={p.onCancel}
+          >
+            Cancel
+          </Button>
+        )}
+      </div>
+      {p.route !== '' && (
+        <p className="next-route-caption" data-next-route={p.route}>
+          {`Ready · ${cpu ? 'this device’s CPU' : `this device’s GPU (${p.route})`}.${p.rejected ? ` The ${p.rejected} route failed its device check on this device.` : ''}`}
+        </p>
+      )}
+      {p.overflow && (
+        <div id="next-overflow">
+          <Overflow {...p} custom={custom} />
+          {p.onBlend && (
+            <Button
+              color="inherit"
+              variant="outlined"
+              className="next-blend-open"
+              onClick={p.onBlend}
+            >
+              Blend faces
+            </Button>
+          )}
+        </div>
+      )}
       {/* The slow-video warning names the measured estimate, never blocks, and can be dismissed (U-12). */}
       {p.warning && (
         <div className="next-slow-warning box" role="note">

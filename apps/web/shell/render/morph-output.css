@@ -22,3 +22,8 @@
 .next-morph-reason {
   font-size: 0.9rem;
 }
+
+/* "Create morph" and "Creating morph…" take the same width, so the press changes the label, not the layout (fm-zgmn). */
+.next-morph-slot .next-primary-action {
+  min-width: 15rem;
+}
