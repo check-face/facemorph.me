@@ -178,10 +178,9 @@ export async function loadOrtWebGpuGenerator(o: {
         const suffixModel = await readLocal(reader, bundle.suffix);
         o.progress?.('gpu-suffix-loading');
         return await runCompute(reader, async (): Promise<SynthesisBackend> => {
-          const suffix = await ort!.InferenceSession.create(suffixModel, {
-            ...options,
-            executionProviders: [{ name: 'webgpu', device: d }],
-          });
+          // The prefix session's device serves the suffix too: ORT 1.31's native EP registers an explicitly passed
+          // device as a second device context, and buffers wrapped for one cannot bind to the other (fm-qeh).
+          const suffix = await ort!.InferenceSession.create(suffixModel, options);
           sessions.push(suffix);
           if (ort!.env.webgpu!.device !== d) throw Error('GPU sessions use different devices.');
           const O = ort!;
