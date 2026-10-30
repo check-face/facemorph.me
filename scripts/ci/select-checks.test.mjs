@@ -118,6 +118,36 @@ test('result and Save/Share code selects the result suites, debug-reporting incl
   assert.deepEqual(r.timing, []);
 });
 
+test("MossyFalcon's paths select result-actions and debug-reporting (fm-7u7z)", () => {
+  for (const path of [
+    'apps/web/shell/render/ResultActions.tsx',
+    'apps/web/shell/render/FaceTile.tsx',
+    'apps/web/shell/render/VideoSlot.tsx',
+    'apps/web/shell/render/BlendView.tsx',
+    'apps/web/src/contracts/prepared-file-cache.ts',
+    'apps/web/src/contracts/export-identity.ts',
+    'apps/web/src/media/export-policy.ts',
+    'apps/web/src/Next/export-files.mjs',
+    'apps/web/src/Next/image-encoder.mjs',
+    'apps/web/src/Next/recovery-metadata.mjs',
+    'apps/web/src/Next/video-worker.mjs',
+    'apps/web/shell/facade/bridge.ts',
+  ])
+    assert.ok(selectChecks([path]).functional.includes('result-actions'), path);
+  for (const path of [
+    'apps/web/src/Next/reporting.mjs',
+    'apps/web/src/Next/usage-stats.mjs',
+    'apps/web/src/Next/analytics.mjs',
+    'apps/web/src/consent/requests.ts',
+    'apps/web/src/analytics/usage-stats.ts',
+    'apps/web/shell/render/StoredData.tsx',
+    'apps/web/shell/render/Support.tsx',
+    'apps/web/shell/render/Dialogs.tsx',
+    'apps/web/shell/render/help.ts',
+  ])
+    assert.ok(selectChecks([path]).functional.includes('debug-reporting'), path);
+});
+
 test('photo code adds photo timing; morph scheduling adds morph timing', () => {
   assert.deepEqual(selectChecks(['apps/web/src/Next/photo/crop.mjs']).timing, ['photo']);
   assert.deepEqual(selectChecks(['apps/web/src/controller/reducers/schedule.ts']).timing, [
@@ -162,8 +192,8 @@ test('CI workflows and tooling select nothing (dispatch qualify.yml full=true to
 });
 
 test('other product modules select every suite; the browser runtime selects everything', () => {
-  assert.deepEqual(selectChecks(['apps/web/src/Next/recovery-metadata.mjs']).functional, SUITES);
-  assert.equal(selectChecks(['apps/web/src/Next/recovery-metadata.mjs']).timing.length, 0);
+  assert.deepEqual(selectChecks(['apps/web/src/Next/media.mjs']).functional, SUITES);
+  assert.equal(selectChecks(['apps/web/src/Next/media.mjs']).timing.length, 0);
   assert.equal(selectChecks(['apps/web/src/Next/browser/runtime.mjs']).full, true);
 });
 

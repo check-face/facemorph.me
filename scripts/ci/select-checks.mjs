@@ -162,7 +162,7 @@ export const RULES = [
       `${C}/reducers/photo.ts`,
       `${C}/geometry.ts`,
     ],
-    functional: PHOTO,
+    functional: [...PHOTO, 'result-actions'],
     timing: ['photo'],
   },
   {
@@ -175,22 +175,35 @@ export const RULES = [
     ],
     functional: ['batch', 'blend', 'face-many', 'still-entry'],
   },
+  { name: 'blend styles', paths: [`${R}/blend.css`], functional: ['blend'] },
   {
     name: 'blend',
     paths: [
       `${R}/BlendView.tsx`,
-      `${R}/blend.css`,
       `${W}/shell/blend-route.ts`,
       `${C}/blend.ts`,
       `${C}/reducers/blend.ts`,
     ],
-    functional: ['blend'],
+    functional: ['blend', 'result-actions'],
   },
   {
     name: 'morph scheduling',
     paths: [`${C}/reducers/jobs.ts`, `${C}/reducers/schedule.ts`, `${W}/src/Next/morph-frames.mjs`],
     functional: MORPH,
     timing: ['morph'],
+  },
+  // The Save/Share row's file preparation (result-actions; paths from MossyFalcon, fm-7u7z).
+  {
+    name: 'export and recovery files',
+    paths: [
+      `${W}/src/Next/export-files.mjs`,
+      `${W}/src/Next/recovery-metadata.mjs`,
+      `${W}/src/Next/video-worker.mjs`,
+      `${W}/src/contracts/prepared-file-cache.ts`,
+      `${W}/src/contracts/export-identity*`,
+      `${W}/src/media/export-policy.ts`,
+    ],
+    functional: ['morph-output', 'result-actions'],
   },
   {
     name: 'morph view and result',
@@ -229,7 +242,7 @@ export const RULES = [
       `${C}/reducers/undo.ts`,
       `${W}/src/Next/name-results.mjs`,
     ],
-    functional: FACES,
+    functional: [...FACES, 'result-actions'],
   },
   {
     name: 'dialogs and help',
@@ -262,13 +275,16 @@ export const RULES = [
       `${C}/admission.ts`,
       `${C}/reducers/gate.ts`,
     ],
-    functional: CONSENT,
+    functional: [...CONSENT, 'debug-reporting'],
   },
   {
     name: 'diagnostics and usage',
     paths: [
       `${W}/src/analytics/**`,
       `${W}/src/Next/analytics.mjs`,
+      `${W}/src/Next/reporting.mjs`,
+      `${W}/src/Next/usage-stats.mjs`,
+      `${W}/src/Next/logging*.mjs`,
       `${W}/shell/facade/usage-stats.ts`,
     ],
     functional: ['debug-reporting', 'dialogs'],

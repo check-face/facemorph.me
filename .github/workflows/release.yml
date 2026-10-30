@@ -50,8 +50,11 @@ defaults:
 permissions:
   contents: read
   actions: read # site=live downloads the named run's artifact; the report links each failure's artifact
+# A dispatched rollback has its own group: in the release group it waited 7.5 min behind a push's release (drill run
+# 41009428913), and a newer push's pending run would have replaced it. Its job still queues behind a deploy in progress
+# on the same target (deploy-<target>), so two publications never overlap.
 concurrency:
-  group: release
+  group: ${{ inputs.site == 'rollback' && 'rollback' || 'release' }}
   cancel-in-progress: false
 env:
   ARTIFACT: next-site-${{ github.sha }}
@@ -212,11 +215,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      # The base is the head of the latest earlier green release push: a release whose checks failed (or that never
+      # ran) leaves its changes in the next diff, so its suites run again until they pass.
       - id: select
         env:
-          BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          node scripts/ci/select-checks.mjs --head "$GITHUB_SHA" --base "$BASE" | tee selection.json
+          base=''
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            base=$(gh run list -R "$GITHUB_REPOSITORY" -w release.yml -b main -e push -s success -L 1 --json headSha --jq '.[0].headSha // ""')
+          fi
+          echo "base: ${base:-none (everything)}"
+          node scripts/ci/select-checks.mjs --head "$GITHUB_SHA" --base "$base" | tee selection.json
           node -e '
             const r = JSON.parse(require("fs").readFileSync("selection.json", "utf8"));
             const list = (a) => (a.length ? a.join(", ") : "none");
@@ -588,13 +598,14 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      # The post-delivery check imports playwright: the first drill (run 41008326035) switched next in 31 s, then the
-      # check failed for want of Chromium.
-      - run: npm ci && npx playwright install chromium
+      - run: npm ci
       - name: Serve the previous version
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: node scripts/hosting/deploy.mjs rollback --target "$TARGET" --version '${{ inputs.rollback_version || needs.deploy.outputs.previous }}' $PUBLISH | tee -a "$GITHUB_STEP_SUMMARY"
+      # After the switch: the post-delivery check imports playwright (the first drill, run 41008326035, switched next in
+      # 31 s, then the check failed for want of Chromium).
+      - run: npx playwright install chromium
       - name: The site works for visitors again
         if: (inputs.publish || github.event_name == 'push')
         run: |

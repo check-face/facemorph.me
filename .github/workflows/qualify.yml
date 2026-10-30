@@ -5,6 +5,9 @@ name: qualify
 # minutes) never waits behind it. One run at a time; a newer pending run replaces an older one, so it always qualifies
 # the newest build. A failure here is fixed and rolled forward (P0 on fm-jzuq, npm run release:local), never rolled
 # back. No job stops another; the report job lists every failure in one place.
+# Selection (fm-3yqf): the release run's own scripts/ci/select-checks.mjs result (its 'selection' artifact) decides which
+# of the engine numerics, the timing segments and the live cells run; the functional suites it selects already ran in
+# that release. A dispatch with full=true runs everything, every functional suite included (before production promotion).
 on:
   workflow_run:
     workflows: [release]
@@ -17,6 +20,10 @@ on:
       commit:
         description: Full commit SHA that run built
         required: true
+      full:
+        description: Every check, every functional suite included, whatever the change selected
+        type: boolean
+        default: false
 defaults:
   run:
     shell: bash
@@ -42,6 +49,12 @@ jobs:
       digest: ${{ steps.meta.outputs.digest }}
       runtime_sha: ${{ steps.meta.outputs.runtime_sha }}
       live: ${{ steps.meta.outputs.live }}
+      functional: ${{ steps.select.outputs.functional }}
+      timing: ${{ steps.select.outputs.timing }}
+      timing_csv: ${{ steps.select.outputs.timing_csv }}
+      timing_matrix: ${{ steps.select.outputs.timing_matrix }}
+      engine: ${{ steps.select.outputs.engine }}
+      cells: ${{ steps.select.outputs.cells }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -65,8 +78,35 @@ jobs:
             --jq '[.jobs[] | select(.name == "deploy" or (.name | startswith("next works for visitors"))) | .conclusion] | length == 2 and all(. == "success")')
           printf 'digest=%s\nruntime_sha=%s\nlive=%s\n' "$digest" "$runtime" "$live" | tee -a "$GITHUB_OUTPUT"
           echo "Release run $RUN, ${COMMIT::7}: artifact $digest; live on next: $live" >> "$GITHUB_STEP_SUMMARY"
+      # The release run's selection; full=true, or a release that recorded none, selects everything.
+      - id: select
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FULL: ${{ inputs.full == true }}
+        run: |
+          if [ "$FULL" = true ] || ! gh run download "$RUN" -R "$GITHUB_REPOSITORY" -n selection -D sel 2>/dev/null; then
+            node scripts/ci/select-checks.mjs --full > sel.json
+          else
+            cp sel/selection.json sel.json
+          fi
+          node -e '
+            const r = JSON.parse(require("fs").readFileSync("sel.json", "utf8"));
+            const cpus = { face: "0-3", morph: "4-7", photo: "8-11" };
+            const out = {
+              functional: process.env.FULL, // the release ran the suites it selected; only a full=true dispatch runs them all here
+              timing: JSON.stringify(r.timing),
+              timing_csv: r.timing.join(","),
+              timing_matrix: JSON.stringify({ include: r.timing.map((segment) => ({ segment, cpus: cpus[segment] })) }),
+              engine: String(r.engine),
+              cells: String(r.cells),
+            };
+            for (const [k, v] of Object.entries(out)) require("fs").appendFileSync(process.env.GITHUB_OUTPUT, `${k}=${v}\n`);
+            console.log(JSON.stringify(out));
+            const list = (a) => (a.length ? a.join(", ") : "none");
+            require("fs").appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\nSelected (${r.full ? "everything: " + r.reason : r.reason}): every functional suite here: ${out.functional}; timing: ${list(r.timing)}; engine numerics: ${r.engine}; live cells: ${r.cells}\n`);'
 
   functional:
+    if: needs.meta.outputs.functional == 'true'
     # On triton, in the Playwright image (triton's Ubuntu 20.04 cannot run the browsers natively): separate machines
     # from eris, so the suites run beside the timing jobs instead of after them, three files at a time.
     needs: meta
@@ -85,7 +125,6 @@ jobs:
         shard: [1, 2, 3, 4]
     env:
       CHECK: functional:${{ matrix.shard }}
-      OPERATED: consent-requests dialogs encoder-setup morph-intent morph-guards morph-output morph-progress tiles tooltip-hits blend debug-reporting result-actions
     steps:
       - uses: actions/checkout@v4
         with:
@@ -126,13 +165,12 @@ jobs:
           FACE_MANY_COUNTS: 1,2,3,30
         run: |
           files=$(node --input-type=module -e "
-            import { VERIFY_FUNCTIONAL as m } from './test/verify/cases/verify-functional.ts';
-            const extra = process.env.OPERATED.split(' ').map((f) => f + '.e2e.ts');
+            import { SUITES } from '../../scripts/ci/select-checks.mjs'; // the manifest's and the operated suites
             // The longest suites are dealt first, one to a shard, so no two of them share a shard's hour: face-many and
             // morph-output together took shard 1 to 35 min (run 41002185600).
             const heavy = ['face-many', 'morph-output', 'crop-acceptance', 'blend', 'debug-reporting'].map((f) => f + '.e2e.ts');
             const rank = (f) => (heavy.includes(f) ? heavy.indexOf(f) : heavy.length);
-            const all = [...new Set([...m.cases.map((c) => c.test.file), ...extra])].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+            const all = SUITES.map((f) => f + '.e2e.ts').sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
             console.log(all.filter((_, i) => i % 4 === ${{ matrix.shard }} - 1).map((f) => 'test/e2e/' + f).join(' '));")
           echo "shard ${{ matrix.shard }}: $files"
           node --test --test-concurrency=3 --test-timeout=2400000 $files
@@ -155,6 +193,7 @@ jobs:
 
   engine:
     needs: meta
+    if: needs.meta.outputs.engine == 'true'
     name: engine numerics on the verified runtime (full31, CPU and browser routes)
     # Real hardware: the browser routes need eris's memory (a 16 GB hosted runner's in-memory storage quota cannot hold
     # the 1.1 GB encoder: QuotaExceededError in run 40488827815) and the WebGPU test needs the device-lab runner's GPU
@@ -206,6 +245,7 @@ jobs:
 
   timing:
     needs: meta
+    if: needs.meta.outputs.timing != '[]'
     name: timing ${{ matrix.segment }}
     # One job per segment: three alternating pairs, control and build back to back on the same machine, then more pairs
     # until the stop rule decides (scripts/verify/not-worse). Outside the go/no-go
@@ -216,11 +256,7 @@ jobs:
     timeout-minutes: 90
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - { segment: face, cpus: 0-3 }
-          - { segment: morph, cpus: 4-7 }
-          - { segment: photo, cpus: 8-11 }
+      matrix: ${{ fromJSON(needs.meta.outputs.timing_matrix) }} # the selected segments, each on its own four cores
     steps:
       - uses: actions/checkout@v4
         with:
@@ -270,7 +306,7 @@ jobs:
 
   timing-gate:
     needs: [meta, timing]
-    if: ${{ !cancelled() && needs.meta.result == 'success' }}
+    if: ${{ !cancelled() && needs.meta.result == 'success' && needs.meta.outputs.timing != '[]' }}
     name: paired timing verdict against the pinned control
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -289,9 +325,11 @@ jobs:
           pattern: timing-*
           path: timing
       - id: verdict
+        env:
+          EXPECT: ${{ needs.meta.outputs.timing_csv }}
         run: |
           set +e
-          node scripts/verify/not-worse/median-check.mjs timing --expect face,morph,photo --threshold 0.15 \
+          node scripts/verify/not-worse/median-check.mjs timing --expect "$EXPECT" --threshold 0.15 \
             --json timing-verdict.json --github-output "$GITHUB_OUTPUT" | tee -a "$GITHUB_STEP_SUMMARY" timing-table.txt
           code=${PIPESTATUS[0]}
           set -e
@@ -369,7 +407,7 @@ jobs:
           retention-days: 14
 
   timing-final:
-    needs: [timing-gate, timing-more]
+    needs: [meta, timing-gate, timing-more]
     if: ${{ !cancelled() && needs.timing-gate.outputs.verdict == 'more' }}
     name: paired timing verdict after the second wave
     runs-on: ubuntu-latest
@@ -385,8 +423,10 @@ jobs:
         with:
           pattern: timing-*
           path: timing
-      - run: |
-          node scripts/verify/not-worse/median-check.mjs timing --expect face,morph,photo --threshold 0.15 --json timing-verdict.json \
+      - env:
+          EXPECT: ${{ needs.meta.outputs.timing_csv }}
+        run: |
+          node scripts/verify/not-worse/median-check.mjs timing --expect "$EXPECT" --threshold 0.15 --json timing-verdict.json \
             | tee -a "$GITHUB_STEP_SUMMARY" timing-table.txt
       - name: Record the failure
         if: failure() || cancelled()
@@ -408,7 +448,7 @@ jobs:
   verify:
     # After the timing jobs, which measure on eris's cores: a browser run beside them would skew both.
     needs: [meta, timing-gate, timing-final]
-    if: ${{ !cancelled() && needs.meta.outputs.live == 'true' }}
+    if: ${{ !cancelled() && needs.meta.outputs.live == 'true' && needs.meta.outputs.cells == 'true' }}
     name: the six cells and the phone pairs against the live site
     runs-on: [self-hosted, device-lab]
     timeout-minutes: 120
