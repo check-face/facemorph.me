@@ -11,17 +11,16 @@ const RENAMED: Readonly<Record<string, string>> = {
   cropPhotoReported: 'cropPhoto',
   selectPhotoReported: 'selectPhoto',
   pan: 'panCrop',
-  zoomTo: 'zoomCrop',
   rotate: 'rotateCrop',
   rect: 'cropRect',
-  frame: 'cropFrame',
   resizeViewport: 'resizeCrop',
 };
 const recorded = JSON.parse(
   readFileSync(new URL('../fixtures/facade/product-fs-imports.json', import.meta.url), 'utf8'),
 ) as { imports: { module: string; name: string }[] };
 
-const RETIRED = new Set(['rememberSourcePhoto', 'sourcePhotoUrl']); // fm-25um: hold-to-compare removed.
+// fm-25um: hold-to-compare removed. fm-k09b: the pan/zoom square became the stencil editor (no zoom, no frame).
+const RETIRED = new Set(['rememberSourcePhoto', 'sourcePhotoUrl', 'zoomTo', 'frame']);
 test('every retained Product.fs import has its typed facade export; retired comparison helpers are absent', (t) => {
   const exports = facade as unknown as Record<string, unknown>;
   const missing: string[] = [];

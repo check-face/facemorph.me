@@ -70,7 +70,8 @@ test('Cancel setup cancels its acquisition only and retains local source, crop a
   assert.deepEqual(cancelled.effects, [{ type: 'cancelDownloadSetup' }]);
   assert.equal(cancelled.state.EncoderSetup, 'cancelled');
   assert.deepEqual([...cancelled.state.DownloadConsent], ['route', 'independent']);
-  assert.equal(cancelled.state.Crop, owned.Crop);
+  // The crop stays open with its source; its faces-first detection did not run (fm-k09b), a neutral note.
+  assert.deepEqual(cancelled.state.Crop, { ...owned.Crop, detect: 'not-run' });
   assert.equal(cancelled.state.Crop?.file, owned.Crop?.file);
   assert.equal(cancelled.state.Inputs, owned.Inputs);
   assert.equal(cancelled.state.Faces, owned.Faces);

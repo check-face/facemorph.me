@@ -9,10 +9,9 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
-import { cropFrame } from '../facade/helpers.ts';
-import Logo from '../../src/public/logo.svg?react';
+import { CropConfirmation, CropEditor } from './CropEditor.tsx';
 import { msg, type Msg } from '../../src/controller/msg.ts';
-import type { CropChoice, State } from '../../src/controller/state.ts';
+import type { State } from '../../src/controller/state.ts';
 import { downloadDecision, type DownloadBundle } from '../../src/controller/download-decision.ts';
 import { codecMissingBytes } from '../../src/controller/derived.ts';
 
@@ -381,107 +380,6 @@ export function DetectedDialog({ state, dispatch }: { state: State; dispatch: Di
   );
 }
 
-function CropEditor({ crop, dispatch }: { crop: CropChoice; dispatch: Dispatch }) {
-  const area = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ x: number; y: number } | null>(null);
-  useLayoutEffect(() => {
-    const element = area.current;
-    if (!element) return;
-    element.focus();
-    const measure = () => dispatch(msg('CropViewport', element.getBoundingClientRect().width));
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [dispatch]);
-  const placed = cropFrame(crop.view, crop.view.viewport);
-  return (
-    <div className="next-crop-panel box">
-      <div className="next-topline">
-        <h2>Crop your image</h2>
-        <Button onClick={() => dispatch(msg('CropCancel'))}>CANCEL</Button>
-      </div>
-      <p>
-        Drag to move, or use the arrow keys. Zoom to fill the square. Only this square is processed.
-      </p>
-      <div
-        ref={area}
-        className="next-crop-view"
-        aria-label="Crop area"
-        role="application"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          const step = e.shiftKey ? 320 : 40;
-          const pan: Record<string, readonly [number, number]> = {
-            ArrowLeft: [step, 0],
-            ArrowRight: [-step, 0],
-            ArrowUp: [0, step],
-            ArrowDown: [0, -step],
-          };
-          const delta = pan[e.key];
-          if (delta) {
-            e.preventDefault();
-            dispatch(msg('CropPan', ...delta));
-          } else if (['+', '=', '-', '_'].includes(e.key)) {
-            e.preventDefault();
-            dispatch(msg('CropZoom', crop.view.zoom + (['+', '='].includes(e.key) ? 0.25 : -0.25)));
-          }
-        }}
-        onPointerDown={(e) => {
-          drag.current = { x: e.clientX, y: e.clientY };
-          e.currentTarget.setPointerCapture(e.pointerId);
-        }}
-        onPointerMove={(e) => {
-          const from = drag.current;
-          if (from) {
-            drag.current = { x: e.clientX, y: e.clientY };
-            dispatch(msg('CropPan', e.clientX - from.x, e.clientY - from.y));
-          }
-        }}
-        onPointerUp={() => {
-          drag.current = null;
-        }}
-        onPointerCancel={() => {
-          drag.current = null;
-        }}
-      >
-        <img
-          src={crop.url}
-          alt="Photo being cropped"
-          className="next-crop-image"
-          draggable={false}
-          style={{
-            width: placed.width,
-            height: placed.height,
-            left: placed.x,
-            top: placed.y,
-            transformOrigin: `${placed.originX}px ${placed.originY}px`,
-            transform: `rotate(${placed.rotation}deg)`,
-          }}
-        />
-      </div>
-      <label className="next-crop-zoom">
-        <span>Zoom</span>
-        <input
-          type="range"
-          min={1}
-          max={8}
-          step={0.1}
-          aria-label="Zoom"
-          value={crop.view.zoom}
-          onChange={(e) => dispatch(msg('CropZoom', Number(e.target.value)))}
-        />
-      </label>
-      <div className="next-actions">
-        <Button onClick={() => dispatch(msg('CropRotate'))}>Rotate</Button>
-        <Button variant="contained" onClick={() => dispatch(msg('CropUse'))}>
-          Use Crop
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export function CropDialog({ state, dispatch }: { state: State; dispatch: Dispatch }) {
   const crop = state.Crop;
   // Fresh photos arrive from the face card; this modal only confirms or adjusts their crop.
@@ -497,67 +395,16 @@ export function CropDialog({ state, dispatch }: { state: State; dispatch: Dispat
       close={close}
     >
       {crop.previousView ? (
-        <CropEditor crop={crop} dispatch={dispatch} />
+        <CropEditor url={crop.url} view={crop.view} dispatch={dispatch} />
       ) : (
-        <div className="next-encode-panel next-encode-confirmation">
-          <header className="next-encode-header">
-            <h2>Encode an image</h2>
-            <Logo aria-label="FaceMorph logo" />
-          </header>
-          <CropPreview crop={crop} />
-          <Button className="next-encode-adjust" onClick={() => dispatch(msg('CropAdjust'))}>
-            ADJUST CROP
-          </Button>
-          <p className="next-encode-explanation">
-            Encoding recreates the face; details may change.
-          </p>
-          <footer className="next-encode-footer">
-            <Button className="next-encode-cancel" onClick={close}>
-              CANCEL
-            </Button>
-            <Button
-              className="next-encode-ok"
-              variant="contained"
-              onClick={() => dispatch(msg('CropAccept'))}
-            >
-              OK
-            </Button>
-          </footer>
-        </div>
+        <CropConfirmation
+          url={crop.url}
+          view={crop.view}
+          detect={crop.detect}
+          dispatch={dispatch}
+        />
       )}
     </Modal>
-  );
-}
-
-function CropPreview({ crop }: { crop: CropChoice }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(300);
-  useLayoutEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-    const measure = () => setWidth(element.getBoundingClientRect().width);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  const placed = cropFrame(crop.view, width);
-  return (
-    <div ref={ref} className="next-encode-preview" aria-label="Confirmed crop preview">
-      <img
-        src={crop.url}
-        alt="Proposed face crop"
-        draggable={false}
-        style={{
-          width: placed.width,
-          height: placed.height,
-          left: placed.x,
-          top: placed.y,
-          transformOrigin: `${placed.originX}px ${placed.originY}px`,
-          transform: `rotate(${placed.rotation}deg)`,
-        }}
-      />
-    </div>
   );
 }
 

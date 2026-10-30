@@ -21,7 +21,7 @@ import { unchanged, type Effect, type Transition } from '../effects.ts';
 import { admitTo, refusal, type AdmissionFacts } from '../admission.ts';
 import { schedule } from './schedule.ts';
 import { hold } from './photo.ts';
-import { zoomCrop } from '../geometry.ts';
+import { alignCrop } from '../geometry.ts';
 import type { CropView } from '../msg.ts';
 
 /** A detected face, as fractions of the photo. */
@@ -76,12 +76,14 @@ export interface BatchState {
 
 /** A detected box as the crop view's proposal (zoom and centre in preview pixels), inside the photo. */
 export function proposedView(view: CropView, box: BatchBox): CropView {
-  const side = Math.min(view.previewWidth, view.previewHeight);
-  const size = Math.min(box.width * view.previewWidth, box.height * view.previewHeight);
-  if (!(size > 0)) return view;
-  const offsetX = box.x * view.previewWidth + size / 2 - view.previewWidth / 2;
-  const offsetY = box.y * view.previewHeight + size / 2 - view.previewHeight / 2;
-  return zoomCrop({ ...view, offsetX, offsetY }, side / size);
+  const side = Math.min(box.width * view.previewWidth, box.height * view.previewHeight);
+  if (!(side > 0)) return view;
+  return alignCrop(view, {
+    cx: (box.x + box.width / 2) * view.previewWidth,
+    cy: (box.y + box.height / 2) * view.previewHeight,
+    side,
+    rotation: 0,
+  });
 }
 
 export interface BatchFacts extends AdmissionFacts {
@@ -384,14 +386,18 @@ export function batch(message: Msg, state: State, facts: BatchFacts = {}): Trans
       return staged(state, open, id, result);
     }
     case 'BatchDetected': {
-      const [token, id, boxes] = message.args;
+      const [token, id, faces] = message.args;
       if (!open || open.token !== token) return unchanged(state);
+      const boxes =
+        faces && faces.length > 1
+          ? faces.map(({ x, y, width, height }) => ({ x, y, width, height }))
+          : [];
       const group = open.groups.find((g) => g.id === id);
       if (!group || group.detection !== 'running') return unchanged(state);
       const next = replaceGroup(open, id, (g) => ({
         ...g,
         detection: 'done',
-        boxes: boxes ?? [],
+        boxes,
       }));
       return unchanged({ ...state, Batch: next });
     }

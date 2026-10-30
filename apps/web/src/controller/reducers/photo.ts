@@ -5,7 +5,7 @@ import { change } from './inputs.ts';
 import { schedule, enqueue, without, runFace } from './schedule.ts';
 import { createCrop } from '../geometry.ts';
 import type { ClassifiedStill } from '../msg.ts';
-import type { HeldStill } from '../state.ts';
+import type { CropChoice, HeldStill } from '../state.ts';
 import { admitTo, refusal, type AdmissionFacts } from '../admission.ts';
 import { openBatch, proposedView } from './batch.ts';
 type Offer = Extract<Extract<Msg, { type: 'Photo' }>['args'][1], { kind: 'crop' }>['offer'];
@@ -202,15 +202,18 @@ export function offerCrop(state: State, id: string, offer: Offer): Transition {
     scale: offer.scale,
     viewport: 320,
   });
-  // A face picked by its detected box in the batch view opens with that box as the proposed crop.
+  // A face picked by its detected box in the batch view opens with that box as the proposed crop; any other photo
+  // waits for the detector first (fm-k09b, faceFirst), whose answer is the proposal.
   const box = state.CropProposals?.get(id);
-  const choice = {
+  const choice: CropChoice = {
     faceId: id,
     input,
     url: offer.url,
     file: offer.file,
     scale: offer.scale,
     view: box ? proposedView(initial, box) : initial,
+    preview: offer.blob,
+    detect: box ? 'adjusted' : 'waiting',
   };
   const proposals = new Map(state.CropProposals ?? []);
   proposals.delete(id);

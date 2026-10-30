@@ -89,7 +89,9 @@ export async function previewPhoto(file,options){
  * Renders `rect` — in the coordinates of the preview that `previewPhoto` returned — from the
  * original file as a square PNG. Cropping from the original rather than from the preview keeps
  * the detail the encoder needs; the decode stays bounded and only the crop reaches output size.
- * `rotation` is a multiple of 90 degrees, applied about the centre of the square.
+ * `rotation` is any angle in degrees (clockwise on screen), turning the photo about the centre of
+ * the square (fm-k09b: the editor's quarter turns plus its fine angle). Any part of the square
+ * outside the photo is black.
  */
 export async function cropPhoto(file,rect,options){
  const {output=CROP_OUTPUT,previewScale=1,rotation=0,signal}=options||{};
@@ -107,15 +109,19 @@ export async function cropPhoto(file,rect,options){
  try{
   // Preview coordinates -> this bitmap's coordinates.
   const factor=scale/(previewScale||1);
-  const size=Math.max(1,Math.round(Math.min(rect.width,rect.height)*factor));
-  const left=Math.min(Math.max(0,Math.round(rect.left*factor)),Math.max(0,bitmap.width-size));
-  const top=Math.min(Math.max(0,Math.round(rect.top*factor)),Math.max(0,bitmap.height-size));
+  const side=Math.max(1,Math.min(rect.width,rect.height)*factor);
+  const cx=(rect.left+rect.width/2)*factor,cy=(rect.top+rect.height/2)*factor;
   const canvas=typeof OffscreenCanvas==='function'?new OffscreenCanvas(output,output):Object.assign(document.createElement('canvas'),{width:output,height:output});
   const context=canvas.getContext('2d');
   if(!context)throw refusal('This browser could not prepare the photo.');
+  context.fillStyle='#000';context.fillRect?.(0,0,output,output);
   context.save();
-  if(rotation%360){context.translate(output/2,output/2);context.rotate((rotation%360)*Math.PI/180);context.translate(-output/2,-output/2);}
-  context.drawImage(bitmap,left,top,Math.min(size,bitmap.width-left),Math.min(size,bitmap.height-top),0,0,output,output);
+  context.translate(output/2,output/2);
+  if(rotation%360)context.rotate((rotation%360)*Math.PI/180);
+  context.scale?.(output/side,output/side);
+  context.translate(-cx,-cy);
+  context.imageSmoothingQuality='high';
+  context.drawImage(bitmap,0,0);
   context.restore();
   const blob=await encode(canvas,'image/png');
   if(blob.size<8)throw refusal('This browser could not prepare the photo.');

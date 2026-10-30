@@ -422,24 +422,24 @@ for (const [engine, type] of Object.entries(engines).filter(
           true,
         );
         const background = await crop
-          .locator('.next-crop-panel')
+          .locator('.next-crop-editor')
           .evaluate((e) => getComputedStyle(e).backgroundColor);
         assert.notEqual(background, 'rgba(0, 0, 0, 0)');
         await page.keyboard.press('ArrowLeft');
         await last(page, 'CropPan');
-        await operatedClick(page, crop.getByRole('slider', { name: 'Zoom' }), {
-          step: 'dialogs/crop/zoom',
+        await operatedClick(page, crop.getByRole('slider', { name: 'Fine rotation' }), {
+          step: 'dialogs/crop/fine-rotation',
           activation: 'range-input',
           touch,
           settleMs: 100,
           log: new StepLog({ map: bindOrigins(DEFAULT_HOST_MAP, { app: [site.origin] }) }),
           region: { within: crop },
-          effect: () => last(page, 'CropZoom'),
+          effect: () => last(page, 'CropTurn'),
         });
-        await last(page, 'CropZoom');
-        await hit(crop.getByRole('button', { name: 'Rotate', exact: true }));
+        await last(page, 'CropTurn');
+        await hit(crop.getByRole('button', { name: 'Rotate 90 degrees', exact: true }));
         await last(page, 'CropRotate');
-        await hit(crop.getByRole('button', { name: 'Use Crop', exact: true }));
+        await hit(crop.getByRole('button', { name: 'USE CROP', exact: true }));
         await last(page, 'CropUse');
         await crop.getByRole('button', { name: 'OK', exact: true }).waitFor();
         await hit(crop.getByRole('button', { name: 'OK', exact: true }));

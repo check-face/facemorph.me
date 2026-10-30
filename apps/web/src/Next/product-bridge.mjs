@@ -810,14 +810,16 @@ export async function restoreLastResult(){
 export function queueFace(id,depth){analytics.queuedRequest?.(id,depth);}
 export function cancelQueuedFace(id){analytics.cancelQueued?.(id);}
 
-// The batch view (fm-q5b9): the on-device detector over a photo's decoded preview, before any confirmation. The
-// controller asks only once photo processing is ready on this device; the faces come back as fractions of the photo.
+// Faces first (fm-k09b, fm-zigt): the on-device detector over a photo's decoded preview, before any confirmation. The
+// controller asks only once photo processing is ready on this device. Each face comes back as fractions of the photo:
+// its box (for the chooser) and its aligned square (the proposal: centre, side and the angle that stands it upright).
 let batchAligner=null;
 export async function detectFaces(blob){
  await engine();if(!batchAligner)throw refusal('Photo processing is not available here.');
  const prepared=await batchAligner(blob,{tryAlign:true,requireSingleFace:false});
  if(prepared.provenance?.preprocessingSha256!==manifest.alignmentSha256)throw Error('Photo processing files changed. Reload before trying again.');
- return prepared.faceCount>1&&Array.isArray(prepared.stats?.faceBoxes)?prepared.stats.faceBoxes:[];
+ const faces=Array.isArray(prepared.stats?.faces)?prepared.stats.faces:[];
+ return faces.map(({x,y,width,height,align:a})=>({x,y,width,height,align:{cx:a.cx/a.width,cy:a.cy/a.height,side:a.side/a.width,rotation:a.rotation}}));
 }
 async function prepareFaceChoices(id,boxes,processed){const file=processed?.facemorphOriginal||processed||sourceFiles.get(id);if(!file)return null;try{const preview=await previewPhoto(file,{edge:2048});return {id,file,boxes,...preview};}catch{return null;}}
 export async function chooseDetectedFace(choice,index){

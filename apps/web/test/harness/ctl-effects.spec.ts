@@ -402,7 +402,7 @@ export async function controllerPhotoJourney() {
     const nextShown = store.getState().Crop?.faceId;
     const proposal = JSON.stringify(store.getState().Crop!.view);
     store.dispatch(msg('CropAdjust'));
-    store.dispatch(msg('CropZoom', 1.5));
+    store.dispatch(msg('CropResize', 'se', -40, -40));
     store.dispatch(msg('CropAccept'));
     const editorBlocksConfirmation =
       store.getState().Crop?.previousView !== undefined &&
@@ -411,10 +411,10 @@ export async function controllerPhotoJourney() {
     store.dispatch(msg('CropCancel'));
     const adjustmentCancelled = JSON.stringify(store.getState().Crop!.view) === proposal;
     store.dispatch(msg('CropAdjust'));
-    store.dispatch(msg('CropZoom', 1.5));
+    store.dispatch(msg('CropResize', 'se', -40, -40));
     store.dispatch(msg('CropPan', 4, 2));
     store.dispatch(msg('CropPan', -4, -2));
-    store.dispatch(msg('CropZoom', 1));
+    store.dispatch(msg('CropResize', 'se', 40, 40));
     for (let turns = 0; turns < 4; turns++) store.dispatch(msg('CropRotate'));
     store.dispatch(msg('CropUse'));
     store.dispatch(msg('DownloadNow', true));

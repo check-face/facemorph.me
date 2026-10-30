@@ -32,7 +32,18 @@ export interface CropChoice {
   readonly input?: Input;
   /** Editing is an in-dialog state. Its saved view is restored by editor Cancel. */
   readonly previousView?: CropView;
+  /** The decoded preview the detector looks at (fm-k09b). */
+  readonly preview?: Blob;
+  /**
+   * Faces first (fm-k09b): waiting for photo processing (its download decision, or its download), running, found one
+   * face (the view is its aligned square), found none (the failed-to-align screen), did not run (declined or not
+   * available here: a neutral note), or adjusted by the person (their crop, no note).
+   */
+  readonly detect?: CropDetect;
+  /** The photo-processing download was asked for this crop (asked once per photo). */
+  readonly asked?: boolean;
 }
+export type CropDetect = 'waiting' | 'running' | 'one' | 'none' | 'not-run' | 'adjusted';
 /** The classic model, with its optional values represented by null and F# sets by ReadonlySet. */
 export interface State {
   /** Absent/null while closed; opening this source step never grants acquisition. */

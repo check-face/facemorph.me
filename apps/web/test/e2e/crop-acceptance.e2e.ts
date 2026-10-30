@@ -725,7 +725,7 @@ test(
         const cancelButton = () => d.dialog.getByRole('button', { name: 'CANCEL', exact: true });
         const adjustButton = () =>
           d.dialog.getByRole('button', { name: 'ADJUST CROP', exact: true });
-        const useCrop = () => d.dialog.getByRole('button', { name: 'Use Crop', exact: true });
+        const useCrop = () => d.dialog.getByRole('button', { name: 'USE CROP', exact: true });
         const faceDone = (id: string, timeout = 300_000) =>
           d.page.waitForFunction(
             (face) => {
@@ -1321,7 +1321,7 @@ test(
               timestamp: t0 + 0.5,
             });
             await p.shots('phone-adjust');
-            await p.operate(p.dialog.getByRole('button', { name: 'Use Crop', exact: true }));
+            await p.operate(p.dialog.getByRole('button', { name: 'USE CROP', exact: true }));
             await p.operate(p.dialog.getByRole('button', { name: 'OK', exact: true }));
             await p.consent();
             await p.page.waitForFunction(

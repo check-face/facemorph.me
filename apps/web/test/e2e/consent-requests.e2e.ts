@@ -679,7 +679,7 @@ test(
       await page.keyboard.press('+');
       await page.keyboard.press('-');
       clock['cropInputEnd'] = performance.now();
-      await operate(crop.getByRole('button', { name: 'Use Crop', exact: true }));
+      await operate(crop.getByRole('button', { name: 'USE CROP', exact: true }));
       if (cold) assert.ok(transferring());
       clock['cropOKOperationStarted'] = performance.now();
       await operate(crop.getByRole('button', { name: 'OK', exact: true }));

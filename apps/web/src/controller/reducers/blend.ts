@@ -262,8 +262,10 @@ export function blendSlotTarget(message: Msg, state: State): string | null {
     case 'CropUse':
     case 'CropViewport':
     case 'CropPan':
-    case 'CropZoom':
+    case 'CropResize':
     case 'CropRotate':
+    case 'CropTurn':
+    case 'CropDetected':
     case 'CropAccept':
     case 'CropCancel':
       id = state.Crop?.faceId;

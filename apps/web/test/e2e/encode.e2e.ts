@@ -407,13 +407,13 @@ test(
                 () =>
                   (
                     window as unknown as {
-                      __elmish: { model: { Crop: { view: { offsetX: number } } } };
+                      __elmish: { model: { Crop: { view: { cx: number } } } };
                     }
-                  ).__elmish.model.Crop.view.offsetX,
+                  ).__elmish.model.Crop.view.cx,
               );
             const previousOffset = await offset();
             await page.keyboard.press('ArrowLeft');
-            await hit(dialog.getByRole('button', { name: 'Use Crop', exact: true }));
+            await hit(dialog.getByRole('button', { name: 'USE CROP', exact: true }));
             await dialog.getByRole('button', { name: 'OK', exact: true }).waitFor();
             assert.notEqual(await offset(), previousOffset, 'Use Crop retains the edited proposal');
             assert.ok(await sameElement!.evaluate((el) => el.isConnected));
@@ -488,7 +488,7 @@ test(
               await hit(dialog.getByRole('button', { name: 'ADJUST CROP', exact: true }));
               await dialog.getByRole('application', { name: 'Crop area' }).waitFor();
               await page.keyboard.press('ArrowLeft');
-              await hit(dialog.getByRole('button', { name: 'Use Crop', exact: true }));
+              await hit(dialog.getByRole('button', { name: 'USE CROP', exact: true }));
               const ok = dialog.getByRole('button', { name: 'OK', exact: true });
               await ok.waitFor();
               assert.equal(await ok.isEnabled(), true, 'the manual crop reaches an enabled OK');

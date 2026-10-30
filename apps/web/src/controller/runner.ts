@@ -810,8 +810,24 @@ export function createController(
               );
               return run;
             },
-            (boxes) => store.dispatch(msg('BatchDetected', effect.token, effect.group, boxes)),
+            (faces) => store.dispatch(msg('BatchDetected', effect.token, effect.group, faces)),
             () => store.dispatch(msg('BatchDetected', effect.token, effect.group, null)),
+          );
+          break;
+        case 'detectCropFaces':
+          photoTask(
+            [effect.file],
+            // One aligner at a time, shared with the batch view's detections.
+            () => {
+              const run = detections.then(() => facade.detectFaces(effect.file));
+              detections = run.then(
+                () => undefined,
+                () => undefined,
+              );
+              return run;
+            },
+            (faces) => store.dispatch(msg('CropDetected', effect.id, effect.url, faces)),
+            () => store.dispatch(msg('CropDetected', effect.id, effect.url, null)),
           );
           break;
         case 'previewPhoto': {

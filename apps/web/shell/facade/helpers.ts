@@ -7,13 +7,16 @@ import {
   isSlowJob as isSlowJobJs,
 } from '../../src/Next/estimate.mjs';
 import {
+  alignedCrop as alignedCropJs,
   createCrop as createCropJs,
-  frame as frameJs,
-  pan as panJs,
+  editorLayout as editorLayoutJs,
+  move as moveJs,
+  previewFrame as previewFrameJs,
   rect as rectJs,
+  resize as resizeJs,
   resizeViewport as resizeViewportJs,
   rotate as rotateJs,
-  zoomTo as zoomToJs,
+  turnTo as turnToJs,
 } from '../../src/Next/photo/crop-view.mjs';
 import {
   closeNamesFocus as closeNamesFocusJs,
@@ -53,19 +56,24 @@ export const describeMs = (ms: number): string => String(describeMsJs(ms));
 export const describeMeasuredMs = (ms: number): string => String(describeMeasuredMsJs(ms));
 export const isSlowJob = (ms: number): boolean => isSlowJobJs(ms) === true;
 
-// ---- crop view (photo/crop-view.mjs: preview pixels, offsets from the centre) --------------------------------------
+// ---- crop view (photo/crop-view.mjs: a square stencil over the turned photo, preview pixels) ----------------------
 
 export interface CropState {
   readonly previewWidth: number;
   readonly previewHeight: number;
   readonly scale: number;
-  readonly zoom: number;
-  readonly offsetX: number;
-  readonly offsetY: number;
-  /** 0, 90, 180 or 270. */
-  readonly rotation: number;
-  /** The on-screen square, CSS pixels. */
+  /** The editor's square, CSS pixels. */
   readonly viewport: number;
+  /** The square's centre and side, preview pixels. */
+  readonly cx: number;
+  readonly cy: number;
+  readonly side: number;
+  /** quarter * 90 + fine, normalised to (-180, 180]: the photo's turn about the square's centre, clockwise. */
+  readonly rotation: number;
+  /** 0-3 quarter turns from the rotate button. */
+  readonly quarter: number;
+  /** The fine-rotation slider, -45 to 45 degrees. */
+  readonly fine: number;
 }
 export interface CropRect {
   readonly left: number;
@@ -73,15 +81,20 @@ export interface CropRect {
   readonly width: number;
   readonly height: number;
 }
-export interface CropFrame {
-  readonly width: number;
-  readonly height: number;
-  readonly x: number;
-  readonly y: number;
-  readonly rotation: number;
-  readonly originX: number;
-  readonly originY: number;
+/** The editor in its own CSS pixels: the photo's transform (origin 0 0), its turned box and the stencil. */
+export interface CropLayout {
+  readonly k: number;
+  readonly boxX: number;
+  readonly boxY: number;
+  readonly boxWidth: number;
+  readonly boxHeight: number;
+  readonly transform: string;
+  readonly left: number;
+  readonly top: number;
+  readonly size: number;
 }
+export type CropHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+export const CROP_HANDLES: readonly CropHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 const numbers = <T extends object>(
   record: string,
   value: unknown,
@@ -100,11 +113,13 @@ const STATE_KEYS = [
   'previewWidth',
   'previewHeight',
   'scale',
-  'zoom',
-  'offsetX',
-  'offsetY',
-  'rotation',
   'viewport',
+  'cx',
+  'cy',
+  'side',
+  'rotation',
+  'quarter',
+  'fine',
 ] as const;
 const state = (v: unknown): CropState => numbers<CropState>('CropState', v, STATE_KEYS);
 type Untyped = (...args: unknown[]) => unknown;
@@ -115,25 +130,50 @@ export const createCrop = (preview: {
   scale?: number;
   viewport?: number;
 }): CropState => state((createCropJs as Untyped)(preview));
+/** Moves the stencil by a pointer move in editor pixels. */
 export const panCrop = (s: CropState, dx: number, dy: number): CropState =>
-  state((panJs as Untyped)(s, dx, dy));
-export const zoomCrop = (s: CropState, zoom: number): CropState =>
-  state((zoomToJs as Untyped)(s, zoom));
+  state((moveJs as Untyped)(s, dx, dy));
+/** Resizes the stencil from one of its eight handles by a pointer move in editor pixels. */
+export const resizeStencil = (
+  s: CropState,
+  handle: CropHandle,
+  dx: number,
+  dy: number,
+): CropState => state((resizeJs as Untyped)(s, handle, dx, dy));
 export const rotateCrop = (s: CropState): CropState => state((rotateJs as Untyped)(s));
+export const turnCrop = (s: CropState, fine: number): CropState =>
+  state((turnToJs as Untyped)(s, fine));
+/** The aligned proposal: centre and side in preview pixels and the angle that stands the face upright. */
+export const alignCrop = (
+  s: CropState,
+  square: { cx: number; cy: number; side: number; rotation: number },
+): CropState => state((alignedCropJs as Untyped)(s, square));
 export const resizeCrop = (s: CropState, viewport: number): CropState =>
   state((resizeViewportJs as Untyped)(s, viewport));
 export const cropRect = (s: CropState): CropRect =>
   numbers<CropRect>('CropRect', (rectJs as Untyped)(s), ['left', 'top', 'width', 'height']);
-export const cropFrame = (s: CropState, viewport: number): CropFrame =>
-  numbers<CropFrame>('CropFrame', (frameJs as Untyped)(s, viewport), [
-    'width',
-    'height',
-    'x',
-    'y',
-    'rotation',
-    'originX',
-    'originY',
+export const cropLayout = (s: CropState, viewport?: number): CropLayout => {
+  const v = (editorLayoutJs as Untyped)(s, viewport ?? s.viewport) as CropLayout;
+  if (typeof v?.transform !== 'string')
+    throw new FacadeError('CropLayout', 'transform', 'expected a string');
+  return numbers<CropLayout>('CropLayout', v, [
+    'k',
+    'boxX',
+    'boxY',
+    'boxWidth',
+    'boxHeight',
+    'left',
+    'top',
+    'size',
   ]);
+};
+/** The CSS transform (origin 0 0) that fills a `size` pixel square with the crop. */
+export const cropPreview = (s: CropState, size: number): string => {
+  const v = (previewFrameJs as Untyped)(s, size) as { transform?: unknown };
+  if (typeof v?.transform !== 'string')
+    throw new FacadeError('CropPreview', 'transform', 'expected a string');
+  return v.transform;
+};
 
 // ---- photo selection and focus -------------------------------------------------------------------------------------
 
@@ -168,6 +208,11 @@ export const closeNamesFocus = (): void => void closeNamesFocusJs();
 export const revokeUrl = (url: string): void => URL.revokeObjectURL(url);
 /** Escape closes the names dialog; Tab keeps focus inside it. */
 export const namesKey = (
-  event: { key: string; preventDefault(): void; shiftKey: boolean; currentTarget: Element },
+  event: {
+    key: string;
+    preventDefault(): void;
+    shiftKey: boolean;
+    currentTarget: Element;
+  },
   close: () => void,
 ): void => void (namesKeyJs as Untyped)(event, close);

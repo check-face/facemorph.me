@@ -69,6 +69,12 @@ function openOn(state: State) {
   return { R, A, B, D, opened, before: picked.state };
 }
 
+/** A detected face whose aligned square is its box's centred square, upright. */
+const face = (box: { x: number; y: number; width: number; height: number }) => ({
+  ...box,
+  align: { cx: box.x + box.width / 2, cy: box.y + box.height / 2, side: box.width, rotation: 0 },
+});
+
 test('R -> A2 -> B1 with a corrupt fourth file: Cancel changes nothing; OK lands R, A2, B1 in click order', () => {
   const start = ready(base);
   const { R, A, B, opened } = openOn(start);
@@ -115,8 +121,8 @@ test('R -> A2 -> B1 with a corrupt fourth file: Cancel changes nothing; OK lands
   assert.deepEqual(s.Batch!.groups[3]!.candidates, []);
   step(
     msg('BatchDetected', batch.token, 'f0', [
-      { x: 0.1, y: 0.1, width: 0.3, height: 0.4 },
-      { x: 0.55, y: 0.15, width: 0.3, height: 0.4 },
+      face({ x: 0.1, y: 0.1, width: 0.3, height: 0.4 }),
+      face({ x: 0.55, y: 0.15, width: 0.3, height: 0.4 }),
     ]),
   );
   step(msg('BatchDetected', batch.token, 'f1', []));
@@ -177,7 +183,7 @@ test('R -> A2 -> B1 with a corrupt fourth file: Cancel changes nothing; OK lands
   )!.state;
   const view = offered.Crop!.view;
   const rect = cropRect(view);
-  assert.ok(view.zoom > 1, 'the proposal is the detected face, not the whole photo');
+  assert.ok(view.side < 600, 'the proposal is the detected face, not the whole photo');
   assert.ok(
     Math.abs(rect.left - 0.55 * 800) < 1 && Math.abs(rect.top - 0.15 * 600) < 1,
     JSON.stringify(rect),
@@ -192,8 +198,8 @@ test('deselect removes and reselect appends: A1, B2, deselect A1, reselect A1 gi
   s = reduce(msg('BatchStaged', token, 'f0', { ok: true, offer: offerFor(A, 'a') }), s)!.state;
   s = reduce(msg('BatchStaged', token, 'f1', { ok: true, offer: offerFor(B, 'b') }), s)!.state;
   const two = [
-    { x: 0, y: 0, width: 0.4, height: 0.5 },
-    { x: 0.5, y: 0, width: 0.4, height: 0.5 },
+    face({ x: 0, y: 0, width: 0.4, height: 0.5 }),
+    face({ x: 0.5, y: 0, width: 0.4, height: 0.5 }),
   ];
   s = reduce(msg('BatchDetected', token, 'f0', two), s)!.state;
   s = reduce(msg('BatchDetected', token, 'f1', two), s)!.state;

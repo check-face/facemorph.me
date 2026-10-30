@@ -123,12 +123,13 @@ test('cached completion belongs to the exact input that requested the check', ()
   assert.equal(inputs(msg('CachedFaceChecked', input, true), edited)!.state, edited);
 });
 test('all retained messages have explicit ownership; Compare is retired by fm-25um', () => {
-  assert.equal(Object.keys(CASES).length, 96); // +StartOver, Undo, UndoExpired (fm-id4c): Remove and Start over are undoable; +Quality (fm-36ag): the morph video size choice; +NamesFailed (fm-96if): the picker shows its own load failure;
+  assert.equal(Object.keys(CASES).length, 98); // +StartOver, Undo, UndoExpired (fm-id4c): Remove and Start over are undoable; +Quality (fm-36ag): the morph video size choice; +NamesFailed (fm-96if): the picker shows its own load failure;
   // +Classified, UseAsPhoto (fm-4f5m): every file is classified before a face changes, and held stills are explicit.
   // +12 Blend* (fm-2kse): the blend view's slots, weights and one-synthesis blend.
   // +MorphCodecChecked (fm-9kr8): a Morph press's codec fallback bytes join the one consent.
   // +NamePicked (fm-ejwq): a picked name installs its published result, never a synthesis.
   // +6 Batch* (fm-id4c, fm-q5b9): one batch view for several files; picks in click order, Cancel, one-check OK.
+  // CropZoom -> CropResize, +CropTurn, +CropDetected (fm-k09b): the stencil editor and faces first.
   for (const name of [
     'CropAdjust',
     'CropUse',

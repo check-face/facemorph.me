@@ -6,9 +6,10 @@ import { crop } from '../../src/controller/reducers/crop.ts';
 import { offerCrop } from '../../src/controller/reducers/photo.ts';
 import {
   createCrop,
-  pan,
-  zoomTo,
+  move,
+  resize,
   rotate,
+  turnTo,
   rect,
   resizeViewport,
 } from '../../src/Next/photo/crop-view.mjs';
@@ -18,7 +19,7 @@ test('adjust/use/cancel keep one proposal; editor Use Crop never queues encoding
   const proposal = offerCrop(state, 'face-1', offer('new.jpg')).state;
   const editing = reduce(msg('CropAdjust'), proposal)!.state;
   assert.equal(editing.Crop?.previousView, proposal.Crop?.view);
-  const moved = reduce(msg('CropZoom', 2), editing)!.state;
+  const moved = reduce(msg('CropResize', 'nw', 40, 40), editing)!.state;
   assert.notDeepEqual(moved.Crop?.view, proposal.Crop?.view);
   assert.equal(reduce(msg('CropAccept'), moved)!.state, moved);
   const back = reduce(msg('CropCancel'), moved)!;
@@ -36,7 +37,10 @@ test('OK snapshots crop geometry and revision once; repeated OK and Cancel canno
   const effect = accepted.effects.find((effect) => effect.type === 'cropPhoto');
   assert.ok(effect?.type === 'cropPhoto');
   assert.deepEqual(effect.area, rect(proposal.Crop!.view));
-  assert.deepEqual(effect.options, { rotation: 0, previewScale: proposal.Crop!.scale });
+  assert.deepEqual(effect.options, {
+    rotation: 0,
+    previewScale: proposal.Crop!.scale,
+  });
   assert.equal(effect.revision, 41);
   assert.ok(Object.isFrozen(effect.area));
   assert.ok(Object.isFrozen(effect.options));
@@ -109,18 +113,20 @@ test('crop editing forwards the recorded geometry policy to retained pure math',
   });
   current = crop(msg('CropViewport', 260), current)!.state;
   expected = resizeViewport(expected, 260);
-  current = crop(msg('CropZoom', 2.5), current)!.state;
-  expected = zoomTo(expected, 2.5);
+  current = crop(msg('CropResize', 'se', -60, -60), current)!.state;
+  expected = resize(expected, 'se', -60, -60);
   current = crop(msg('CropPan', 17, -9), current)!.state;
-  expected = pan(expected, 17, -9);
+  expected = move(expected, 17, -9);
   current = crop(msg('CropRotate'), current)!.state;
   expected = rotate(expected);
+  current = crop(msg('CropTurn', 7.5), current)!.state;
+  expected = turnTo(expected, 7.5);
   assert.deepEqual(current.Crop?.view, expected);
   const accepted = crop(msg('CropAccept'), current, { photoRevision: 9 })!;
   const effect = accepted.effects.find((effect) => effect.type === 'cropPhoto');
   assert.ok(effect && effect.type === 'cropPhoto');
   assert.deepEqual(effect.area, rect(expected));
-  assert.deepEqual(effect.options, { previewScale: 0.5, rotation: 90 });
+  assert.deepEqual(effect.options, { previewScale: 0.5, rotation: -82.5 });
   assert.equal(effect.revision, 9);
 });
 test('RequestCrop preserves the active run and uses the actual stored photo for an idle slot', () => {
@@ -152,4 +158,142 @@ test('a changed or removed target invalidates an uncommitted proposal', () => {
     assert.ok(!accepted.effects.some((effect) => effect.type === 'cropPhoto'));
     assert.ok(accepted.effects.some((effect) => effect.type === 'revokeUrl'));
   }
+});
+
+// ---- faces first (fm-k09b, operator ruling 28 October 2026) ----
+const withDownloads = (downloads: Partial<typeof state.Downloads>) => ({
+  ...state,
+  Downloads: {
+    ...state.Downloads,
+    known: true,
+    photoAvailable: true,
+    ...downloads,
+  },
+});
+const face = (cx: number, cy: number, side: number, rotation = 0) => ({
+  x: cx - side / 2,
+  y: cy - side / 2,
+  width: side,
+  height: side,
+  align: { cx, cy, side, rotation },
+});
+
+test('a fresh photo runs the detector first when photo processing is ready; its aligned face is the proposal', () => {
+  const opened = reduce(
+    msg('Photo', 'face-1', { kind: 'crop', offer: offer('one.jpg') }),
+    withDownloads({ photoReady: true }),
+  )!;
+  assert.equal(opened.state.Crop?.detect, 'running');
+  const detect = opened.effects.find((e) => e.type === 'detectCropFaces');
+  assert.deepEqual(detect, {
+    type: 'detectCropFaces',
+    id: 'face-1',
+    url: 'blob:one.jpg',
+    file: opened.state.Crop!.preview,
+  });
+  // No proposal to accept while it looks.
+  assert.equal(reduce(msg('CropAccept'), opened.state, { photoRevision: 1 })!.state, opened.state);
+  // A stale answer (another photo's URL) changes nothing.
+  const stale = reduce(
+    msg('CropDetected', 'face-1', 'blob:other', [face(0.5, 0.5, 0.2)]),
+    opened.state,
+  )!;
+  assert.equal(stale.state, opened.state);
+  // 640 x 480 preview: the face at (320, 240), 128 px wide, tilted: the proposal stands it upright.
+  const found = reduce(
+    msg('CropDetected', 'face-1', 'blob:one.jpg', [face(0.5, 0.5, 0.2, -10)]),
+    opened.state,
+  )!;
+  const view = found.state.Crop!.view;
+  assert.equal(found.state.Crop?.detect, 'one');
+  assert.deepEqual(
+    [view.cx, view.cy, view.side, view.rotation, view.fine],
+    [320, 240, 128, -10, -10],
+  );
+  const accepted = reduce(msg('CropAccept'), found.state, {
+    photoRevision: 3,
+  })!;
+  const effect = accepted.effects.find((e) => e.type === 'cropPhoto');
+  assert.ok(effect?.type === 'cropPhoto');
+  assert.deepEqual(effect.area, {
+    left: 256,
+    top: 176,
+    width: 128,
+    height: 128,
+  });
+  assert.deepEqual(effect.options, { previewScale: 0.5, rotation: -10 });
+  // Several faces (before the chooser takes over): the largest one is the proposal.
+  const several = reduce(
+    msg('CropDetected', 'face-1', 'blob:one.jpg', [face(0.2, 0.5, 0.1), face(0.7, 0.5, 0.3)]),
+    opened.state,
+  )!;
+  assert.equal(several.state.Crop!.view.cx, 0.7 * 640);
+});
+
+test('no face is the failed-to-align screen; a detector that cannot run is a neutral note; OK still encodes once', () => {
+  const opened = reduce(
+    msg('Photo', 'face-1', { kind: 'crop', offer: offer('none.jpg') }),
+    withDownloads({ photoReady: true }),
+  )!.state;
+  const none = reduce(msg('CropDetected', 'face-1', 'blob:none.jpg', []), opened)!.state;
+  assert.equal(none.Crop?.detect, 'none');
+  assert.deepEqual(none.Crop?.view, opened.Crop?.view, 'the centred square stays the crop');
+  const ok = reduce(msg('CropAccept'), none, { photoRevision: 2 })!;
+  assert.equal(ok.effects.filter((e) => e.type === 'cropPhoto').length, 1);
+  assert.ok(!ok.effects.some((e) => e.type === 'detectCropFaces'), 'nothing is detected after OK');
+  // Adjust, then editor Cancel, returns to the failure screen; Use crop shows the person's crop without it.
+  const editing = reduce(msg('CropAdjust'), none)!.state;
+  assert.equal(
+    reduce(msg('CropCancel'), reduce(msg('CropPan', 9, 0), editing)!.state)!.state.Crop?.detect,
+    'none',
+  );
+  assert.equal(reduce(msg('CropUse'), editing)!.state.Crop?.detect, 'adjusted');
+  const failed = reduce(msg('CropDetected', 'face-1', 'blob:none.jpg', null), opened)!.state;
+  assert.equal(failed.Crop?.detect, 'not-run');
+});
+
+test('missing detector files ask the photo-setup decision once; declining means detection did not run', () => {
+  const opened = reduce(
+    msg('Photo', 'face-1', { kind: 'crop', offer: offer('ask.jpg') }),
+    withDownloads({ photoReady: false }),
+  )!;
+  assert.equal(opened.state.Crop?.detect, 'waiting');
+  assert.deepEqual(opened.state.Gate, ['photo', msg('DownloadNow', true)]);
+  assert.equal(opened.state.EncoderSetup, 'requested');
+  assert.ok(
+    !opened.effects.some((e) => e.type === 'detectCropFaces' || e.type === 'downloadModels'),
+  );
+  const declined = reduce(msg('GateCancel'), opened.state)!.state;
+  assert.equal(declined.Gate, null);
+  assert.equal(declined.Crop?.detect, 'not-run');
+  // Accepted: the setup downloads, then the detector runs as soon as photo processing is ready.
+  const accepted = reduce(msg('GateAccept'), opened.state)!.state;
+  assert.equal(accepted.Crop?.detect, 'waiting');
+  const ready = reduce(
+    msg('DownloadsChanged', {
+      ...accepted.Downloads,
+      phase: 'done',
+      photoReady: true,
+    }),
+    accepted,
+  )!;
+  assert.equal(ready.state.Crop?.detect, 'running');
+  assert.ok(ready.effects.some((e) => e.type === 'detectCropFaces'));
+  // A failed download: did not run.
+  const failed = reduce(
+    msg('DownloadsChanged', {
+      ...accepted.Downloads,
+      phase: 'failed',
+      scope: 'photo',
+    }),
+    accepted,
+  )!.state;
+  assert.equal(failed.Crop?.detect, 'not-run');
+  // No photo processing on this device: did not run, nothing asked.
+  const unavailable = reduce(
+    msg('Photo', 'face-1', { kind: 'crop', offer: offer('cpu.jpg') }),
+    withDownloads({ photoAvailable: false }),
+  )!.state;
+  assert.equal(unavailable.Crop?.detect, 'not-run');
+  assert.equal(unavailable.Gate, null);
 });

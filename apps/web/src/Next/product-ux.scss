@@ -160,11 +160,6 @@
 .next-crop-panel { max-width:420px; width:100%; max-height:90vh; overflow:auto; }
 /* Each bundle choice keeps its radio beside its own words at 320 px (fm-9kr8). */
 .next-download-dialog fieldset label { display:inline-flex; align-items:center; gap:.25rem; white-space:nowrap; margin-right:1rem; }
-.next-crop-view { position:relative; width:320px; aspect-ratio:1; max-width:100%; margin:0 auto; overflow:hidden; border-radius:6px; background:#222; touch-action:none; cursor:grab; }
-.next-crop-view:active { cursor:grabbing; }
-.next-crop-image { position:absolute; max-width:none; user-select:none; -webkit-user-drag:none; }
-.next-crop-zoom { display:flex; align-items:center; gap:.75rem; margin:1rem 0; }
-.next-crop-zoom input { flex:1; }
 .next-name-dialog { position:fixed; inset:0; z-index:1300; background:#0009; display:grid; place-items:center; padding:1rem; }
 // Names picker (fm-96if): the legacy fullscreen, headerless, gapless grid with each name over its
 // face (facemorph-names ImageGrid/LabelledImageButton). Columns, row height and the rendered window
@@ -364,7 +359,7 @@ html:has(.next-consent-toast.MuiSnackbarContent-root) { scroll-padding-bottom:12
 .next-encode-header h2 { color:#fff; font:500 20px/1.25 Roboto, sans-serif; margin:0; }
 .next-encode-header svg { position:absolute; right:7.53%; top:calc(var(--encode-width) * .043); width:21px; height:30px; color:#fff; flex-shrink:0; }
 .next-encode-preview { position:relative; width:80.65%; aspect-ratio:1; overflow:hidden; margin:calc(var(--encode-width) * .1613 - 25px) auto 0; background:#222; }
-.next-encode-preview img { position:absolute; max-width:none; }
+.next-encode-preview img { position:absolute; left:0; top:0; max-width:none; }
 .next-encode-panel .next-encode-adjust { display:flex; margin:4px auto 0; padding:4px 8px; color:#fff; font:500 14px/20px Roboto,sans-serif; min-height:30px; }
 .next-encode-explanation { margin:0 9.68%; color:#fff; font:12px/16px Roboto,sans-serif; text-align:center; }
 .next-encode-footer { display:flex; justify-content:space-between; align-items:center; margin:6px 9.68% 5.37%; gap:12px; }

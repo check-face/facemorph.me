@@ -2,9 +2,12 @@
 export {
   createCrop,
   panCrop,
-  zoomCrop,
+  resizeStencil,
   rotateCrop,
+  turnCrop,
+  alignCrop,
   resizeCrop,
   cropRect,
-  cropFrame,
+  cropLayout,
+  cropPreview,
 } from '../../shell/facade/helpers.ts';

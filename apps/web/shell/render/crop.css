@@ -1,0 +1,252 @@
+/* The crop surfaces (fm-k09b), measured against docs/design/legacy-encode-dialog-geometry.json: the editor's 600 px
+ * reference modal (crop 2.png), the stencil's oval and eye markers in stencil fractions, the failed-to-align red line.
+ * The modal is the same opaque dark surface in both themes, as the confirmation is. */
+.next-crop-editor {
+  --encode-width: min(600px, calc(100vw - 32px));
+  padding-bottom: 0;
+}
+.next-crop-editor .next-encode-header h2 {
+  font-size: 20px;
+}
+.next-crop-face-label {
+  color: #c9c9c9;
+  font:
+    13px/20px Roboto,
+    sans-serif;
+  white-space: nowrap;
+}
+.next-crop-view {
+  position: relative;
+  width: 88%;
+  aspect-ratio: 1;
+  margin: calc(var(--encode-width) * 0.04) auto 0;
+  overflow: hidden;
+  background: #000;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: contain;
+  outline: none;
+}
+.next-crop-view:focus-visible {
+  outline: 2px solid #8c9eff;
+  outline-offset: 2px;
+}
+.next-crop-image {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: none;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.next-crop-stencil {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.3px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  cursor: move;
+  touch-action: none;
+}
+/* The face oval and eye markers, in fractions of the stencil (crop 2.png oval_guide.in_stencil, eye_markers). */
+.next-crop-oval {
+  position: absolute;
+  left: 14.87%;
+  top: 2.03%;
+  width: 69.67%;
+  height: 95.7%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+  pointer-events: none;
+}
+.next-crop-eye {
+  position: absolute;
+  top: 46.34%;
+  width: 4.43%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(40, 40, 40, 0.65);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.next-crop-eye-left {
+  left: 37.6%;
+}
+.next-crop-eye-right {
+  left: 62.4%;
+}
+/* Eight 9 px white squares; each one's hit area is larger (44 px on touch). */
+.next-crop-handle {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  transform: translate(-50%, -50%);
+  touch-action: none;
+  z-index: 1;
+}
+.next-crop-handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  background: #fff;
+  transform: translate(-50%, -50%);
+}
+@media (pointer: coarse) {
+  .next-crop-handle {
+    width: 44px;
+    height: 44px;
+  }
+}
+.next-crop-handle-nw {
+  left: 0;
+  top: 0;
+  cursor: nwse-resize;
+}
+.next-crop-handle-n {
+  left: 50%;
+  top: 0;
+  cursor: ns-resize;
+}
+.next-crop-handle-ne {
+  left: 100%;
+  top: 0;
+  cursor: nesw-resize;
+}
+.next-crop-handle-e {
+  left: 100%;
+  top: 50%;
+  cursor: ew-resize;
+}
+.next-crop-handle-se {
+  left: 100%;
+  top: 100%;
+  cursor: nwse-resize;
+}
+.next-crop-handle-s {
+  left: 50%;
+  top: 100%;
+  cursor: ns-resize;
+}
+.next-crop-handle-sw {
+  left: 0;
+  top: 100%;
+  cursor: nesw-resize;
+}
+.next-crop-handle-w {
+  left: 0;
+  top: 50%;
+  cursor: ew-resize;
+}
+.next-crop-rotate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 6px 0 0;
+  color: #fff;
+  font:
+    14px/20px Roboto,
+    sans-serif;
+}
+.next-crop-rotate-button {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+}
+.next-crop-rotate-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.next-crop-rotate-button:focus-visible {
+  outline: 2px solid #8c9eff;
+}
+.next-crop-degrees {
+  min-width: 3ch;
+}
+.next-crop-fine {
+  display: block;
+  width: 88%;
+  margin: 4px auto 0;
+  min-height: 32px;
+  accent-color: #3f51b5;
+  touch-action: pan-y;
+}
+.next-crop-copy {
+  margin: 12px 8% 0;
+  color: #fff;
+  font:
+    14px/1.6 Roboto,
+    sans-serif;
+}
+.next-crop-copy p {
+  margin: 0;
+}
+.next-crop-editor .next-encode-footer {
+  margin: 14px 6% 3.5%;
+}
+.next-crop-editor .next-crop-use {
+  min-width: 98px;
+}
+/* The confirmation's other states. */
+.next-encode-whole {
+  width: 88%;
+  margin: calc(var(--encode-width) * 0.1613 - 25px) auto 0;
+  display: flex;
+  justify-content: center;
+  background: #222;
+}
+.next-encode-whole img {
+  display: block;
+  max-width: 100%;
+  max-height: min(52vh, 420px);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+.next-encode-finding,
+.next-encode-not-run {
+  margin: 6px 9.68% 0;
+  color: #e0e0e0;
+  font:
+    13px/18px Roboto,
+    sans-serif;
+  text-align: center;
+}
+.next-encode-panel .next-encode-adjust.next-encode-adjust-failed {
+  margin-top: 12px;
+  background: #e91e63;
+  color: #fff;
+  min-height: 36px;
+  padding: 6px 16px;
+}
+.next-encode-panel .next-encode-adjust.next-encode-adjust-failed:hover {
+  background: #c2185b;
+}
+.next-encode-failed {
+  margin: 10px 6% 0;
+  font:
+    14px/1.6 Roboto,
+    sans-serif;
+}
+.next-encode-failed-line {
+  margin: 0;
+  color: #ff6b6b;
+}
+.next-encode-failed-guidance {
+  margin: 2px 0 0;
+  color: #fff;
+}
+.next-encode-panel .next-encode-ok:disabled {
+  background: #5a5a5a;
+  color: #bbb;
+}

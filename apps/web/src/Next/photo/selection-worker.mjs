@@ -63,13 +63,24 @@ self.onmessage=async({data})=>{
   }
   await stage('photo-decode',()=>{pointer=m._malloc(imageBytes.length);if(!pointer)throw Error('Image exceeds bounded alignment memory.');m.HEAPU8.set(imageBytes,pointer);readError(m,m._cf_decode(pointer,imageBytes.length));m._free(pointer);pointer=0;if(m._cf_width()!==header.width||m._cf_height()!==header.height)throw Error('Decoded dimensions differ from admitted header.');});
   const count=(data.tryAlign||data.requireSingleFace)?await stage('face-landmarks',()=>readError(m,m._cf_detect())):0;stats.faceCount=count;
-  if(count>1){
+  // Every face's box (for the chooser) and its aligned square (fm-k09b): the proposal uses the encoder alignment's
+  // own geometry (FFHQ: eyes 36-41/42-47, mouth corners 48/54), so an accepted proposal is what alignment would have
+  // fed e4e. Pixels of the photo; the bridge turns them into fractions.
+  if(count>=1){
    const ptr=m._malloc(136*4);if(!ptr)throw Error('Face selection exceeds local memory.');
-   try{stats.faceBoxes=[];for(let face=0;face<count;face++){
+   try{stats.faceBoxes=[];stats.faces=[];for(let face=0;face<count;face++){
     readError(m,m._cf_landmarks(face,ptr));const points=new Int32Array(m.HEAPU8.buffer,ptr,136);
     let x0=header.width,y0=header.height,x1=0,y1=0;for(let j=0;j<136;j+=2){x0=Math.min(x0,points[j]);x1=Math.max(x1,points[j]);y0=Math.min(y0,points[j+1]);y1=Math.max(y1,points[j+1]);}
     const size=Math.min(Math.max(x1-x0,y1-y0)*1.8,header.width,header.height),cx=(x0+x1)/2,cy=(y0+y1)/2;
-    stats.faceBoxes.push({x:Math.max(0,Math.min(header.width-size,cx-size/2))/header.width,y:Math.max(0,Math.min(header.height-size,cy-size/2))/header.height,width:size/header.width,height:size/header.height});
+    const box={x:Math.max(0,Math.min(header.width-size,cx-size/2))/header.width,y:Math.max(0,Math.min(header.height-size,cy-size/2))/header.height,width:size/header.width,height:size/header.height};
+    const mean=(from,to)=>{let x=0,y=0;for(let i=from;i<to;i++){x+=points[2*i];y+=points[2*i+1];}return [x/(to-from),y/(to-from)];};
+    const eyeL=mean(36,42),eyeR=mean(42,48),eye=[(eyeL[0]+eyeR[0])/2,(eyeL[1]+eyeR[1])/2],mouth=[(points[96]+points[108])/2,(points[97]+points[109])/2];
+    const e2e=[eyeR[0]-eyeL[0],eyeR[1]-eyeL[1]],e2m=[mouth[0]-eye[0],mouth[1]-eye[1]];
+    let qx=[e2e[0]+e2m[1],e2e[1]-e2m[0]];const len=Math.hypot(qx[0],qx[1])||1;
+    const half=Math.max(Math.hypot(e2e[0],e2e[1])*2,Math.hypot(e2m[0],e2m[1])*1.8);qx=[qx[0]/len*half,qx[1]/len*half];
+    const centre=[eye[0]+e2m[0]*0.1,eye[1]+e2m[1]*0.1];
+    stats.faceBoxes.push(box);
+    stats.faces.push({...box,align:{cx:centre[0],cy:centre[1],side:2*half,rotation:-Math.atan2(qx[1],qx[0])*180/Math.PI,width:header.width,height:header.height}});
    }}finally{m._free(ptr);}
   }
   if(data.requireSingleFace&&count!==1)throw Object.assign(Error(count===0?'No face was found. Choose a clear photo containing one face.':'More than one face was found. Choose a photo containing only one face.'),{code:count===0?'no-face':'multiple-faces'});

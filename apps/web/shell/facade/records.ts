@@ -162,6 +162,21 @@ export interface Refusal {
   readonly helpAnchor: string;
 }
 
+/** One face the on-device detector found (fm-k09b): its box, and its aligned square as the crop proposal. */
+export interface DetectedFace {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  /** Centre (fractions of the photo's width and height), side (fraction of its width), angle in degrees. */
+  readonly align: {
+    readonly cx: number;
+    readonly cy: number;
+    readonly side: number;
+    readonly rotation: number;
+  };
+}
+
 /** Faces the detector found in a photo, offered for the person to choose (Product.fs reads it as `obj`). */
 export interface DetectedFaces {
   readonly id: string;

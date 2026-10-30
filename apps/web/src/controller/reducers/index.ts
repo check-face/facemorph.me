@@ -6,7 +6,7 @@ import { jobs, type JobFacts } from './jobs.ts';
 import { gate } from './gate.ts';
 import { photo, type PhotoFacts } from './photo.ts';
 import { batch, detectOnReady, type BatchFacts } from './batch.ts';
-import { crop } from './crop.ts';
+import { crop, faceFirst } from './crop.ts';
 import { sameInputs } from './schedule.ts';
 import { commitUndo, NEXT_ACTIONS, undo, type UndoFacts } from './undo.ts';
 import { blend, blendSlotTarget, throughSlots, withSlotFaces, type BlendFacts } from './blend.ts';
@@ -74,8 +74,10 @@ export const CASES = {
   DismissDetected: photo,
   CropViewport: crop,
   CropPan: crop,
-  CropZoom: crop,
+  CropResize: crop,
   CropRotate: crop,
+  CropTurn: crop,
+  CropDetected: crop,
   CropAccept: crop,
   CropCancel: crop,
   RequestCrop: crop,
@@ -134,14 +136,22 @@ export function reduce(message: Msg, state: State, facts: ControllerFacts = {}):
   // A slot's own Generate finishes as an ordinary face job: its face joins the slot, the morph video stays.
   const slotJob = state.LastRun?.type === 'RunFace' && isBlendId(state.LastRun.args[0]);
   const next = withSlotFaces(result.state, message.args[1].faces);
-  return { ...result, state: slotJob ? { ...next, VideoUrl: state.VideoUrl } : next };
+  return {
+    ...result,
+    state: slotJob ? { ...next, VideoUrl: state.VideoUrl } : next,
+  };
 }
 function reduceFaces(message: Msg, state: State, facts: ControllerFacts): Transition | null {
   // A person's next action ends an open Undo notice first (fm-id4c): the hidden faces are released, then it applies.
   if (state.Undo && !facts.continuation && NEXT_ACTIONS.has(message.type)) {
     const committed = commitUndo(state);
     const result = reduce(message, committed.state, facts);
-    return result && { ...result, effects: [...committed.effects, ...result.effects] };
+    return (
+      result && {
+        ...result,
+        effects: [...committed.effects, ...result.effects],
+      }
+    );
   }
   // A valid new selection can replace this idle face's cached run snapshot. Active requests keep their
   // snapshot and the runner independently reserves their files until genuine settlement.
@@ -157,10 +167,13 @@ function reduceFaces(message: Msg, state: State, facts: ControllerFacts): Transi
   if (gated !== null) {
     // An open batch view looks for faces as soon as photo processing is ready (fm-q5b9).
     const ready = message.type === 'DownloadsChanged' ? detectOnReady(state, gated) : gated;
-    return rememberView(state, {
-      ...ready,
-      state: retirePausedPhotos(retirePhotoRunInputs(ready.state)),
-    });
+    return rememberView(
+      state,
+      faceFirst({
+        ...ready,
+        state: retirePausedPhotos(retirePhotoRunInputs(ready.state)),
+      }),
+    );
   }
   const handler: ControllerReducer = CASES[message.type];
   const result = handler(message, state, facts);
@@ -170,10 +183,13 @@ function reduceFaces(message: Msg, state: State, facts: ControllerFacts): Transi
   const selected = result.effects.some((effect) => effect.type === 'admissionRefused')
     ? { ...result.state, RunInputs: runInputs, RunSettings: runSettings }
     : result.state;
-  return rememberView(state, {
-    ...result,
-    state: retirePausedPhotos(retirePhotoRunInputs(selected)),
-  });
+  return rememberView(
+    state,
+    faceFirst({
+      ...result,
+      state: retirePausedPhotos(retirePhotoRunInputs(selected)),
+    }),
+  );
 }
 /** Hidden Undo sources stay owned until commit; replacements release an obsolete paused source. */
 function retirePausedPhotos(state: State): State {
@@ -198,6 +214,9 @@ export function rememberView(previous: State, next: Transition): Transition {
     previous.Kind !== state.Kind ||
     previous.Frames !== state.Frames ||
     previous.Pinch !== state.Pinch
-    ? { ...next, effects: [...next.effects, { type: 'rememberView', view: viewSnapshot(state) }] }
+    ? {
+        ...next,
+        effects: [...next.effects, { type: 'rememberView', view: viewSnapshot(state) }],
+      }
     : next;
 }

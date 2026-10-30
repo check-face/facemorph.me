@@ -109,6 +109,13 @@ export type PhotoEffect =
       readonly group: string;
       readonly file: Blob;
     }
+  /** The on-device detector over the open crop's preview (fm-k09b), answered by CropDetected. */
+  | {
+      readonly type: 'detectCropFaces';
+      readonly id: string;
+      readonly url: string;
+      readonly file: Blob;
+    }
   | {
       readonly type: 'cropPhoto';
       readonly id: string;

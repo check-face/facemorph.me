@@ -38,6 +38,7 @@ import {
   readString,
   type CropOffer,
   type DetectedFaces,
+  type DetectedFace,
   type Downloads,
   type Input,
   type JobProgress,
@@ -189,7 +190,11 @@ export async function pickName(request: {
   if (!file)
     throw new Error('This name has no published picture. Press Generate to make this face.');
   return readPhotoSelection(
-    await bridge.selectPhotoReported({ id: request.id, files: [file], name: request.value }),
+    await bridge.selectPhotoReported({
+      id: request.id,
+      files: [file],
+      name: request.value,
+    }),
   );
 }
 export async function previewPhoto(
@@ -219,21 +224,43 @@ export async function cropPhoto(
 ): Promise<File> {
   return readCroppedFile(await bridge.cropPhotoReported(file, area, options), 'cropPhoto');
 }
-/** The faces the on-device detector finds in a batch photo's preview (fm-q5b9): fractions, two or more, else none. */
-export async function detectFaces(
-  file: Blob,
-): Promise<readonly { x: number; y: number; width: number; height: number }[]> {
+/**
+ * The faces the on-device detector finds in a photo's preview (fm-k09b, fm-zigt): each one's box as fractions of the
+ * photo, and its aligned square (centre and side as fractions of the photo's width/height/width, angle in degrees).
+ */
+export async function detectFaces(file: Blob): Promise<readonly DetectedFace[]> {
   const v: unknown = await bridge.detectFaces(file);
-  if (!Array.isArray(v)) throw new FacadeError('detectFaces', '', 'expected a list of boxes');
-  return v.map((box: unknown, i) => {
-    const b = box as Record<string, unknown>;
-    const read = (k: string) => {
-      const n = b?.[k];
-      if (typeof n !== 'number' || !Number.isFinite(n) || n < 0 || n > 1)
-        throw new FacadeError('detectFaces', `[${i}].${k}`, 'expected a fraction');
+  if (!Array.isArray(v)) throw new FacadeError('detectFaces', '', 'expected a list of faces');
+  return v.map((face: unknown, i) => {
+    const b = face as Record<string, unknown>;
+    const read = (
+      record: Record<string, unknown> | undefined,
+      k: string,
+      path: string,
+      fraction: boolean,
+    ) => {
+      const n = record?.[k];
+      if (typeof n !== 'number' || !Number.isFinite(n) || (fraction && (n < 0 || n > 1)))
+        throw new FacadeError(
+          'detectFaces',
+          `[${i}].${path}${k}`,
+          fraction ? 'expected a fraction' : 'expected a number',
+        );
       return n;
     };
-    return { x: read('x'), y: read('y'), width: read('width'), height: read('height') };
+    const a = b?.['align'] as Record<string, unknown> | undefined;
+    return {
+      x: read(b, 'x', '', true),
+      y: read(b, 'y', '', true),
+      width: read(b, 'width', '', true),
+      height: read(b, 'height', '', true),
+      align: {
+        cx: read(a, 'cx', 'align.', false),
+        cy: read(a, 'cy', 'align.', false),
+        side: read(a, 'side', 'align.', false),
+        rotation: read(a, 'rotation', 'align.', false),
+      },
+    };
   });
 }
 export async function chooseDetectedFace(choice: DetectedFaces, index: number): Promise<File> {
@@ -266,7 +293,12 @@ function readPreparedMedia(value: unknown): PreparedMedia {
     !/^[a-f0-9]{64}$/.test(raw['digest'])
   )
     throw new TypeError('preparedMedia: invalid file identity');
-  return { blob: raw['blob'], filename: raw['filename'], mime: raw['mime'], digest: raw['digest'] };
+  return {
+    blob: raw['blob'],
+    filename: raw['filename'],
+    mime: raw['mime'],
+    digest: raw['digest'],
+  };
 }
 export const exportResultRevision = (id: string): number =>
   readInteger(bridge.exportResultRevision(id), 'exportResultRevision');

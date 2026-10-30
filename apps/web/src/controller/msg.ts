@@ -1,9 +1,10 @@
 // One payload tuple per frozen Product.fs Msg case (a42829bb, lines 263-279).
-import type { CropState } from '../../shell/facade/helpers.ts';
+import type { CropHandle, CropState } from '../../shell/facade/helpers.ts';
 import type { StillEntry } from '../media/still-entry.ts';
 import type { CandidateId } from '../contracts/batch.ts';
 import type {
   CropOffer,
+  DetectedFace,
   Downloads,
   Face,
   Input,
@@ -93,9 +94,19 @@ export interface Payloads {
   PreviewLoaded: readonly [string, InputMode, string, string];
   PinchToggle: readonly [boolean];
   CropViewport: readonly [number];
+  /** The stencil dragged by (dx, dy) editor pixels. */
   CropPan: readonly [number, number];
-  CropZoom: readonly [number];
+  /** One of the stencil's eight handles dragged by (dx, dy) editor pixels (fm-k09b). */
+  CropResize: readonly [CropHandle, number, number];
+  /** The rotate button: a quarter turn, resetting the fine angle. */
   CropRotate: readonly [];
+  /** The fine-rotation slider, -45 to 45 degrees. */
+  CropTurn: readonly [number];
+  /**
+   * The detector's answer for the open crop's photo (fm-k09b), matched by face and preview URL: its faces, or null
+   * when it could not run.
+   */
+  CropDetected: readonly [string, string, readonly DetectedFace[] | null];
   CropAccept: readonly [];
   CropCancel: readonly [];
   RequestCrop: readonly [string];
@@ -118,11 +129,7 @@ export interface Payloads {
     result: { readonly ok: boolean; readonly url?: string; readonly offer?: CropOffer },
   ];
   /** The on-device detector's faces in a batch photo (null: it could not run, so the whole photo is offered). */
-  BatchDetected: readonly [
-    token: number,
-    group: string,
-    boxes: readonly { x: number; y: number; width: number; height: number }[] | null,
-  ];
+  BatchDetected: readonly [token: number, group: string, faces: readonly DetectedFace[] | null];
   /** A click on a candidate face: picks it (appended to the order) or unpicks it. */
   BatchPick: readonly [CandidateId];
   /** The explicit Use as photo action on a damaged still in the batch view. */
