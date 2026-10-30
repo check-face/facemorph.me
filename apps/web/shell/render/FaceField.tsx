@@ -121,8 +121,18 @@ export function FaceField({
         <></>
       </InputAdornment>
     );
+  // A photo face shows its file name as the hint; the field still takes typing, which makes it a words face
+  // (fm-qrse). Focusing alone changes nothing.
   const placeholder =
-    item.mode === 'project' ? '' : item.mode === 'seed' ? '0 to 4294967295' : 'Just type anything';
+    item.mode === 'photo'
+      ? item.file instanceof File
+        ? item.file.name
+        : 'Just type anything'
+      : item.mode === 'project'
+        ? ''
+        : item.mode === 'seed'
+          ? '0 to 4294967295'
+          : 'Just type anything';
   const problem = faceInputProblem(item);
   return (
     <>
@@ -164,11 +174,9 @@ export function FaceField({
       </Menu>
       <div className="next-field">
         <TextField
-          value={
-            item.mode === 'photo' ? (item.file instanceof File ? item.file.name : '') : item.value
-          }
+          value={item.mode === 'photo' ? '' : item.value}
           placeholder={placeholder}
-          disabled={disabled || item.mode === 'photo' || item.mode === 'project'}
+          disabled={disabled}
           variant="outlined"
           label={label}
           onChange={(e) => onEdit(e.target.value)}

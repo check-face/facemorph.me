@@ -36,10 +36,12 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
     case 'Edit': {
       const [id, value] = message.args;
       const released = forgetStill(state, id, true);
-      const next = change(released.state, id, (item) => ({
-        ...item,
-        value,
-      }));
+      // Typing into a photo or restored face makes it a words face (fm-qrse): its photo goes, the words stay.
+      const next = change(released.state, id, (item) =>
+        item.mode === 'photo' || item.mode === 'project'
+          ? { ...item, mode: 'text', file: null, value }
+          : { ...item, value },
+      );
       return {
         state: next,
         effects: [

@@ -20,6 +20,7 @@ import { readIdentity } from '../../../../scripts/import/build-next.mjs';
 import { press } from '../support/operate.ts';
 import { assertNoCardPreparation } from '../support/card-setup.ts';
 import { INSTALL_HOOK } from '../parity/elmish-probe.ts';
+import { STORE_HOOK } from '../support/face-fixture.ts';
 import { generationIdentity } from '../../src/Next/browser/identity.mjs';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
@@ -800,6 +801,160 @@ test(
       await browser.close();
       await site.stop();
       rmSync(refused, { recursive: true, force: true });
+    }
+  },
+);
+
+// fm-qrse: the field always takes typing. A face in photo mode waiting for its image (as a restored photo face is) is
+// focused by a tap or click at the field's visible position: focusing alone keeps the photo; typing makes it a words
+// face whose characters appear as typed, and its Generate makes a real CPU face. A seed face takes typing too.
+test(
+  'typing into a photo face makes it a words face; focusing alone keeps the photo',
+  { timeout: 900_000 },
+  async (t) => {
+    if (!existsSync(join(runtime, 'manifest.json'))) {
+      const reason = `untested: no acquired runtime at ${runtime}; owner fm-qrse`;
+      if (process.env['FACEMORPH_REQUIRE_RUNTIME'] === '1') throw Error(reason);
+      t.skip(reason);
+      return;
+    }
+    const artifact = readIdentity(out);
+    assert.deepEqual(artifact.findings, []);
+    const site = await startControl({
+      runtime,
+      artifact: resolve(out, 'deploy-next'),
+      source: artifact.identity.deploySource.buildId,
+    });
+    const browser = await chromium.launch({ args: [...chromiumArgs, '--disable-features=WebGPU'] });
+    mkdirSync(results, { recursive: true });
+    try {
+      for (const [name, width, touch] of [
+        ['desktop', 1280, false],
+        ['phone', 390, true],
+      ] as const) {
+        const context = await browser.newContext({
+          ...(touch ? devices['iPhone 13'] : {}),
+          viewport: { width, height: 900 },
+          hasTouch: touch,
+          isMobile: touch,
+          ignoreHTTPSErrors: true,
+        });
+        await context.addInitScript(INSTALL_HOOK);
+        await context.addInitScript(STORE_HOOK);
+        const page = await context.newPage();
+        const errors: string[] = [];
+        page.on('pageerror', (error) => errors.push(error.message));
+        const operate = async (control: Locator) =>
+          assert.ok((await press(page, control, { touch })).inside, `${name}: ${control}`);
+        const input = (i: number) =>
+          page.evaluate((index) => {
+            const m = (
+              window as unknown as {
+                __elmish: { model: { Inputs: { mode: string; value: string; file: unknown }[] } };
+              }
+            ).__elmish.model;
+            const item = m.Inputs[index]!;
+            return { mode: item.mode, value: item.value, file: item.file !== null };
+          }, i);
+        try {
+          await page.goto(ORIGIN);
+          const tiles = page.locator('section.next-face');
+          await tiles.nth(1).waitFor();
+          for (const control of [
+            page.locator('.next-model-toast').getByRole('button', { name: 'Not now' }),
+            page.getByRole('button', { name: 'Ask me later' }),
+          ])
+            if (
+              await control.waitFor({ timeout: 3000 }).then(
+                () => true,
+                () => false,
+              )
+            )
+              await operate(control);
+          await page.getByLabel('Processing mode').selectOption('cpu'); // setup
+          // Setup (controller fixture): face 1 is a photo face waiting for its image, as a restored photo face is.
+          await page.waitForFunction(
+            () => !!(window as unknown as { __fmStore?: unknown }).__fmStore,
+          );
+          await page.evaluate(() => {
+            const store = (
+              window as unknown as {
+                __fmStore: {
+                  dispatch(m: unknown): void;
+                  getState(): { Inputs: { id: string }[] };
+                };
+              }
+            ).__fmStore;
+            store.dispatch({ type: 'Mode', args: [store.getState().Inputs[0]!.id, 'photo'] });
+          });
+          const field = tiles.nth(0).locator('.next-field input');
+          let face = await input(0);
+          assert.equal(face.mode, 'photo', `${name}: face 1 waits for its photo`);
+          // Focusing alone keeps the photo.
+          await operate(field);
+          assert.ok(
+            await field.evaluate((el) => el === document.activeElement),
+            `${name}: focused`,
+          );
+          assert.ok(await field.isEditable(), `${name}: the field takes typing`);
+          face = await input(0);
+          assert.equal(face.mode, 'photo', `${name}: focus keeps the photo face`);
+          await page.screenshot({ path: join(results, `${name}-qrse-photo-focused.png`) });
+          // Typing makes it a words face, exactly as typed.
+          await page.keyboard.insertText('typed words');
+          assert.equal(await field.inputValue(), 'typed words', `${name}: characters appear`);
+          face = await input(0);
+          assert.deepEqual(
+            face,
+            { mode: 'text', value: 'typed words', file: false },
+            `${name}: a words face`,
+          );
+          await page.screenshot({ path: join(results, `${name}-qrse-typed.png`) });
+          // A seed face takes typing too.
+          await operate(tiles.nth(1).getByRole('button', { name: 'Change mode', exact: true }));
+          const seed = page.getByRole('menuitem', { name: 'Numeric seed', exact: true });
+          await seed.evaluate(async (el) => {
+            const panel = el.closest('.MuiPaper-root');
+            await Promise.allSettled(
+              (panel?.getAnimations({ subtree: true }) ?? []).map((a) => a.finished),
+            );
+          });
+          await operate(seed);
+          const seedField = tiles.nth(1).locator('.next-field input');
+          await operate(seedField);
+          await page.keyboard.press('ControlOrMeta+A');
+          await page.keyboard.insertText('42');
+          assert.deepEqual(
+            await input(1),
+            { mode: 'seed', value: '42', file: false },
+            `${name}: the seed face takes typing`,
+          );
+          // The typed face generates on the CPU.
+          await operate(tiles.nth(0).locator('.next-face-generate'));
+          const accept = page.locator('.next-download-accept');
+          if (
+            await accept.waitFor({ timeout: 30_000 }).then(
+              () => true,
+              () => false,
+            )
+          )
+            await operate(accept);
+          await page.waitForFunction(
+            () =>
+              document.querySelectorAll('section.next-face')[0]?.getAttribute('data-next-state') ===
+              'filled',
+            null,
+            { timeout: 600_000 },
+          );
+          await page.screenshot({ path: join(results, `${name}-qrse-generated.png`) });
+          assert.deepEqual(errors, [], `${name}: no page errors`);
+        } finally {
+          await context.close();
+        }
+      }
+    } finally {
+      await browser.close();
+      await site.stop();
     }
   },
 );
