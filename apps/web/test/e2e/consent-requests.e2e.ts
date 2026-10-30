@@ -664,7 +664,17 @@ test(
       await operate(entry);
       await (await chooser).setFiles(join(REPO, 'tests/crop/fixtures/no-face.jpg'));
       const crop = page.locator('.next-crop-dialog');
-      await crop.locator('.next-encode-preview img').waitFor({ timeout: 120_000 });
+      // Faces first (fm-k09b): the confirmation shows the whole photo while the detector waits for the photo
+      // files (cold: the encoder transfer is still held open) and the proposal once it has run (warm).
+      await crop.locator('.next-encode-confirmation img').first().waitFor({ timeout: 120_000 });
+      await page.waitForFunction(
+        () =>
+          document
+            .querySelector('.next-encode-confirmation')
+            ?.getAttribute('data-next-crop-state') !== 'running',
+        null,
+        { timeout: 120_000 },
+      );
       clock['cropVisible'] = performance.now();
       if (cold)
         assert.ok(
@@ -983,8 +993,36 @@ test(
       assert.ok(warmState.completedAt > 0);
       assert.ok(warmState.keyToFrameMs.length >= 2);
       const warmRequests = server.log.slice(warmLogStart);
+      // Faces first (fm-k09b): the cold crop was adjusted while the encoder transfer was still held, so the
+      // detector first runs in this warm session. Its own files are a first use (never fetched in the cold
+      // session: its module, wasm and landmark predictor), each once; every model file the cold session fetched is
+      // served from retained bytes.
+      const coldPaths = new Set(server.log.slice(0, warmLogStart).map((row) => row.path));
+      const landmarks = paths([manifest['landmarks'] as Asset]);
+      const detectorFirstUse = warmRequests.filter(
+        (row) =>
+          (row.hostClass === 'detector' || landmarks.has(row.path)) && !coldPaths.has(row.path),
+      );
+      assert.equal(
+        new Set(detectorFirstUse.map((row) => row.path)).size,
+        detectorFirstUse.length,
+        'detector files are fetched at most once',
+      );
+      console.log(
+        'fm-9kr8 cold landmark rows',
+        JSON.stringify(
+          server.log
+            .slice(0, warmLogStart)
+            .filter((row) => landmarks.has(row.path))
+            .map(({ path, bytes, closedEarly }) => ({
+              path: path.slice(16, 24),
+              bytes,
+              closedEarly,
+            })),
+        ),
+      );
       assert.deepEqual(
-        warmRequests.filter((row) => row.hostClass !== 'app'),
+        warmRequests.filter((row) => row.hostClass !== 'app' && !detectorFirstUse.includes(row)),
         [],
         'warm seed, photo encoding and export transfer zero model bytes',
       );
@@ -1366,22 +1404,35 @@ test(
           const chooser = page.waitForEvent('filechooser');
           await operate(entry);
           await (await chooser).setFiles(join(REPO, 'tests/crop/fixtures/no-face.jpg'));
-          const crop = page.locator('.next-crop-dialog.next-encode-dialog');
-          await crop.locator('.next-encode-preview img').waitFor({ timeout: 120_000 });
-          await operate(crop.getByRole('button', { name: 'OK', exact: true }));
+          // Faces first (fm-k09b): the photo-setup decision comes before the confirmation, with both purposes.
           const dialog = page.locator('.next-download-dialog');
+          const purposes = () =>
+            dialog
+              .locator('[data-download-purpose]')
+              .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-download-purpose')));
+          const generateOnly = async () => {
+            await dialog.waitFor({ timeout: 120_000 });
+            assert.deepEqual(await purposes(), ['generate', 'encode']);
+            await operate(dialog.getByRole('radio', { name: 'Generate', exact: true }));
+            assert.deepEqual(await purposes(), ['generate']);
+            assert.match(await dialog.innerText(), /Encoding needs the photo encoder/);
+            await operate(page.locator('.next-download-accept'));
+            await dialog.waitFor({ state: 'detached' });
+          };
           await dialog.waitFor({ timeout: 120_000 });
           assert.deepEqual(models, [], `${name}: nothing requested before the decision`);
-          await operate(dialog.getByRole('radio', { name: 'Generate', exact: true }));
+          await generateOnly();
+          // Declined, the detector did not run: the confirmation says so neutrally, with no photo file fetched.
+          const crop = page.locator('.next-crop-dialog.next-encode-dialog');
+          await crop.locator('.next-encode-not-run').waitFor({ timeout: 120_000 });
           assert.deepEqual(
-            await dialog
-              .locator('[data-download-purpose]')
-              .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-download-purpose'))),
-            ['generate'],
+            photoSide(),
+            [],
+            `${name}: no detector or encoder request after declining`,
           );
-          assert.match(await dialog.innerText(), /Encoding needs the photo encoder/);
-          await operate(page.locator('.next-download-accept'));
-          await dialog.waitFor({ state: 'detached' });
+          // Its OK still needs the encoder: the same question, answered Generate again, pauses the photo.
+          await operate(crop.getByRole('button', { name: 'OK', exact: true }));
+          await generateOnly();
           // The photo is paused and held; the face returns to useful generation.
           const paused = photoTile.getByText(
             'Encoding needs the photo encoder. Your chosen photo is kept in this tab.',

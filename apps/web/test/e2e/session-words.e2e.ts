@@ -619,7 +619,8 @@ async function storedBlobs(page: Page) {
 
 test(
   'photo faces keep only their file name; an unfinished photo points to Encode image; MP4 and diagnostics carry no words',
-  { timeout: 600_000 }, // 112 s on eris (both widths, a 2-frame-per-face morph each)
+  // 112 s on eris before faces first; the photo setup (1,118 MB) and the detector now run before the crop.
+  { timeout: 1_200_000 },
   async (t) => {
     const s = await site(t);
     if (!s) return;
@@ -665,6 +666,24 @@ test(
         await operate(entry);
         await (await chooser).setFiles([fixture]);
         const dialog = page.getByRole('dialog', { name: 'Encode an image', exact: true });
+        // Faces first (fm-k09b): answer the photo-setup decision until the crop's proposal is ready.
+        // The decision opens over the crop (and hides it from role queries), so it is answered first; the crop is
+        // ready once the detector has left it waiting or running.
+        for (const end = Date.now() + 900_000; ;) {
+          assert.ok(Date.now() < end, 'the crop proposal was ready in time');
+          const decision = page.locator('.next-download-accept');
+          if (await decision.isVisible()) {
+            await operate(decision);
+            await decision.waitFor({ state: 'detached' });
+            continue;
+          }
+          const state = await page
+            .locator('.next-encode-confirmation')
+            .getAttribute('data-next-crop-state', { timeout: 500 })
+            .catch(() => null);
+          if (state && state !== 'waiting' && state !== 'running') break;
+          await page.waitForTimeout(500);
+        }
         await operate(dialog.getByRole('button', { name: 'OK', exact: true }));
         await dialog.waitFor({ state: 'detached' });
         const acceptDownloads = async () => {
@@ -738,22 +757,48 @@ test(
         await operate(page.getByRole('button', { name: 'Create morph' }));
         // The video, or an error; a download question on the way (the video codec) is answered as a person does.
         for (;;) {
-          await page.waitForFunction(
-            () => {
-              const m = (
-                window as unknown as {
-                  __elmish: { model: { VideoUrl: string; Error: string | null } };
-                }
-              ).__elmish.model;
-              return (
-                !!m.VideoUrl ||
-                m.Error !== null ||
-                !!document.querySelector('.next-download-accept')
+          await page
+            .waitForFunction(
+              () => {
+                const m = (
+                  window as unknown as {
+                    __elmish: { model: { VideoUrl: string; Error: string | null; Status: string } };
+                  }
+                ).__elmish.model;
+                // A cancelled morph ends the wait at once (its Status says so), so it fails as itself.
+                return (
+                  !!m.VideoUrl ||
+                  m.Error !== null ||
+                  m.Status.startsWith('Cancelled') ||
+                  !!document.querySelector('.next-download-accept')
+                );
+              },
+              null,
+              { timeout: 600_000, polling: 1000 },
+            )
+            .catch(async (error: unknown) => {
+              await shot('morph-stuck');
+              console.log(
+                'morph-stuck',
+                JSON.stringify(
+                  await page.evaluate(() => {
+                    const m = (
+                      window as unknown as { __elmish: { model: Record<string, unknown> } }
+                    ).__elmish.model;
+                    return {
+                      Busy: m['Busy'],
+                      Gate: m['Gate'],
+                      Crop: !!m['Crop'],
+                      CropQueue: m['CropQueue'],
+                      Faces: (m['Faces'] as unknown[]).length,
+                      Error: m['Error'],
+                    };
+                  }),
+                ),
+                await page.locator('[role=status]').allInnerTexts(),
               );
-            },
-            null,
-            { timeout: 600_000, polling: 1000 },
-          );
+              throw error;
+            });
           const accept = page.locator('.next-download-accept');
           if (!(await accept.isVisible())) break;
           await operate(accept);
@@ -763,11 +808,15 @@ test(
           const m = (
             window as unknown as { __elmish: { model: { VideoUrl: string; Error: string | null } } }
           ).__elmish.model;
-          return { VideoUrl: m.VideoUrl, Error: m.Error };
+          return {
+            VideoUrl: m.VideoUrl,
+            Error: m.Error,
+            Status: (m as { Status?: string }).Status,
+          };
         });
         if (!morphed.VideoUrl) await shot('morph-failed');
         assert.equal(morphed.Error, null, `${label}: the morph`);
-        assert.ok(morphed.VideoUrl, `${label}: the morph made a video`);
+        assert.ok(morphed.VideoUrl, `${label}: the morph made a video (${morphed.Status})`);
         await facesReady(page, 2, 60_000);
         const videoDownload = page.waitForEvent('download');
         await operate(page.getByRole('button', { name: 'Save video', exact: true }));
