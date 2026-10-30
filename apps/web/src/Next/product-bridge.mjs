@@ -7,7 +7,7 @@ import {createBrowserRuntime} from './browser/runtime.mjs';
 import {admitRuntimeManifest} from './browser/runtime-manifest.mjs';
 import {AdmissionRefused} from './browser/admission.mjs';
 import {createLatentPath,GEOMETRY_VERSION} from './geometry/latent-path.mjs';
-import {blend,FFHQ_1024_DESCRIPTOR} from 'stylegan-js';
+import {blend,blendWithRecipe,BLEND_RECIPE_MAX_SLOTS,FFHQ_1024_DESCRIPTOR} from 'stylegan-js';
 import {engineGeometry} from 'stylegan-js/engine';
 // The model's dimensions (fm-dmlz): the side, the W+ shape and the pixel bytes come from the descriptor of the
 // model this app ships (FFHQ), never from literal 1024 / 18 x 512.
@@ -70,10 +70,14 @@ export function invalidateFace(id){
  faces.delete(id);exportFiles?.drop(id);const url=urls.get(id);if(url)URL.revokeObjectURL(url);urls.delete(id);
  if(!blendOwned(id))invalidateMorph();
 }
-/** A blend slot seeded from a finished morph face starts as its copy: same latent, pixels and source, its own id. */
+/** A blend slot seeded from a finished morph face starts as its copy: same latent, pixels and source, its own id.
+ * Add to morph (fm-2kse) copies the blend result into a new morph face the same way: an ordinary latent face. */
 export function copyFace(from,to){
- const face=faces.get(from);if(!face||!blendOwned(to))return;
- faces.set(to,{...face,pixels:face.pixels?{...face.pixels}:face.pixels});
+ const face=faces.get(from);if(!face)return;
+ const toMorph=from==='blend-result'&&!blendOwned(to);if(!blendOwned(to)&&!toMorph)return;
+ const {blend:_recipe,blendSha256:_digest,...plain}=face;
+ faces.set(to,{...(toMorph?plain:face),pixels:face.pixels?{...face.pixels}:face.pixels});
+ if(toMorph){arrivalRevision++;invalidateMorph();}
  if(face.blob)replaceUrl(to,face.blob);else{const old=urls.get(to);if(old)URL.revokeObjectURL(old);urls.delete(to);}
 }
 export const photoRevision=id=>faceRevisions.get(id)||0;
@@ -482,12 +486,15 @@ export async function execute(request,compute){
   if(request.action==='blend'){
    const latents=(request.inputs||[]).map(item=>{const face=faces.get(item.id);if(!face?.latent||!sameSource(face,item))throw Error('Generate every blended face first.');if(face.latent.space!=='w-plus')throw Error('Only W+ faces can be blended.');return {space:'w-plus',shape:[...W_SHAPE],values:face.latent.values};});
    const mixed=blend(FFHQ_1024_DESCRIPTOR,latents,request.weights||[]);if(!mixed.ok)throw Error(mixed.error.message);
+   // The recipe a saved blend carries (fm-2kse): each slot's kind, latent digest and weight; never its words, seed or file.
+   const kindOf=item=>{const face=faces.get(item.id);return item.mode==='photo'?'photo':item.mode==='seed'?'seed':item.mode==='text'?(face?.named?'name':'word'):face?.generationKind==='seed'?'seed':'photo';};
+   const recipe=latents.length<=BLEND_RECIPE_MAX_SLOTS?blendWithRecipe(FFHQ_1024_DESCRIPTOR,request.inputs.map((item,k)=>({kind:kindOf(item),latent:latents[k]})),request.weights||[]):null;
    jobCounts.facesDone=0;jobCounts.facesTotal=1;
    progress({stage:'face',face:request.target,text:'Blending faces…',loaded:0,total:1});
    // The descriptor's latent is [18,512]; the runtime takes the batched W+ [1,18,512].
    const result=await (await engine()).synthesize({...mixed.value.latent,shape:[1,...W_SHAPE]},{signal:active.signal,raw:true});
    checked();if(request.inputs.some(item=>revisionOf(item.id)!==revisions.get(item.id)))throw superseded();
-   await register(request.target,result,`Blend of ${latents.length} faces`);faces.get(request.target).source={mode:'project',value:'',file:null};
+   await register(request.target,recipe?.ok?{...result,blend:recipe.value.recipe,blendSha256:recipe.value.generationSha256}:result,`Blend of ${latents.length} faces`);faces.get(request.target).source={mode:'project',value:'',file:null};
    jobCounts.facesDone=1;diagnostics.finish('completed');return snapshot('Blend updated.');
   }
   jobCounts.facesDone=0;jobCounts.facesTotal=request.inputs.length;jobCounts.framesDone=0;jobCounts.framesTotal=0;jobCounts.videoFramesDone=0;jobCounts.videoFramesTotal=0;
@@ -712,10 +719,14 @@ export async function selectPhotoReported(request){
   // W+ shape; a blend's identity is its recipe digest, which the reader has already checked (fm-fy2.7).
   checkFaceModel(recovered,{modelSha256:m.modelSourceSha256,noiseSha256:m.noiseSha256});
   if(recovered.generationKind!=='blend'&&recovered.generationSha256&&await digest(JSON.stringify(generationIdentity(m,recovered.generationKind)))!==recovered.generationSha256)throw Error('This saved face uses a different model.');
-  if(selectionRevision!==revisionOf(request.id))return null;await register(request.id,recovered,request.name||'Saved face');
+  if(selectionRevision!==revisionOf(request.id))return null;
+  // A reopened saved blend (fm-2kse) is an ordinary latent face here: the session keeps seed, photo and latent faces.
+  const {blend:_recipe,...plain}=recovered;
+  const reopened=recovered.generationKind==='blend'?{...plain,generationKind:'latent',generationSha256:await digest(JSON.stringify(generationIdentity(m,'latent')))}:recovered;
+  await register(request.id,reopened,request.name||'Saved face');
   // A picked name's published result (fm-ejwq) is that text's face: it serves Generate, Save and Morph for the
   // unchanged text, and an edit invalidates it like any other face.
-  if(request.name)faces.get(request.id).source={mode:'text',value:request.name,file:null};
+  if(request.name){faces.get(request.id).source={mode:'text',value:request.name,file:null};faces.get(request.id).named=true;}
   analytics.operationResult?.('restore','completed');return {recovered:true,...snapshot(request.name?'Name shown from its published result.':'Saved face recovered without photo encoding.')};
  }
  warmPhotoTools();return Promise.resolve(photoStage('photo-select',()=>selectPhoto(request))).then(result=>{if(selectionRevision!==revisionOf(request.id)){if(result?.url)URL.revokeObjectURL(result.url);return null;}if(result)analytics.photoSelected({outcome:'ready'});return result;},error=>{analytics.photoSelected({outcome:'invalid'});throw error;});}

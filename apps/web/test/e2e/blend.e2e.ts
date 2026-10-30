@@ -13,6 +13,10 @@
 //           (one regeneration). An injected failure offers Retry in the result's area. Reload restores slots and
 //           weights; the footer Privacy link and Back with the names picker open keep the view; leaving cancels a
 //           pending blend while a slot photo encode keeps running.
+//   output  1280 mouse and 390 touch: blend two faces; Add to morph puts "Blend of 2 faces" at the end of the morph
+//           row with no model request; Save as PNG writes the full 1024 x 1024 frame named blend-2-faces… with its
+//           recipe (slot kinds, latent digests, weights; no typed words); Back to morph shows the new face; the saved
+//           PNG opened on a face is recovered with no model request; Blend faces returns to the view intact.
 //   counts  1, 2, 3, 8, 16, 40 and 100 slots at 1280 and 390: the slot panel scrolls inside itself, the result box
 //           stays in the viewport after scrolling to the last slot, compact rows (thumbnail, field, weight), every
 //           weight slider and Remove hit by elementFromPoint at their centres, no horizontal page scroll; at 100:
@@ -21,7 +25,7 @@
 //           the top with one column on phones; no horizontal page scroll and no clipped control.
 //   FACEMORPH_DEPLOY_OUT=<dir with deploy-next/> node --test test/e2e/blend.e2e.ts
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
 import {
@@ -37,11 +41,13 @@ import { readIdentity } from '../../../../scripts/import/build-next.mjs';
 import { press } from '../support/operate.ts';
 import { STORE_HOOK } from '../support/face-fixture.ts';
 import { SWEEP_WIDTHS } from '../verify/harness.ts';
+import { readRecovery } from 'stylegan-js';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
 const out = resolve(process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO);
 const results = join(REPO, 'apps/web/test-results/blend');
-const CASES = new Set((process.env['BLEND_CASES'] ?? 'run,counts,layout').split(','));
+const CASES = new Set((process.env['BLEND_CASES'] ?? 'run,output,counts,layout').split(','));
+const MODEL = /^\/runtime\/(assets|chunks|encoder-stream|photo)\//;
 const PHOTO = join(REPO, 'tests/crop/fixtures/non-square.jpg');
 const COUNTS = [1, 2, 3, 8, 16, 40, 100] as const;
 
@@ -76,6 +82,9 @@ async function newPage(browser: Browser, width: number, touch: boolean) {
     hasTouch: touch,
     isMobile: touch,
     ignoreHTTPSErrors: true,
+    acceptDownloads: true,
+    // BLEND_SCHEME=dark repeats a case in the dark theme.
+    colorScheme: process.env['BLEND_SCHEME'] === 'dark' ? 'dark' : 'light',
   });
   await context.addInitScript(STORE_HOOK);
   await context.addInitScript(TRACE_HOOK);
@@ -311,7 +320,15 @@ test(
         );
         await (await choosing).setFiles(PHOTO);
         const crop = page.getByRole('dialog', { name: 'Encode an image', exact: true });
-        await crop.waitFor();
+        // Faces first (fm-k09b): answer the photo-setup decision until the crop's proposal is ready.
+        for (const end = Date.now() + 900_000; ;) {
+          assert.ok(Date.now() < end, 'the crop proposal was ready in time');
+          const okButton = crop.getByRole('button', { name: 'OK', exact: true });
+          if ((await okButton.isVisible()) && (await okButton.isEnabled())) break;
+          const decision = page.locator('.next-download-accept');
+          if (await decision.isVisible()) await operate(page, decision, touch);
+          else await page.waitForTimeout(500);
+        }
         await operate(page, crop.getByRole('button', { name: 'OK', exact: true }), touch);
         // Until the photo slot's face is encoded, answer the photo encoder's question whenever it is asked
         // (again once its schedule is discovered, or after the picked name's own generation).
@@ -549,6 +566,188 @@ test(
           morphFaces,
           'the morph faces are as they were',
         );
+        assert.deepEqual(errors, []);
+      } finally {
+        await page.screenshot({ path: at('final') }).catch(() => {});
+        await context.close();
+      }
+    }
+  },
+);
+
+test(
+  'blend output: Add to morph, Save a PNG with its recipe, reopen it on the main page, return to the view',
+  { timeout: 3_600_000, skip: !CASES.has('output') },
+  async (t) => {
+    const b = await setup(t);
+    if (!b) return;
+    for (const [name, width, touch] of [
+      ['desktop', 1280, false],
+      ['phone', 390, true],
+    ] as const) {
+      const at = (step: string) =>
+        join(
+          results,
+          `output-${name}${process.env['BLEND_SCHEME'] === 'dark' ? '-dark' : ''}-${step}.png`,
+        );
+      const { context, page, errors } = await newPage(b, width, touch);
+      const modelRequests: string[] = [];
+      page.on('request', (request) => {
+        const path = new URL(request.url()).pathname;
+        if (MODEL.test(path)) modelRequests.push(path);
+      });
+      const inputs = () =>
+        page.evaluate(() =>
+          (window as unknown as W).__fmStore.getState().Inputs.map((i) => ({
+            id: i.id,
+            value: i.value,
+            mode: (i as { mode?: string }).mode,
+          })),
+        );
+      try {
+        await page.goto(ORIGIN);
+        await page.locator('section.next-face').nth(1).waitFor();
+        await dismissToasts(page, touch);
+        await cpu(page);
+        const morphBefore = await inputs();
+        await page.goto(`${ORIGIN}/#blend`);
+        await page.locator('.next-blend').waitFor();
+        await setSlots(page, 2);
+        const accept = page.locator('.next-download-accept');
+        await operate(page, page.locator('.next-blend-action'), touch);
+        for (const end = Date.now() + 600_000; ;) {
+          const blend = await blendOf(page);
+          if (blend && blend.revision > 0 && blend.running === null) break;
+          assert.ok(Date.now() < end, 'the blend finished in time');
+          if (await accept.isVisible()) await operate(page, accept, touch);
+          else await page.waitForTimeout(500);
+        }
+        assert.equal((await blendOf(page))!.error, '');
+        const ready = page.locator('.next-blend-actions [data-next-result-status="ready"]');
+        await ready.waitFor({ timeout: 120_000 });
+
+        // Add to morph: the blend joins the end of the morph row with no model request and no blend run.
+        const requestsBefore = modelRequests.length;
+        const blendsBefore = blendRequests(await trace(page)).length;
+        const add = page.getByRole('button', { name: 'Add to morph' });
+        await operate(page, add, touch);
+        await page.locator('.next-blend-added').waitFor();
+        assert.equal(
+          await page.locator('.next-blend-added').innerText(),
+          `Blend of 2 faces added to the morph as face ${morphBefore.length + 1}.`,
+        );
+        const afterAdd = await inputs();
+        assert.equal(afterAdd.length, morphBefore.length + 1);
+        assert.deepEqual(afterAdd.slice(0, -1), morphBefore, 'the row before it is unchanged');
+        assert.deepEqual(
+          [afterAdd.at(-1)!.value, afterAdd.at(-1)!.mode],
+          ['Blend of 2 faces', 'project'],
+        );
+        assert.deepEqual(modelRequests.slice(requestsBefore), [], 'Add to morph requests no model');
+        assert.equal(blendRequests(await trace(page)).length, blendsBefore, 'no new blend');
+        await page.screenshot({ path: at('added') });
+
+        // Save as PNG: the full frame, named for the blend, carrying its recipe and no typed words.
+        await operate(page, page.locator('.next-blend-actions .next-result-format'), touch);
+        await operate(page, page.getByRole('menuitem', { name: /PNG/ }), touch);
+        await page
+          .locator('.next-blend-actions .next-result-format', {
+            hasText: 'PNG',
+          })
+          .waitFor();
+        await ready.waitFor({ timeout: 120_000 });
+        const download = page.waitForEvent('download');
+        await operate(
+          page,
+          page.locator('.next-blend-actions').getByRole('button', { name: 'Save image' }),
+          touch,
+        );
+        const saved = await download;
+        const bytes = new Uint8Array(readFileSync((await saved.path())!));
+        const file = join(results, `output-${name}-saved.png`);
+        writeFileSync(file, bytes);
+        assert.match(saved.suggestedFilename(), /^blend-2-faces.*\.png$/);
+        assert.deepEqual([...bytes.subarray(1, 4)], [0x50, 0x4e, 0x47], 'a PNG');
+        const view = new DataView(bytes.buffer, bytes.byteOffset);
+        assert.deepEqual([view.getUint32(16), view.getUint32(20)], [1024, 1024], 'the full frame');
+        const read = readRecovery(bytes) as unknown as {
+          recovered: {
+            generationKind: string;
+            blend: {
+              slots: { kind: string; latentSha256: string; weight: number }[];
+            };
+          };
+        };
+        assert.equal(read.recovered.generationKind, 'blend');
+        assert.deepEqual(
+          read.recovered.blend.slots.map((s) => [s.kind, s.weight]),
+          [
+            ['word', 0.5],
+            ['word', 0.5],
+          ],
+        );
+        assert.ok(
+          !new TextDecoder('latin1').decode(bytes).includes('blend words'),
+          'no typed words',
+        );
+
+        // Back to morph: the new face is at the end of the row and drawn.
+        await operate(page, page.getByRole('button', { name: 'Back to morph' }), touch);
+        const tiles = page.locator('section.next-face');
+        await tiles.nth(1).waitFor();
+        const added = tiles.nth(afterAdd.length - 1);
+        await added.scrollIntoViewIfNeeded();
+        await added.locator('canvas[data-face-drawn="true"], img.next-face-img').first().waitFor();
+        await page.screenshot({ path: at('morph-row') });
+
+        // The saved PNG opened on face 1 is recovered with no model request.
+        const before = modelRequests.length;
+        await tiles.nth(0).scrollIntoViewIfNeeded();
+        await operate(
+          page,
+          tiles.nth(0).getByRole('button', { name: 'Change mode', exact: true }),
+          touch,
+        );
+        const chooser = page.waitForEvent('filechooser');
+        await operate(
+          page,
+          page.getByRole('menuitem', { name: 'Encode image', exact: true }),
+          touch,
+        );
+        await (await chooser).setFiles(file);
+        await page.waitForFunction(
+          () => {
+            const s = (window as unknown as W).__fmStore.getState() as unknown as {
+              Inputs: { id: string; mode: string }[];
+              Faces: { id: string }[];
+            };
+            const first = s.Inputs[0]!;
+            return first.mode === 'project' && s.Faces.some((f) => f.id === first.id);
+          },
+          null,
+          { timeout: 60_000 },
+        );
+        assert.deepEqual(
+          modelRequests.slice(before),
+          [],
+          'reopening the saved blend requests no model',
+        );
+        await page.screenshot({ path: at('reopened') });
+
+        // Blend faces returns to the view with its slots and result intact.
+        const kept = (await blendOf(page))!;
+        const entry = page.getByRole('button', { name: 'Blend faces' });
+        if (!(await entry.isVisible()))
+          await operate(page, page.getByRole('button', { name: 'More options' }), touch);
+        await operate(page, entry, touch);
+        await page.locator('.next-blend').waitFor();
+        const back = (await blendOf(page))!;
+        assert.deepEqual(back.slots, kept.slots, 'slots and weights intact');
+        assert.ok(
+          back.faces.some((f) => f.id === 'blend-result'),
+          'the result is still shown',
+        );
+        await page.locator('.next-blend-image').waitFor();
         assert.deepEqual(errors, []);
       } finally {
         await page.screenshot({ path: at('final') }).catch(() => {});

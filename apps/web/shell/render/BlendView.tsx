@@ -125,6 +125,8 @@ export function BlendView({
         }
       : undefined,
   );
+  // Add to morph answers in the result's status line: the face it became, or the budget that refused it.
+  const [addedFor, setAddedFor] = useState<number | null>(null);
   const sum = weightSum(slots);
   const line = sumLine(slots);
   const photoEncodingAvailable = !s.Downloads.known || s.Downloads.photoAvailable;
@@ -166,10 +168,28 @@ export function BlendView({
             >
               {updating ? 'Blending…' : result ? 'Blend again' : 'Blend'}
             </FancyButton>
+            {result && (
+              <Button
+                color="inherit"
+                variant="outlined"
+                className="next-blend-to-morph"
+                sx={{ minHeight: 48 }}
+                disabled={updating}
+                onClick={() => {
+                  setAddedFor(resultRevision);
+                  dispatch(msg('BlendAddToMorph'));
+                }}
+              >
+                Add to morph
+              </Button>
+            )}
           </div>
           <div className="next-status next-blend-status" role="status" aria-live="polite">
             {updating && !result && <span>Blending faces…</span>}
             {blend?.error && <span className="next-blend-error">{blend.error}</span>}
+            {!updating && addedFor !== null && addedFor === resultRevision && s.Status && (
+              <span className="next-blend-added">{s.Status}</span>
+            )}
             {blend?.error && blend.retry && !updating && (
               <Button
                 color="inherit"

@@ -44,7 +44,7 @@ export async function downloadImage(result,seed,{format='webp',rgba}={}){
   const slot=await encoder.acquire(1024*1024*4);
   // A displayed face also carries UI state and deferred file/download promises.
   // Only the recovery identity belongs across the worker boundary.
-  const identity={latent:result.latent,provenance:result.provenance,generationKind:result.generationKind,generationSha256:result.generationSha256};
+  const identity={latent:result.latent,provenance:result.provenance,generationKind:result.generationKind,generationSha256:result.generationSha256,...(result.blend&&result.blendSha256?{blend:result.blend,blendSha256:result.blendSha256}:{})};
   const recovery={result:identity,seed:seedOf(seed)};
   const output=await encoder.encode(slot,format==='png'?(rgba?{rgba,format:'png',recovery}:{blob:result.blob,format:'png',recovery}):{blob:result.blob,format:'webp',quality:WEBP_QUALITY,recovery});
   return output.blob;

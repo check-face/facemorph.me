@@ -370,6 +370,64 @@ test('leaving the view cancels a pending blend synthesis only', () => {
   assert.equal(step(left.state, msg('BlendView', false)).effects.length, 0);
 });
 
+test('Add to morph puts the shown blend at the end of a long morph row through the admission check', () => {
+  for (const count of [3, 64, 150]) {
+    const opened = step(open(morph(count)).state, msg('BlendRun'));
+    const revision = runs(opened.effects)[0]!.revision;
+    const shown = step(
+      opened.state,
+      msg('BlendCompleted', revision, {
+        ...face('x'),
+        label: 'Blend of 3 faces',
+      }),
+    ).state;
+    const added = step(shown, msg('BlendAddToMorph'), {
+      newFaceId: 'face-new',
+    });
+    const last = added.state.Inputs.at(-1)!;
+    assert.equal(added.state.Inputs.length, count + 1);
+    assert.deepEqual(last, {
+      id: 'face-new',
+      mode: 'project',
+      value: 'Blend of 3 faces',
+      file: null,
+    });
+    assert.deepEqual(
+      added.state.Inputs.slice(0, count),
+      shown.Inputs,
+      'the row before it is unchanged',
+    );
+    const copy = added.state.Faces.find((f) => f.id === 'face-new')!;
+    assert.deepEqual([copy.label, copy.raw, copy.url], ['Blend of 3 faces', true, '']);
+    assert.ok(
+      added.effects.some(
+        (e) => e.type === 'copyFace' && e.from === BLEND_RESULT && e.to === 'face-new',
+      ),
+    );
+    assert.ok(
+      added.effects.some((e) => e.type === 'rememberView'),
+      'the session keeps the new face',
+    );
+    assert.ok(
+      !added.effects.some((e) => e.type === 'runBlend' || e.type === 'dispatch'),
+      'zero inference',
+    );
+    assert.equal(added.state.Status, `Blend of 3 faces added to the morph as face ${count + 1}.`);
+    assert.equal(added.state.Blend, shown.Blend, 'the blend view is unchanged');
+    // A real budget one over: its plain message, nothing added.
+    const refused = step(shown, msg('BlendAddToMorph'), {
+      newFaceId: 'face-new',
+      storedSessionBytes: Number.MAX_SAFE_INTEGER,
+    });
+    assert.equal(refused.state.Inputs, shown.Inputs);
+    assert.match(refused.state.Status, /^Not added: a saved session can hold at most/);
+    assert.ok(refused.effects.some((e) => e.type === 'admissionRefused'));
+  }
+  // Nothing to add before a blend is shown, or while a newer one is pending.
+  const s = open(morph(2)).state;
+  assert.equal(step(s, msg('BlendAddToMorph'), { newFaceId: 'face-new' }).state, s);
+});
+
 // ---- persistence ------------------------------------------------------------------------------------------------------
 
 test('session persistence: slots and weights survive a reload in the same tab; photo pixels do not', () => {

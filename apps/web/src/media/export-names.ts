@@ -18,6 +18,14 @@ import {
   type KnownExport,
 } from '../contracts/export-identity.ts';
 
+/** A blend's saved recipe as export naming needs it (stylegan-js BlendRecipe; this module also runs unbundled). */
+export interface BlendRecipeFacts {
+  readonly slots: readonly { readonly kind: string; readonly latentSha256: string; readonly weight: number }[];
+}
+/** stylegan-js blendExportInputs: each slot's kind, latent digest and weight; the label `blend-<n>-faces`. */
+const blendInputs = (recipe: BlendRecipeFacts): string[] =>
+  recipe.slots.map((s) => `blend:${s.kind}:${s.latentSha256}:${JSON.stringify(s.weight)}`);
+
 export interface NamedExport extends ExportName {
   readonly digest: string;
   readonly identity: ExportIdentity;
@@ -86,6 +94,8 @@ export interface FaceExportFacts {
   readonly latentSha256?: string | undefined;
   readonly latentValues?: Float32Array | undefined;
   readonly modelIdentity: string;
+  /** A blend view result's recipe (fm-2kse): each slot's kind, latent digest and weight. */
+  readonly blend?: BlendRecipeFacts | undefined;
 }
 
 /** The latent's identity: the reported digest, or SHA-256 over its float bytes. */
@@ -102,12 +112,15 @@ export function latentIdentity(facts: Pick<FaceExportFacts, 'latentSha256' | 'la
  */
 export function inputIdentities(facts: FaceExportFacts): string[] {
   const source = facts.source;
+  // A blend is named by its slots and weights, so blends differing in any weight get different identities.
+  if (facts.blend) return [...blendInputs(facts.blend), `latent:${latentIdentity(facts)}`];
   const given = (source?.mode === 'text' || source?.mode === 'seed') && source.value ? [`${source.mode}:${source.value}`] : [];
   return [...given, `latent:${latentIdentity(facts)}`];
 }
 
 /** The best label a face has: entered text, its seed, or the photo's basename; none after a restore. */
-export function faceLabel(source: FaceExportFacts['source']): ExportLabelSource | undefined {
+export function faceLabel(source: FaceExportFacts['source'], blend?: BlendRecipeFacts): ExportLabelSource | undefined {
+  if (blend) return { origin: 'result-name', text: `blend-${blend.slots.length}-faces` };
   if (!source) return undefined;
   if (source.mode === 'text' && source.value) return { origin: 'entered-text', text: source.value };
   if (source.mode === 'seed' && source.value) return { origin: 'seed', text: source.value };

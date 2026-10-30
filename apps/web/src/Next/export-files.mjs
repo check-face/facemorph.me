@@ -23,7 +23,7 @@ export function faceFacts(face,modelIdentity){
  const values=face?.latent?.values;
  return {source:face?.source?{mode:face.source.mode,value:face.source.value,fileName:fileName(face.source.file)}:undefined,
   latentSha256:face?.latentSha256,latentValues:values instanceof Float32Array?values:values?Float32Array.from(values):undefined,
-  modelIdentity:face?.provenance?.modelSha256||modelIdentity||'unknown'};
+  modelIdentity:face?.provenance?.modelSha256||modelIdentity||'unknown',...(face?.blend&&face?.blendSha256?{blend:face.blend}:{})};
 }
 
 /**
@@ -60,7 +60,7 @@ export function createExportFiles({maxBytes=PREPARED_FILE_MAX_BYTES}={}){
     outcome=await store.prepare(settings.format,optionsOf(settings),async()=>bytesOf(await once()),{pin:true,revision});
    }
    const file=ready(outcome,current);
-   const facts=faceFacts(face,modelIdentity),named=names.name(stillExport(facts,file.format,optionsOf(settings)),faceLabel(facts.source),retainedExportDigests(face.exportDigests)[file.format]);
+   const facts=faceFacts(face,modelIdentity),named=names.name(stillExport(facts,file.format,optionsOf(settings)),faceLabel(facts.source,facts.blend),retainedExportDigests(face.exportDigests)[file.format]);
    return expose(file,named);
   },
   /** The morph video: the encoded MP4 with its project box; `faces` are the morph's endpoint faces in order. */

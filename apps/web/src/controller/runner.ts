@@ -215,10 +215,12 @@ export function createController(
   measureStored();
   const store = createStore(initial.state, {
     facts: (message, state) => ({
-      ...(['AddAt', 'Photos', 'PickPhoto', 'Classified', 'BatchOk'].includes(message.type)
+      ...(['AddAt', 'Photos', 'PickPhoto', 'Classified', 'BatchOk', 'BlendAddToMorph'].includes(
+        message.type,
+      )
         ? { storedSessionBytes, pendingPhotoFiles: photoTasks.files() }
         : {}),
-      ...(message.type === 'AddAt'
+      ...(message.type === 'AddAt' || message.type === 'BlendAddToMorph'
         ? { newFaceId: `face-${crypto.randomUUID().replaceAll('-', '')}` }
         : {}),
       // Blend slot ids (fm-2kse): one per morph face plus a spare when the view first opens, one per added slot.

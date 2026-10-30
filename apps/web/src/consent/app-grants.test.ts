@@ -705,6 +705,9 @@ test('actual photo-selection wrapper reads no descriptor for unreadable, cancell
         return { ok: true, json: async () => ({}) };
       },
       checkFaceModel() {},
+      // A reopened saved blend becomes a latent face (fm-2kse): its identity digest is computed, nothing fetched.
+      digest: async () => 'a'.repeat(64),
+      generationIdentity: () => ({}),
       register: async () => {},
       snapshot: () => ({}),
       warmPhotoTools() {},

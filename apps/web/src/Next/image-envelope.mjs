@@ -21,9 +21,15 @@ export async function embedRecovery(blob,result,{seed}={}){
  if(parsed.hasEnvelope)throw Error('Image already has recovery metadata.');
  const values=result.latent?.values||result.values;
  if(values?.length!==18*512||!Array.prototype.every.call(values,Number.isFinite))throw Error('Invalid recovery latent.');
- const face={latent:{space:'w-plus',shape:[18,512],values:Float32Array.from(values)},provenance:{...result.provenance},generationKind:result.generationKind,generationSha256:result.generationSha256};
- if(!['seed','photo','latent'].includes(face.generationKind)||!/^[a-f0-9]{64}$/.test(face.generationSha256||''))throw Error('Invalid recovery generation identity.');
- const out=descriptorFor(face.provenance.modelSha256,face.provenance.noiseSha256)
+ // A blend view result (fm-2kse) is saved as a blend: its recipe (each slot's kind, latent digest and weight) and the
+ // recipe digest as its generation identity. The face itself keeps its latent identity for the session.
+ const blended=result.blend!==undefined&&result.blendSha256!==undefined;
+ const face={latent:{space:'w-plus',shape:[18,512],values:Float32Array.from(values)},provenance:{...result.provenance},
+  generationKind:blended?'blend':result.generationKind,generationSha256:blended?result.blendSha256:result.generationSha256,...(blended?{blend:result.blend}:{})};
+ if(!['seed','photo','latent','blend'].includes(face.generationKind)||!/^[a-f0-9]{64}$/.test(face.generationSha256||''))throw Error('Invalid recovery generation identity.');
+ const shipped=descriptorFor(face.provenance.modelSha256,face.provenance.noiseSha256);
+ if(blended&&!shipped)throw Error('A blend is saved only for a model this app ships.');
+ const out=shipped
   ?writeStill(bytes,face,{seed})
   :embedV2(bytes,{...face,...(seed===undefined?{}:{seed})});
  // The hashes the envelope records: the image as given (it had no envelope) and the float32 little-endian latent.

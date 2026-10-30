@@ -6,6 +6,7 @@ import { msg, type Msg } from '../msg.ts';
 import { unchanged, type Effect, type Transition } from '../effects.ts';
 import type { Face, State } from '../state.ts';
 import { gateScope } from '../derived.ts';
+import { admitTo, refusal, type AdmissionFacts } from '../admission.ts';
 import {
   BLEND_RESULT,
   addSlot,
@@ -24,8 +25,10 @@ import {
 } from '../blend.ts';
 
 /** Fresh slot ids from the effect runner (randomness stays outside the reducers). */
-export interface BlendFacts {
+export interface BlendFacts extends AdmissionFacts {
   readonly blendIds?: readonly string[];
+  /** Add to morph's new morph face id. */
+  readonly newFaceId?: string;
 }
 const GRANT_REFUSAL = /not covered by an approved download|needs more data than was approved/;
 
@@ -205,6 +208,36 @@ export function blend(message: Msg, state: State, facts: BlendFacts = {}): Trans
           retry: true,
         }),
         effects: [],
+      };
+    }
+    case 'BlendAddToMorph': {
+      // The shown blend joins the end of the morph row as an ordinary face (zero inference: its latent, pixels
+      // and file are copied), through the same admission check as any new face; refused, nothing is added.
+      const result = current.faces.find((face) => face.id === BLEND_RESULT);
+      const id = facts.newFaceId;
+      if (!result || current.running !== null || !id || state.Inputs.some((i) => i.id === id))
+        return unchanged(state);
+      const admission = admitTo(state, { files: [] }, facts);
+      if (!admission.ok) return refusal(state, admission);
+      const label = result.label || 'Blended face';
+      return {
+        state: {
+          ...state,
+          Inputs: [...state.Inputs, { id, mode: 'project', value: label, file: null }],
+          Faces: [
+            ...state.Faces.filter((face) => face.id !== id),
+            // Drawn from the bridge's copy: the blend's own URL is revoked when it is blended again.
+            { ...result, id, raw: true, url: '' },
+          ],
+          NextId: state.NextId + 1,
+          VideoUrl: '',
+          Status: `${label} added to the morph as face ${state.Inputs.length + 1}.`,
+        },
+        effects: [
+          { type: 'copyFace', from: BLEND_RESULT, to: id },
+          { type: 'invalidateArrivalRestore' },
+          { type: 'invalidateMorph' },
+        ],
       };
     }
     case 'BlendSettled': {

@@ -47,3 +47,30 @@ test('product recovery dispatches compact WebP to exact W+ and retains legacy PN
  const v1=await recoverImage(new Blob([await readFile(new URL('../../test/fixtures/verify/stills/recovery-v1.png',import.meta.url))],{type:'image/png'}));
  assert.equal(v1.schemaVersion,1);assert.equal(v1.seed,42);assert.equal(v1.latent.values.length,9216);assert.equal(v1.blob.type,'image/png');
 });
+
+// fm-2kse: a blend view result is saved as a blend: its recipe (each slot's kind, latent digest and weight, never
+// typed words, seeds or file names) and the recipe digest as its generation identity; the name is blend-<n>-faces.
+import {blendWithRecipe,blendExportInputs} from 'stylegan-js';import {createExportFiles} from './export-files.mjs';
+test('a saved blend carries its recipe and reads back as a blend named by its face count',async()=>{
+ const latent=k=>({space:'w-plus',shape:[18,512],values:Float32Array.from({length:9216},(_,i)=>Math.fround(Math.sin(i*(k+1))/4))});
+ const made=blendWithRecipe(FFHQ_1024_DESCRIPTOR,[{kind:'word',latent:latent(0)},{kind:'name',latent:latent(1)},{kind:'photo',latent:latent(2)}],[.5,.25,.25]);
+ assert(made.ok);const {recipe,generationSha256,result}=made.value;
+ const rgba=new Uint8ClampedArray(1024*1024*4);for(let i=3;i<rgba.length;i+=4)rgba[i]=255;
+ const blob=await encodeRgbaPng(rgba);
+ // The face keeps its latent identity for the session; the recipe rides beside it.
+ const face={blob,latent:result.latent,provenance:shipped,generationKind:'latent',generationSha256:'d'.repeat(64),blend:recipe,blendSha256:generationSha256,source:{mode:'project',value:'',file:null}};
+ const saved=await decorateImage(face),back=await recoverImage(saved);
+ assert.equal(back.generationKind,'blend');assert.equal(back.generationSha256,generationSha256);
+ assert.deepEqual(back.blend.slots.map(s=>[s.kind,s.weight]),[['word',.5],['name',.25],['photo',.25]]);
+ assert.deepEqual(Object.keys(back.blend.slots[0]).sort(),['kind','latentSha256','weight']);
+ const text=new TextDecoder('latin1').decode(new Uint8Array(await saved.arrayBuffer()));
+ assert(!/hello|Ada Lovelace|portrait\.jpg/.test(text));
+ const files=createExportFiles();
+ const file=await files.face('blend-result',face,{encode:async()=>saved,format:'png',modelIdentity:shipped.modelSha256});
+ assert.match(file.filename,/^blend-3-faces/);
+ const {inputIdentities}=await import('../media/export-names.ts');
+ assert.deepEqual(inputIdentities({blend:recipe,latentSha256:'e'.repeat(64),modelIdentity:'m'}).slice(0,-1),[...blendExportInputs(recipe).orderedInputs],'the package\'s blend export inputs');
+ const other=blendWithRecipe(FFHQ_1024_DESCRIPTOR,[{kind:'word',latent:latent(0)},{kind:'name',latent:latent(1)},{kind:'photo',latent:latent(2)}],[.4,.3,.3]);
+ const renamed=await createExportFiles().face('blend-result',{...face,blend:other.value.recipe,blendSha256:other.value.generationSha256},{encode:async()=>saved,format:'png',modelIdentity:shipped.modelSha256});
+ assert.notEqual(renamed.digest,file.digest,'a different weight is a different file identity');
+});

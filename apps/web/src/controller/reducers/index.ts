@@ -125,6 +125,7 @@ export const CASES = {
   BlendCompleted: blend,
   BlendFailed: blend,
   BlendSettled: blend,
+  BlendAddToMorph: blend,
 } satisfies Record<Msg['type'], ControllerReducer>;
 /** Compose guard priority and the classic remember-view wrapper around each pure transition. */
 export function reduce(message: Msg, state: State, facts: ControllerFacts = {}): Transition | null {

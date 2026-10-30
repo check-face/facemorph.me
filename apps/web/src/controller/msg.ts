@@ -159,6 +159,8 @@ export interface Payloads {
   BlendFailed: readonly [number, string];
   /** Cancelled or superseded: nothing to show. */
   BlendSettled: readonly [number];
+  /** Add to morph: the shown blend joins the end of the morph row as a new face; the runner supplies its id. */
+  BlendAddToMorph: readonly [];
 }
 /** A classified file; held kinds carry their display URL ('' when it does not decode) and photo action. */
 export interface ClassifiedStill extends StillEntry<File> {
