@@ -121,6 +121,12 @@ async function virtualEnds(page: Page, count: number, engine: string, touch: boo
     );
     if (reached) break;
     if (touch && engine === 'webkit') {
+      // At the strip's end Next is disabled (MUI drops its pointer events, so the cue bar is what a tap would hit):
+      // the tail is still being drawn, so wait for it rather than tapping a control that is off.
+      if (await page.getByRole('button', { name: 'Next faces' }).isDisabled()) {
+        await page.waitForTimeout(100);
+        continue;
+      }
       assert.ok(
         (await press(page, page.getByRole('button', { name: 'Next faces' }), { touch })).inside,
         'the visible strip navigation responds to touch',
