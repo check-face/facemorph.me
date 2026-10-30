@@ -51,3 +51,16 @@
 - Resources / failures: the CPU noise run was refused twice by the load guard (eris load 19–34 from other agents' browser runs); no CPU timing scored.
 - Evidence: evidence/noise-gpu.report.json.raw, evidence/compare-gpu.report.json.raw.
 - Conclusion / next action: measured no-go for adopting 1.31.1 on the WebGPU route; the overlay bumps all six npm assets together, so the CPU route cannot move alone. Keep the current runtime; the Q3 binding fix stays (it is a no-op on JSEP and required by any native-EP release).
+
+### 2026-10-30T16:10:00+10:00 — Q5-OBSERVED
+
+- Phase / status: observed / CPU-only candidate numerics pass; CPU timing stopped (budget)
+- Round / experiment / correction: Q5 / not_applicable
+- Hypothesis / decision: a CPU-route-only overlay (3d0f1e7 `cpu` build) moves the CPU route to 1.31.1 and leaves WebGPU on the pinned 1.22 control.
+- Identity: overlay bundle 2536109f8cda699cc60135f9531b34291f073b289296fa9f13bd2bd535cfbaa9 with serial companion 5caaaaa2…; composed runtime 7986cb9c16ed52e47fe45100e2abc8d855f00912f9f15507a4c471a83061d6f6.
+- Context: eris Chromium/Chrome; full31 cells.
+- Boundary / samples: CPU paired timing not scored: control/control noise was refused once by the load guard (load 18.9) and stopped once mid-measurement (load ceiling exceeded); the work was then stopped for token budget.
+- Correctness / workflow: full31 CPU chromium 31/31 (max float 9.36e-6); full31 webgpu-ort 31/31 (3.73e-5, identical to control because the GPU runtime is unchanged).
+- Resources / failures: as above.
+- Evidence: this log (receipts session-local).
+- Conclusion / next action: the runtime stays pinned. Next: CPU paired timing on a quiet host, then encoder canaries (encode-browsers, FACEMORPH_FULL_QUALIFY=1), a phone-cpu warm face and a commit of import/runtime-mirror.json (cpu build) plus import/runtime-serial-source.json.
