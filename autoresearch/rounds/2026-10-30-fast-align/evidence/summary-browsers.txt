@@ -1,0 +1,20 @@
+cell img pass | wall orig->fast | alignment-runtime orig->fast | alignment-model orig->fast | alignment-model-deserialize orig->fast | face-landmarks orig->fast | photo-warp-resize orig->fast
+chromium non-square.jpg cold n=6/6 | 8646->5145 | 111->84 | 4835->3769 | 2630->571 | 973->620 | 14->15 | ratio 1.68 | fast builds ['fast-v1'] orig range 8571-8780 fast range 5089-5231
+chromium non-square.jpg warm n=6/6 | 4736->1737 | 116->78 | 952->369 | 2600->569 | 974->622 | 14->15 | ratio 2.73 | fast builds ['fast-v1'] orig range 4690-4759 fast range 1722-1783
+chromium seed-0-large.png cold n=6/6 | 13953->7246 | 119->81 | 4986->3847 | 2618->567 | 2861->1813 | 3198->756 | ratio 1.93 | fast builds ['fast-v1'] orig range 13714-14063 fast range 7150-7343
+chromium seed-0-large.png warm n=6/6 | 9868->3737 | 119->86 | 960->382 | 2591->566 | 2858->1804 | 3193->756 | ratio 2.64 | fast builds ['fast-v1'] orig range 9806-9973 fast range 3722-3769
+chromium seed-0.png cold n=6/6 | 9833->5213 | 121->86 | 4874->3774 | 2631->569 | 490->318 | 1592->375 | ratio 1.89 | fast builds ['fast-v1'] orig range 9667-9921 fast range 5158-5266
+chromium seed-0.png warm n=6/6 | 5809->1819 | 111->86 | 950->377 | 2580->569 | 491->321 | 1586->377 | ratio 3.19 | fast builds ['fast-v1'] orig range 5737-5843 fast range 1789-1839
+firefox non-square.jpg cold n=6/6 | 14146->5071 | 143->104 | 8500->3662 | 4461->591 | 960->600 | 12->12 | ratio 2.79 | fast builds ['fast-v1'] orig range 13967-14447 fast range 4967-5110
+firefox non-square.jpg warm n=6/6 | 8601->2087 | 134->102 | 2765->690 | 4647->579 | 956->596 | 13->12 | ratio 4.12 | fast builds ['fast-v1'] orig range 8388-8707 fast range 2065-2137
+firefox seed-0-large.png cold n=6/6 | 19279->7154 | 146->103 | 8569->3776 | 4353->590 | 2872->1768 | 3144->772 | ratio 2.69 | fast builds ['fast-v1'] orig range 19030-19497 fast range 7028-7215
+firefox seed-0-large.png warm n=6/6 | 13627->4074 | 137->98 | 2755->686 | 4543->580 | 2870->1767 | 3141->772 | ratio 3.34 | fast builds ['fast-v1'] orig range 13430-13923 fast range 4046-4139
+firefox seed-0.png cold n=6/6 | 15220->5091 | 139->105 | 8436->3610 | 4544->594 | 480->305 | 1515->379 | ratio 2.99 | fast builds ['fast-v1'] orig range 15062-15481 fast range 4976-5202
+firefox seed-0.png warm n=6/6 | 9658->2170 | 138->103 | 2765->695 | 4668->581 | 483->306 | 1509->377 | ratio 4.45 | fast builds ['fast-v1'] orig range 9409-9760 fast range 2152-2194
+webkit non-square.jpg cold n=6/6 | 8601->5159 | 117->89 | 4878->3775 | 2560->568 | 972->624 | 14->15 | ratio 1.67 | fast builds ['fast-v1'] orig range 8533-8770 fast range 5068-5344
+webkit non-square.jpg warm n=6/6 | 4694->1750 | 104->82 | 966->378 | 2563->566 | 974->623 | 14->15 | ratio 2.68 | fast builds ['fast-v1'] orig range 4658-4739 fast range 1720-1763
+webkit seed-0-large.png cold n=6/6 | 13832->7220 | 113->80 | 4903->3804 | 2598->572 | 2862->1812 | 3198->768 | ratio 1.92 | fast builds ['fast-v1'] orig range 13707-14364 fast range 7116-7321
+webkit seed-0-large.png warm n=6/6 | 9840->3748 | 116->73 | 950->374 | 2571->568 | 2862->1816 | 3203->761 | ratio 2.63 | fast builds ['fast-v1'] orig range 9782-9978 fast range 3709-3837
+webkit seed-0.png cold n=6/6 | 9824->5282 | 118->86 | 4953->3834 | 2596->571 | 485->319 | 1595->376 | ratio 1.86 | fast builds ['fast-v1'] orig range 9679-10022 fast range 5086-5366
+webkit seed-0.png warm n=6/6 | 5797->1803 | 109->75 | 954->367 | 2572->569 | 485->318 | 1592->377 | ratio 3.22 | fast builds ['fast-v1'] orig range 5745-5981 fast range 1785-1829
+unique prepared hashes per image {'seed-0.png': 1, 'non-square.jpg': 1, 'seed-0-large.png': 1}

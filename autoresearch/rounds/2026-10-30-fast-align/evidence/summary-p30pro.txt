@@ -1,0 +1,6 @@
+cell img pass | wall orig->fast | alignment-runtime orig->fast | alignment-model orig->fast | alignment-model-deserialize orig->fast | face-landmarks orig->fast | photo-warp-resize orig->fast
+p30pro-chrome non-square.jpg cold n=4/4 | 9763->6067 | 199->121 | 3734->4096 | 4391->833 | 1243->858 | 22->24 | ratio 1.61 | fast builds ['fast-v1'] orig range 9456-9856 fast range 5828-6304
+p30pro-chrome non-square.jpg warm n=4/4 | 7330->2512 | 199->112 | 1459->598 | 4289->772 | 1243->868 | 22->23 | ratio 2.92 | fast builds ['fast-v1'] orig range 7306-7458 fast range 2460-2536
+p30pro-chrome seed-0.png cold n=4/4 | 11259->6526 | 202->138 | 3782->4162 | 4383->823 | 625->463 | 2100->729 | ratio 1.73 | fast builds ['fast-v1'] orig range 10946-11945 fast range 6291-6676
+p30pro-chrome seed-0.png warm n=4/4 | 8857->2865 | 199->129 | 1497->617 | 4293->766 | 633->446 | 2099->744 | ratio 3.09 | fast builds ['fast-v1'] orig range 8764-8999 fast range 2854-2912
+unique prepared hashes per image {'seed-0.png': 1, 'non-square.jpg': 1}
