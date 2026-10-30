@@ -55,8 +55,6 @@ export interface MorphSettings {
 export interface MorphSlotProps extends MorphSettings {
   /** More options → Blend faces (fm-2kse): opens the blend view (`#blend`) over the same session. */
   readonly onBlend?: () => void;
-  /** More options → Start over (fm-id4c): two empty faces in one action, undoable. */
-  readonly onStartOver?: () => void;
   readonly faces: number;
   readonly busy: boolean;
   /** Morph's pre-checks are answering; Create morph waits for them. */
@@ -318,16 +316,6 @@ export function MorphSlot(p: MorphSlotProps) {
               onClick={p.onBlend}
             >
               Blend faces
-            </Button>
-          )}
-          {p.onStartOver && (
-            <Button
-              color="inherit"
-              variant="outlined"
-              className="next-start-over"
-              onClick={p.onStartOver}
-            >
-              Start over
             </Button>
           )}
         </div>

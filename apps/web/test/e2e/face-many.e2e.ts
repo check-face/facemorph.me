@@ -829,9 +829,7 @@ test(
                   `${label}: exactly the pressed faces`,
                 );
               }
-              const more = s.page.getByRole('button', { name: 'More options' });
-              if ((await more.getAttribute('aria-expanded')) !== 'true')
-                assert.ok((await press(s.page, more, { touch })).inside);
+              // Start over is at the top of the face row, no menu to open (fm-2if3).
               const startOver = s.page.getByRole('button', { name: 'Start over' });
               assert.ok((await press(s.page, startOver, { touch })).inside, `${label}: Start over`);
               await s.page.waitForFunction(
@@ -1747,9 +1745,6 @@ test(
               const opsBefore = await operations(),
                 modelRequestsBefore = s.models.length;
               const traceBefore = (await faceTrace(page)).length;
-              const more = page.getByRole('button', { name: 'More options' });
-              if ((await more.getAttribute('aria-expanded')) !== 'true')
-                assert.ok((await press(page, more)).inside);
               assert.ok(
                 (await press(page, page.getByRole('button', { name: 'Start over', exact: true })))
                   .inside,

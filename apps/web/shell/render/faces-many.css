@@ -127,6 +127,10 @@
   .next-morph-content.next-many .next-strip-head {
     padding-inline: 1.25rem;
   }
+  /* The arrows and the edge + say there is more, so the head keeps one line with Start over beside the cue. */
+  .next-strip-hint {
+    display: none;
+  }
   /* A swipe always rests on a whole face: both of its + are in view there, so the + need no snap of their own. */
   .next-morph-content.next-many .next-faces-row.next-faces-strip {
     scroll-snap-type: x mandatory;
@@ -169,20 +173,47 @@
   margin: 0.25rem 0 0;
 }
 
-/* The Undo notice: in the flow above the faces, covering nothing; its line is reserved in the strip head. */
+/* Start over sits at the top of the face row, at the end of the strip's head or alone above two faces (fm-2if3). */
+.next-faces-head {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 44px;
+  margin-bottom: 0.35rem;
+}
+.next-faces-head .next-start-over,
+.next-strip-head .next-start-over {
+  min-height: 44px;
+  margin-inline-start: auto;
+}
+
+/* The Undo notice: a compact snackbar row in the flow just above the faces, covering nothing. One look in both
+ * schemes (a dark row with light text and an accent Undo, as snackbars are), so it reads as a passing notice. */
 .next-undo-notice {
+  align-self: center;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
   min-height: 44px;
-  font-size: 0.95rem;
+  margin: 0 auto 0.35rem;
+  padding: 0 0.25rem 0 0.9rem;
+  border-radius: 6px;
+  background: #2b2d33;
+  color: #f3f3f3;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  font-size: 0.9rem;
+  line-height: 1.3;
 }
 .next-undo-notice:empty {
   display: none;
 }
-.next-undo-notice .next-undo {
+.next-undo-notice .next-undo.next-undo {
   min-height: 44px;
   min-width: 64px;
+  color: #3cf0c5;
+  font-weight: 600;
 }
 
 /* The face's image box keeps a 48 px band above the picture for Remove, so Remove sits inside the image box

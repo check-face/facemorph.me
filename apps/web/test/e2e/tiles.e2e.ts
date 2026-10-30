@@ -151,6 +151,42 @@ async function virtualEnds(page: Page, count: number, engine: string, touch: boo
   assert.equal(await tail.locator('select[aria-label="Face source"]').inputValue(), 'seed');
 }
 
+// fm-2if3: moving between faces leaves the page's vertical scroll alone; Start over is visible at the top of the face
+// row without opening a menu, and its Undo (a compact snackbar row) brings every face back; no clear inside a field.
+async function faceRowControls(page: Page, label: string, touch: boolean, shotName: string) {
+  const count = await faces(page).count();
+  const next = page.getByRole('button', { name: 'Next faces' });
+  // press() first scrolls its control into view, as a person would: settle that scroll before measuring.
+  await next.scrollIntoViewIfNeeded();
+  const y = await page.evaluate(() => scrollY);
+  for (let i = 0; i < 2 && (await next.isEnabled()); i++) {
+    assert.ok((await press(page, next, { touch })).inside, `${label}: Next faces`);
+    await page.waitForTimeout(600);
+    assert.equal(await page.evaluate(() => scrollY), y, `${label}: moving sideways keeps scrollY`);
+  }
+  assert.deepEqual(
+    await page.evaluate(() =>
+      [...document.querySelectorAll('.next-field button')]
+        .map((b) => b.getAttribute('aria-label'))
+        .filter((l) => l !== 'Change mode'),
+    ),
+    [],
+    `${label}: no clear control inside a field`,
+  );
+  assert.equal(await page.locator('#next-overflow').count(), 0, `${label}: no menu open`);
+  const startOver = page.getByRole('button', { name: 'Start over' });
+  assert.ok((await press(page, startOver, { touch })).inside, `${label}: Start over is visible`);
+  await page.waitForFunction(() => document.querySelectorAll('section.next-face').length === 2);
+  const undo = page.locator('[data-next-undo-notice] .next-undo');
+  await undo.waitFor();
+  await shot(page, shotName);
+  assert.ok((await press(page, undo, { touch })).inside, `${label}: Undo`);
+  await page.waitForFunction(
+    (n) => document.querySelectorAll('[data-next-strip] section.next-face').length === n,
+    count,
+  );
+}
+
 // fm-vd4i: on a phone the strip shows one face per view: the image spans the tile's width on top, the field sits
 // below it, and the + before and after the face are wholly in the strip; Remove, both + and the field are what
 // elementFromPoint finds at their centres.
@@ -239,6 +275,8 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
             await shot(page, `${engine}-${width}-n${n}-tail`);
             continue;
           }
+          if (n === 30)
+            await faceRowControls(page, `${engine} ${width} n30`, touch, `${engine}-${width}-undo`);
           // The last tile of a long list is still reachable and its field operable.
           const last = faces(page).last().locator('input[type=text], input:not([type])').first();
           assert.ok(
@@ -479,6 +517,13 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
               );
             }
             await shot(page, `wide-${engine}-${dark ? 'dark' : 'light'}-${width}-n${n}`);
+            if (n === 30)
+              await faceRowControls(
+                page,
+                label,
+                false,
+                `wide-${engine}-${dark ? 'dark' : 'light'}-${width}-undo`,
+              );
             // A face fully in view is removed by a real click on its Remove.
             const visible = await page.evaluate(() => {
               const r = document.querySelector('[data-next-strip]')!.getBoundingClientRect();

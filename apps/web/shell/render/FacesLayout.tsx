@@ -3,11 +3,14 @@
 // before, between and after the pair at every width (A-1). One face: the lone tile and the reason it has no
 // Remove. Three or more (face.many, fm-id4c): one contained strip at every width that scrolls sideways inside
 // itself, never the page, with a visible cue (which faces show, Previous/Next, edge fades and a scrollbar); past
-// VIRTUALISE_AFTER faces it renders only the tiles near the view. The Undo notice for Remove and Start over sits
-// above the faces, in a live region, covering nothing. Focus moves to a neighbour's Remove after a removal.
+// VIRTUALISE_AFTER faces it renders only the tiles near the view. Start over is a visible control at the top of the
+// face row (fm-2if3) whenever there is something to clear; the Undo notice for Remove and Start over is a compact
+// snackbar row just above the faces, in a live region, covering nothing. Focus moves to a neighbour's Remove after a
+// removal.
 import AddIcon from '@mui/icons-material/Add';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import {
@@ -33,6 +36,8 @@ export interface FacesLayoutProps {
   /** The open Remove/Start over notice, if any. */
   readonly undo?: UndoNotice | undefined;
   readonly onUndo?: () => void;
+  /** Start over: two empty faces in one action, undoable (fm-id4c); shown at the top of the face row (fm-2if3). */
+  readonly onStartOver?: () => void;
 }
 
 const add = (className: string, label: string, onClick: () => void) => (
@@ -71,14 +76,16 @@ function Strip({
   onAddAt,
   virtual,
   keep,
-  head,
+  startOver,
+  notice,
 }: {
   readonly inputs: readonly Input[];
   readonly tile: FacesLayoutProps['tile'];
   readonly onAddAt: (position: number) => void;
   readonly virtual: boolean;
   readonly keep: number | null;
-  readonly head: ReactNode;
+  readonly startOver: ReactNode;
+  readonly notice: ReactNode;
 }) {
   const strip = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLDivElement>(null);
@@ -207,7 +214,7 @@ function Strip({
               {last > first
                 ? `${first + 1 === last ? `Face ${last}` : `Faces ${first + 1}–${last}`} of ${count}`
                 : `${count} faces`}
-              {' · scroll sideways for more'}
+              <span className="next-strip-hint">{' · scroll sideways for more'}</span>
             </span>
             <IconButton
               className="next-strip-arrow"
@@ -221,8 +228,9 @@ function Strip({
         ) : (
           <span />
         )}
-        {head}
+        {startOver}
       </div>
+      {notice}
       <div
         ref={frame}
         className="next-strip-frame"
@@ -259,6 +267,7 @@ export function FacesLayout({
   onAddAt,
   undo,
   onUndo,
+  onStartOver,
 }: FacesLayoutProps) {
   const root = useRef<HTMLDivElement>(null);
   // Where focus goes after the removal or Undo re-renders (a ref: the effect consumes it), and the tile the
@@ -293,8 +302,7 @@ export function FacesLayout({
         <>
           <span>{undoText(undo)}</span>
           <Button
-            color="inherit"
-            variant="outlined"
+            variant="text"
             size="small"
             className="next-undo"
             onClick={() => {
@@ -309,6 +317,22 @@ export function FacesLayout({
       ) : null}
     </div>
   );
+  // Nothing to clear at two empty faces, so Start over shows only once there is.
+  const startOver =
+    onStartOver &&
+    (inputs.length !== 2 || inputs.some((i) => i.value !== '' || i.file || i.mode !== 'text')) ? (
+      <Button
+        color="inherit"
+        variant="text"
+        size="small"
+        className="next-start-over"
+        startIcon={<RestartAltIcon />}
+        onClick={onStartOver}
+      >
+        Start over
+      </Button>
+    ) : null;
+  const head = startOver ? <div className="next-faces-head">{startOver}</div> : null;
   // Outside the strip the notice exists only while it is open, so two faces render exactly as before (the parity
   // DOM contract); its role=status announces it as it appears.
   const openNotice = undo && onUndo ? notice : null;
@@ -317,6 +341,7 @@ export function FacesLayout({
     if (first && second)
       return (
         <>
+          {head}
           {openNotice}
           <div ref={root} className="next-morph-content n2" onClickCapture={onClickCapture}>
             <div className="next-morph-cell next-morph-from">{tile(first, 0, 'Morph from')}</div>
@@ -339,7 +364,8 @@ export function FacesLayout({
           onAddAt={onAddAt}
           virtual={virtual}
           keep={keep}
-          head={notice}
+          startOver={startOver}
+          notice={notice}
         />
         {morphSlot}
         {videoSlot}
@@ -347,6 +373,7 @@ export function FacesLayout({
     );
   return (
     <>
+      {head}
       {openNotice}
       <div ref={root} className="next-morph-content n3" onClickCapture={onClickCapture}>
         <div className="next-faces-row" data-next-face-count={inputs.length}>

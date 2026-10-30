@@ -2,7 +2,7 @@
 // &active=<index>&fraction=<0..1> for a running tile, &queued=<index>; &busy=1 for a running morph, &route=cpu,
 // &video=<url> for a finished morph, &frames=<url,url,...> for its retained frames (an empty entry is a frame
 // still queued). Edits, mode changes, Remove, the connectors, More options, the settings, Use Slider and the
-// slider change this page's own state, so the controls can be operated; generation, photos and the morph itself
+// slider, Start over and its Undo change this page's own state, so the controls can be operated; generation, photos and the morph itself
 // belong to the candidate controller (fm-qkke, fm-j16n) and do nothing here.
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -13,6 +13,7 @@ import { MorphSlot, type MorphSettings } from './render/MorphSlot.tsx';
 import { ProviderSelector } from './render/ProviderSelector.tsx';
 import { VideoSlot } from './render/VideoSlot.tsx';
 import type { FaceMode, Input } from './render/types.ts';
+import type { UndoNotice } from '../src/controller/reducers/undo.ts';
 import { Shell } from './Shell.tsx';
 import { DialogCheck } from './render/DialogCheck.tsx';
 
@@ -36,6 +37,8 @@ function RenderCheck() {
     provider: 'auto',
   });
   const [overflow, setOverflow] = useState(false);
+  // Start over's Undo, with the page's own copy of the faces it cleared (the controller's notice shape).
+  const [undo, setUndo] = useState<{ notice: UndoNotice; before: Input[] } | null>(null);
   const [useSlider, setUseSlider] = useState(false);
   const [sliderFrame, setSliderFrame] = useState(1);
   const change = (id: string, f: (item: Input) => Input) =>
@@ -74,6 +77,26 @@ function RenderCheck() {
         inputs={inputs}
         tile={tile}
         onAddAt={(at) => setInputs((all) => [...all.slice(0, at), fresh(), ...all.slice(at)])}
+        onStartOver={() => {
+          const placeholders = [fresh(), fresh()];
+          setUndo({
+            before: inputs,
+            notice: {
+              seq: 1,
+              kind: 'start-over',
+              index: 0,
+              hidden: inputs.map((input, index) => ({ index, input })),
+              faces: [],
+              placeholders: placeholders.map((i) => i.id),
+            },
+          });
+          setInputs(placeholders);
+        }}
+        undo={undo?.notice}
+        onUndo={() => {
+          if (undo) setInputs(undo.before);
+          setUndo(null);
+        }}
         morphSlot={
           <MorphSlot
             {...settings}
